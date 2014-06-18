@@ -1,0 +1,10 @@
+syntax: glob
+
+# Ignore timer files
+*.timer
+*.trace
+*.memory
+
+# Ignore mex files
+*.mexa64
+
