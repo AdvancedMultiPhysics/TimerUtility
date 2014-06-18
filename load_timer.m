@@ -96,6 +96,9 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
 % hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+if isfield(handles,'trace_figure')
+    close(handles.trace_figure);
+end
 if isfield(handles,'figure1')
     h = handles.figure1;
     fields = fieldnames(getappdata(h));
