@@ -31,7 +31,7 @@ for i = 1:length(memory)
     memory(i).scale = 1;    
     if s.bytes > 100e6
         % Reduce the size of memory
-        memory(i).time = single(memory.time);
+        memory(i).time = single(memory(i).time);
         mem_max = max(memory(i).bytes);
         while mem_max/memory(i).scale > 4e9
             memory(i).scale = 2*memory(i).scale;
