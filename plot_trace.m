@@ -22,7 +22,7 @@ function varargout = plot_trace(varargin)
 
 % Edit the above text to modify the response to help plot_trace
 
-% Last Modified by GUIDE v2.5 30-Jan-2013 09:41:15
+% Last Modified by GUIDE v2.5 18-Jun-2014 16:09:01
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -125,7 +125,7 @@ set(handles.processor_popup,'Value',1);
 set(handles.thread_popup,'Value',1);
 set(handles.slider1,'Min',-1,'Max',0,'Value',0,'SliderStep',[1,1000]);
 figure1_ResizeFcn(hObject,[],handles);
-dispay_data(handles)
+dispay_data(hObject,handles)
 
 
 % --- Executes when user attempts to close figure1.
@@ -148,7 +148,7 @@ function processor_popup_Callback(hObject, eventdata, handles) %#ok<DEFNU,INUSL,
 % hObject    handle to processor_popup (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-dispay_data(handles)
+dispay_data(hObject,handles)
 
  
 % --- Executes on selection change in thread_popup.
@@ -156,11 +156,11 @@ function thread_popup_Callback(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
 % hObject    handle to thread_popup (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-dispay_data(handles)
+dispay_data(hObject,handles)
 
 
 % --- Update the timer data and plot
-function dispay_data(handles)
+function dispay_data(hObject,handles)
 % First get the trace data for the current thread and processor
 processor = get(handles.processor_popup,'Value')-1;
 thread = get(handles.thread_popup,'Value')-1;
@@ -212,12 +212,12 @@ else
 end
 % Save the current list of timers
 guidata(handles.figure1,handles);
-update_plot(handles,timers)
+update_plot(hObject,handles,timers)
 
 
 
 % --- Update the data displayed
-function update_plot(handles,timers)
+function update_plot(hObject,handles,timers)
 start = handles.start_time;
 stop = handles.stop_time;
 N_timers = length(timers);
@@ -389,6 +389,14 @@ if ~isempty(memory)
     axis tight
     xlabel('Time (s)');
     ylabel(label);
+    set(handles.memory_plot,'ButtonDownFcn',...
+        @(hObject2,eventdata)plot_trace('memory_plot_ButtonDownFcn',hObject,eventdata,guidata(hObject)));
+    % Force all children to evaluate the button callback routine
+    children = get(handles.memory_plot,'Children');
+    for i = 1:length(children)
+        set(children(i),'ButtonDownFcn',...
+            @(hObject2,eventdata)plot_trace('memory_plot_ButtonDownFcn',hObject,eventdata,guidata(hObject)));
+    end
 end
 
 
@@ -433,7 +441,7 @@ if handles.t_range(1)==handles.t_range(2)
     handles.t_range(2) = handles.t_range(1)+1e-9;
 end
 guidata(hObject,handles);
-dispay_data(handles)
+dispay_data(hObject,handles)
 
 
 function moveLineCallbackMotion( hObject, eventdata, hline, range ) %#ok<INUSL>
@@ -475,7 +483,7 @@ if get(hObject,'Max')==0
     return;
 end
 set(hObject,'Value',round(get(hObject,'Value')));
-dispay_data(handles)
+dispay_data(hObject,handles)
 
 
 
@@ -600,7 +608,7 @@ end
 handles = guidata(hObject);
 handles.t_range = t;
 guidata(hObject,handles);
-dispay_data(handles)
+dispay_data(hObject,handles)
 
 
 function movePlotLineCallbackMotion( hObject, eventdata, hPlot, hline ) %#ok<INUSL>
@@ -619,7 +627,7 @@ end
 if N<100 || N>10000
     printf('Resolution must be: 100 <= R <= 10000');
 end
-dispay_data(handles)
+dispay_data(hObject,handles)
 
 
 % --- Executes on button press in reset.
@@ -629,5 +637,136 @@ function reset_Callback(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
 % handles    structure with handles and user data (see GUIDATA)
 handles.t_range = [handles.start_time handles.stop_time];
 guidata(hObject,handles);
-dispay_data(handles)
+dispay_data(hObject,handles)
 
+
+% --- Executes on mouse press over axes background.
+function memory_plot_ButtonDownFcn(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
+% hObject    handle to load_plot (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+switch get(handles.figure1,'SelectionType')
+    case 'normal'
+        % We want to zoom
+        % if isempty(handles.last_load_plot_pos)
+        %     pos = get(handles.load_plot,'CurrentPoint');
+        %     pos = pos(1,1:2);
+        %     handles.last_load_plot_pos = pos;
+        %     handles.load_plot_rectangle = rectangle('Position',[pos(1) pos(2) 1e-6 1e-6]);
+        %     guidata(hObject, handles);
+        %     children = get(handles.load_plot,'Children');
+        %     for i = 1:length(children)
+        %         set(children(i),'ButtonDownFcn',...
+        %             @(hObject2,eventdata)load_timer('load_plot_ButtonDownFcn',hObject,eventdata,guidata(hObject)));
+        %     end
+        %     set(handles.figure1,'WindowButtonMotionFcn',...
+        %         @(hObject,eventdata)load_timer('move_box',hObject,eventdata,guidata(hObject)));
+        % else
+        %     last_pos = handles.last_load_plot_pos;
+        %     handles.last_load_plot_pos = [];
+        %     set(handles.figure1,'WindowButtonMotionFcn','');
+        %     if handles.load_plot_rectangle ~= 0
+        %         delete(handles.load_plot_rectangle);
+        %         handles.load_plot_rectangle = 0;
+        %     end
+        %     guidata(hObject, handles);
+        %     pos = get(handles.load_plot,'CurrentPoint');
+        %     pos = pos(1,1:2);
+        %     xlim(1) = min(pos(1),last_pos(1));
+        %     xlim(2) = max(pos(1),last_pos(1));
+        %     ylim(1) = min(pos(2),last_pos(2));
+        %     ylim(2) = max(pos(2),last_pos(2));
+        %     set(handles.load_plot,'XLim',xlim,'YLim',ylim);
+        % end
+    case 'alt'
+        % We want to bring up the menu
+        handles.last_load_plot_pos = [];
+        set(handles.figure1,'WindowButtonMotionFcn','');
+        %if handles.load_plot_rectangle ~= 0
+        %    delete(handles.load_plot_rectangle);
+        %    handles.load_plot_rectangle = 0;
+        %end
+        %guidata(hObject, handles);
+        root = get(handles.figure1,'Parent');
+        position1 = get(root,'PointerLocation');
+        position2 = get(handles.figure1,'Position');
+        position1 = position1 - position2(1:2);
+        set(handles.memory_plot_menu,'Position',position1);
+        set(handles.memory_plot_menu,'Visible','on');
+    otherwise
+        % Unknown click
+        handles.last_load_plot_pos = [];
+        set(handles.figure1,'WindowButtonMotionFcn','');
+        % if handles.load_plot_rectangle ~= 0
+        %     delete(handles.load_plot_rectangle);
+        %     handles.load_plot_rectangle = 0;
+        % end
+        % guidata(hObject, handles);
+end
+
+
+% --------------------------------------------------------------------
+function export_memory_Callback(hObject, eventdata, handles, type) %#ok<INUSL,DEFNU>
+% hObject    handle to export_memory_3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% type       1: all time, 2: current time range, 3: current time
+if type==1
+    time = [-inf inf];
+elseif type==2
+    time = get(handles.memory_plot,'XLim');
+elseif type==3
+    p1 = get(handles.memory_plot_menu,'Position');
+    p2 = get(handles.memory_plot,'Position');
+    t = get(handles.memory_plot,'XLim');
+    time = t(1) + (t(2)-t(1))*(p1(1)-p2(1))/p2(3);
+else
+    error('Unknown option')
+end
+data = getappdata(handles.parent_figure,'memory');
+rank = [data.rank]+1;
+if length(time)==2
+    range = [inf -inf];
+    for i = 1:length(data)
+        j1 = max([find(data(i).time<=time(1),1,'last') 1]);
+        j2 = min([find(data(i).time>=time(2),1,'first') length(data(i).time)]);
+        data(i).time = double(data(i).time(j1:j2));
+        data(i).bytes = double(data(i).bytes(j1:j2));
+        range(1) = min(range(1),min(data(i).time));
+        range(2) = max(range(2),max(data(i).time));
+    end
+    N = 2000;
+    t = range(1):diff(range)/(N-1):range(2);
+    data2 = zeros(max(rank),N);
+    for i = 1:length(data)
+        if isempty(data(i).time)
+            continue;
+        end
+        for j = 1:N
+            k = max([find(data(i).time<=t(j),1,'last'),1]);
+            data2(rank(i),j) = data(i).bytes(k);
+        end
+    end
+    figure
+    imagesc(t,rank,data2)
+    set(gca,'YDir','normal','YLim',[0.5 max(rank)+0.5],'YTick',1:max(rank));
+    colorbar
+    title('Bytes Used')
+    xlabel('Time (s)')
+    ylabel('Rank')
+else
+    bytes = zeros(size(rank));
+    for i = 1:length(data)
+        if ~isempty(data(i).time)
+            [~,j] = min(abs(data(i).time-time));
+            bytes(i) = data(i).bytes(j);
+        end
+    end
+    figure
+    plot(rank,bytes,'*');
+    set(gca,'XLim',[0 max(rank)+1],'XTick',1:max(rank));
+    set(gca,'YLim',[0 1.1*max(bytes)]);
+    title(sprintf('Bytes in use at t = %f\n',time));
+    xlabel('Rank')
+    ylabel('Bytes')
+end

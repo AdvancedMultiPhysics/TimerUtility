@@ -709,7 +709,7 @@ end
 
 
 % --- Executes on mouse movement
-function move_box(hObject, eventdata, handles) %#ok<DEFNU,INUSL,INUSD>
+function move_box(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
 % hObject    handle to load_plot (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -766,7 +766,7 @@ guidata(hObject, handles);
 
 
 % --------------------------------------------------------------------
-function export_load_balance_Callback(hObject, eventdata, handles) %#ok<INUSL,INUSD>
+function export_load_balance_Callback(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
 % hObject    handle to export_load_balance (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
