@@ -170,7 +170,6 @@ end
 if thread==0 
     thread = 1:handles.N_threads;
 end
-N_blocks = length(processor)*length(thread);
 timers = getappdata(handles.parent_figure,'timer');
 if isempty(timers)
     error('Missing appdata');
@@ -182,17 +181,20 @@ end
 start = 1e100;
 stop = -1e100;
 for i = 1:length(timers)
-    timers(i).start = timers(i).trace(1).start;
-    timers(i).stop  = timers(i).trace(1).stop;
-    timers(i).tot   = timers(i).trace(1).tot;
+    timers(i).start = timers(i).trace(1).start(thread,processor);
+    timers(i).stop  = timers(i).trace(1).stop(thread,processor);
+    timers(i).tot   = timers(i).trace(1).tot(thread,processor);
     for j = 2:length(timers(i).trace)
-        for k = 1:N_blocks
-            timers(i).start{k} = [ timers(i).start{k}, timers(i).trace(j).start{k} ];
-            timers(i).stop{k}  = [ timers(i).stop{k},  timers(i).trace(j).stop{k}  ];
-            timers(i).tot = timers(i).tot + timers(i).trace(j).tot;
+        t1 = timers(i).trace(j).start(thread,processor);
+        t2 = timers(i).trace(j).stop(thread,processor);
+        for k = 1:numel(timers(i).start)
+            timers(i).start{k} = [ timers(i).start{k}, t1{k} ];
+            timers(i).stop{k}  = [ timers(i).stop{k},  t2{k}  ];
         end
+        timers(i).tot = timers(i).tot + timers(i).trace(j).tot(thread,processor);
     end
-    for k = 1:N_blocks
+    timers(i).trace = [];
+    for k = 1:numel(timers(i).start)
         timers(i).start{k} = sort(timers(i).start{k});
         timers(i).stop{k}  = sort(timers(i).stop{k});
         start = min([ start timers(i).start{k} ]);
@@ -635,7 +637,9 @@ function reset_Callback(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
 % hObject    handle to reset (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.t_range = [handles.start_time handles.stop_time];
+handles.t_range = [-inf inf];
+set(handles.processor_popup,'Value',1);
+set(handles.thread_popup,'Value',1);
 guidata(hObject,handles);
 dispay_data(hObject,handles)
 
