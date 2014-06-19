@@ -742,6 +742,9 @@ if length(time)==2
     data2 = zeros(max(rank),N);
     for i = 1:length(data)
         data2(rank(i),:) = get_memory_time(t,data(i).time,data(i).bytes);
+        if data(i).scale ~= 1
+            data2(rank(i),:) = data(i).scale*data2(rank(i),:);
+        end
     end
     figure
     imagesc(t,1:max(rank),data2)

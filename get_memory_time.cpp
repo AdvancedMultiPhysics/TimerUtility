@@ -73,6 +73,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         const double *bytes = mxGetPr(prhs[2]);
         double *bytes_out = mxGetPr(plhs[0]);
         fillData<double,double>(Ns,time,bytes,Nt,t,bytes_out);
+    } else if ( t_id==mxSINGLE_CLASS && time_id==mxSINGLE_CLASS && bytes_id==mxSINGLE_CLASS ) {
+        // All inputs are single precision
+        const float *t     = reinterpret_cast<const float*>(mxGetPr(prhs[0]));
+        const float *time  = reinterpret_cast<const float*>(mxGetPr(prhs[1]));
+        const float *bytes = reinterpret_cast<const float*>(mxGetPr(prhs[2]));
+        float *bytes_out   = reinterpret_cast<float*>(mxGetPr(plhs[0]));
+        fillData<float,float>(Ns,time,bytes,Nt,t,bytes_out);
+    } else if ( t_id==mxDOUBLE_CLASS && time_id==mxSINGLE_CLASS && bytes_id==mxUINT32_CLASS ) {
+        // Mix of types
+        const double *t     = mxGetPr(prhs[0]);
+        const float *time   = reinterpret_cast<const float*>(mxGetPr(prhs[1]));
+        const uint32_t *bytes = reinterpret_cast<const uint32_t*>(mxGetPr(prhs[2]));
+        uint32_t *bytes_out   = reinterpret_cast<uint32_t*>(mxGetPr(plhs[0]));
+        float *t2 = new float[Nt];
+        for (size_t i=0; i<Nt; i++)
+            t2[i] = static_cast<float>(t[i]);
+        fillData<float,uint32_t>(Ns,time,bytes,Nt,t2,bytes_out);
+        delete [] t2;
     } else {
         mexErrMsgTxt("Unsupported input types");
     }
