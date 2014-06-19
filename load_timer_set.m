@@ -1,15 +1,17 @@
 function data = load_timer_set(file)
 
-% Check that load_timer_file is present (and compile if possible)
+% Check that the mex files are present (and compile if possible)
 if isempty(which('load_timer_file'))
     warning('load_timer_file.cpp does not appear to be compiled, attempting to compile now'); %#ok<WNTAG>
     mex load_timer_file.cpp ProfilerApp.cpp
 end
-
-% Check that get_active_times is present (and compile if possible)
 if isempty(which('get_active_times'))
     warning('get_active_times does not appear to be compiled, attempting to compile now'); %#ok<WNTAG>
     mex get_active_times.cpp
+end
+if isempty(which('get_memory_time'))
+    warning('get_active_times does not appear to be compiled, attempting to compile now'); %#ok<WNTAG>
+    mex get_memory_time.cpp
 end
 
 % Load the given file

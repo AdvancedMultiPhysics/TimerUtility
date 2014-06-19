@@ -732,27 +732,19 @@ rank = [data.rank]+1;
 if length(time)==2
     range = [inf -inf];
     for i = 1:length(data)
-        j1 = max([find(data(i).time<=time(1),1,'last') 1]);
-        j2 = min([find(data(i).time>=time(2),1,'first') length(data(i).time)]);
-        data(i).time = double(data(i).time(j1:j2));
-        data(i).bytes = double(data(i).bytes(j1:j2));
         range(1) = min(range(1),min(data(i).time));
         range(2) = max(range(2),max(data(i).time));
     end
+    range(1) = max(range(1),time(1));
+    range(2) = min(range(2),time(2));
     N = 2000;
     t = range(1):diff(range)/(N-1):range(2);
     data2 = zeros(max(rank),N);
     for i = 1:length(data)
-        if isempty(data(i).time)
-            continue;
-        end
-        for j = 1:N
-            k = max([find(data(i).time<=t(j),1,'last'),1]);
-            data2(rank(i),j) = data(i).bytes(k);
-        end
+        data2(rank(i),:) = get_memory_time(t,data(i).time,data(i).bytes);
     end
     figure
-    imagesc(t,rank,data2)
+    imagesc(t,1:max(rank),data2)
     set(gca,'YDir','normal','YLim',[0.5 max(rank)+0.5],'YTick',1:max(rank));
     colorbar
     title('Bytes Used')
