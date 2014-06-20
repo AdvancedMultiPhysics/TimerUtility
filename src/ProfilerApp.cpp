@@ -8,18 +8,22 @@
 #include <stdexcept>
 #include <vector>
 #include <map>
-#include "mex.h"
 
+
+#ifdef USE_MPI
+    #include <mpi.h>
+#endif
 
 inline void ERROR_MSG( const std::string& msg ) {
-    mexErrMsgTxt(msg.c_str());
+    throw std::logic_error(msg);
 }
 
 #define MONITOR_PROFILER_PERFORMANCE 0
 
+#define VEC_SIZE_MIN 256
 #define pout    std::cout
 #define perr    std::cerr
-#define printp  mexPrintf
+#define printp  printf
 
 
 ProfilerApp global_profiler;
@@ -108,6 +112,22 @@ extern "C" {
 }while(0)
 
 
+// Functions to wrap new/delete to track the bytes used
+void atomic_add( int64_t volatile *x, int64_t y ) 
+{
+    #if defined(USE_WINDOWS)
+        InterlockedExchangeAdd64(x,y);
+    #elif defined(USE_MAC)
+        OSAtomicAdd64Barrier(x,y);
+    #elif defined(__GNUC__)
+        __sync_fetch_and_add(x,y);
+    #else
+        #error Unknown OS
+    #endif
+}
+
+
+// Declare quicksort
 template <class type_a, class type_b>
 static inline void quicksort2(int n, type_a *arr, type_b *brr);
 
@@ -154,40 +174,35 @@ static inline const char* strip_path( const char* filename_in )
 
 
 // Helper function to check (and if necessary resize) an array
-template<class type> void check_allocate_array( type** data, size_t N_current, size_t N_max )
+template<class type1, class type2> 
+void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max, 
+    type1** data1, type2** data2, int64_t volatile *bytes_used )
 {
-    size_t size_old, size_new;
-    const size_t size_min = 256;
-    if ( *data==NULL ) {
-        // We haven't allocated any memory yet
-        size_old = 0;
-        size_new = size_min;
-    } else {
-        // We want to allocate memory in powers of 2
-        // The current allocated size is the smallest power of 2 that is >= N
-        size_old = size_min;
-        while ( size_old < N_current )
-            size_old *= 2;
-        // Double the storage space (if needed)
-        if ( N_current == size_old )
-            size_new = 2*size_old;
-        else
-            size_new = size_old;
-        // Stop allocating memory if we reached the limit
-        if ( size_new > N_max ) 
-            size_new = N_max;
-        if ( size_old > N_max ) 
-            size_old = N_max;
-    }
+    int64_t size_old = *N_allocated;
+    int64_t size_new = std::max<size_t>(size_old,VEC_SIZE_MIN);
+    while ( size_new <= N_current )
+        size_new *= 2;
+    // Stop allocating memory if we reached the limit
+    if ( size_new > N_max ) 
+        size_new = N_max;
     if ( size_old != size_new ) {
-        // Expand the trace list
-        type* data_new = new type[size_new];
-        memset(data_new,0,size_new*sizeof(type));
-        if ( *data!=NULL ) {
-            memcpy(data_new,*data,size_old*sizeof(type));
-            delete [] *data;
+        // Expand the vector
+        type1* data1_new = new type1[size_new];
+        type2* data2_new = new type2[size_new];
+        ASSERT(data1_new!=NULL&&data2_new!=NULL);
+        atomic_add(bytes_used,(size_new-size_old)*(sizeof(type1)+sizeof(type2)));
+        memset(data1_new,0,size_new*sizeof(type1));
+        memset(data2_new,0,size_new*sizeof(type2));
+        if ( size_old != 0 ) {
+            size_t N_copy = std::min(size_old,size_new);
+            memcpy(data1_new,*data1,N_copy*sizeof(type1));
+            memcpy(data2_new,*data2,N_copy*sizeof(type2));
+            delete [] *data1;
+            delete [] *data2;
         }
-        *data = data_new;
+        *data1 = data1_new;
+        *data2 = data2_new;
+        *N_allocated = size_new;
     }
 }
 
@@ -279,7 +294,7 @@ static inline double comm_max_reduce( const double val )
     double result = val;
     #ifdef USE_MPI
         if ( comm_size() > 1 )
-            MPI_Allreduce(&val,&result,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
+            MPI_Allreduce((void*)&val,&result,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
     #endif
     return result;
 }
@@ -287,7 +302,7 @@ static inline void comm_send1( const void *buf, size_t bytes, int dest, int tag 
 {
     #ifdef USE_MPI
         int N_send = (bytes+sizeof(double)-1)/sizeof(double);
-        int err = MPI_Send( buf, N_send, MPI_DOUBLE, dest, tag, MPI_COMM_WORLD );
+        int err = MPI_Send( (void*)buf, N_send, MPI_DOUBLE, dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
     #endif
 }
@@ -315,7 +330,7 @@ static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag 
         int count = data.size();
         const TYPE *ptr = NULL;
         if ( !data.empty() ) { ptr = &data[0]; }
-        int err = MPI_Send( ptr, count, MPI_DOUBLE, dest, tag, MPI_COMM_WORLD );
+        int err = MPI_Send( (void*)ptr, count, MPI_DOUBLE, dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
     #endif
 }
@@ -663,6 +678,7 @@ ProfilerApp::ProfilerApp() {
     d_N_memory_steps = 0;
     d_time_memory = NULL;
     d_size_memory = NULL;
+    d_bytes = sizeof(ProfilerApp);
 }
 void ProfilerApp::set_store_trace( bool profile ) { 
     if ( N_timers==0 ) 
@@ -734,14 +750,14 @@ void ProfilerApp::start( const std::string& message, const char* filename,
     }
     // Get the memory usage
     if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
-        size_t N = thread_data->N_memory_steps;
+        size_t* N_alloc = &thread_data->N_memory_alloc;
+        size_t N_size = thread_data->N_memory_steps;
         size_t N_max = d_max_trace_remaining;
         // Check the memory allocation
-        check_allocate_array(&thread_data->time_memory,N,N_max);
-        check_allocate_array(&thread_data->size_memory,N,N_max);
+        check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
-        thread_data->time_memory[N] = -1.0;
-        thread_data->size_memory[N] = get_memory_usage();
+        thread_data->time_memory[N_size] = -1.0;
+        thread_data->size_memory[N_size] = get_memory_usage()-d_bytes;
     }
     // Start the timer 
     memcpy(timer->trace,thread_data->active,TRACE_SIZE*sizeof(size_t));
@@ -812,6 +828,7 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
     }
     if ( trace == NULL ) {
         trace = new store_trace;
+        atomic_add(&d_bytes,sizeof(store_trace));
         memcpy(trace->trace,active,TRACE_SIZE*sizeof(size_t));
         trace->id = trace_id;
         if ( timer->trace_head == NULL ) {
@@ -828,8 +845,10 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
     // Save the starting and ending time if we are storing the detailed traces
     if ( d_store_trace_data && trace->N_calls<MAX_TRACE_TRACE) {
         // Check if we need to allocate more memory to store the times
-        check_allocate_array(&trace->start_time,trace->N_calls,static_cast<size_t>(MAX_TRACE_TRACE));
-        check_allocate_array(&trace->end_time,trace->N_calls,static_cast<size_t>(MAX_TRACE_TRACE));
+        size_t* N_alloc = &trace->N_trace_alloc;
+        size_t N_size = trace->N_calls;
+        size_t N_max = static_cast<size_t>(MAX_TRACE_TRACE);
+        check_allocate_arrays(N_alloc,N_size,N_max,&trace->start_time,&trace->end_time,&d_bytes);
         // Calculate the time elapsed since the profiler was created
         trace->start_time[trace->N_calls] = get_diff(d_construct_time,timer->start_time,d_frequency);
         trace->end_time[trace->N_calls]   = get_diff(d_construct_time,end_time,d_frequency);
@@ -845,14 +864,14 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
     trace->N_calls++;
     // Get the memory usage
     if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
-        size_t N = thread_data->N_memory_steps;
+        size_t* N_alloc = &thread_data->N_memory_alloc;
+        size_t N_size = thread_data->N_memory_steps;
         size_t N_max = d_max_trace_remaining;
         // Check the memory allocation
-        check_allocate_array(&thread_data->time_memory,N,N_max);
-        check_allocate_array(&thread_data->size_memory,N,N_max);
+        check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
-        thread_data->time_memory[N] = get_diff(d_construct_time,end_time,d_frequency);
-        thread_data->size_memory[N] = get_memory_usage();
+        thread_data->time_memory[N_size] = get_diff(d_construct_time,end_time,d_frequency);
+        thread_data->size_memory[N_size] = get_memory_usage()-d_bytes;
         thread_data->N_memory_steps++;
     }
     #if MONITOR_PROFILER_PERFORMANCE > 0
@@ -894,25 +913,26 @@ void ProfilerApp::disable( )
     // Stop ALL timers
     TIME_TYPE end_time;
     get_time(&end_time);
-    // Delete the thread structures
+    // delete the thread structures
     for (int i=0; i<THREAD_HASH_SIZE; i++) {
         delete thread_head[i];
         thread_head[i] = NULL;
     }
     N_threads = 0;
-    // Delete the timer data structures
+    // delete the timer data structures
     for (int i=0; i<TIMER_HASH_SIZE; i++) {
         delete timer_table[i];
         timer_table[i] = NULL;
     }
     N_timers = 0;
-    // Delete the memory info
+    // delete the memory info
     d_max_trace_remaining = static_cast<size_t>(MAX_TRACE_MEMORY);
     d_N_memory_steps = 0;
     delete [] d_time_memory;
     delete [] d_size_memory;
     d_time_memory = NULL;
     d_size_memory = NULL;
+    d_bytes = sizeof(ProfilerApp);
     RELEASE_LOCK(&lock);
 }
 
@@ -1092,6 +1112,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
             }
         }
     }
+    delete [] thread_data;
     // Release the mutex
     RELEASE_LOCK(&lock);
     return results;
@@ -1111,6 +1132,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     if ( error )
         return data;
     // First unify the memory info from the different threads
+    int64_t bytes_changed = 0;
     std::vector<size_t> N_time;
     std::vector<double*> data_time;
     std::vector<size_t*> size_time;
@@ -1118,14 +1140,17 @@ MemoryResults ProfilerApp::getMemoryResults() const
         volatile thread_info *thread_data = thread_head[i];
         while ( thread_data != NULL ) {
             // Copy the pointers so that we minimize the chance of the data being modified
-            size_t N = thread_data->N_memory_steps;
-            if ( N>0 ) { 
-                double* time = thread_data->time_memory;
-                size_t* size = thread_data->size_memory;
-                thread_data->N_memory_steps = 0;
-                thread_data->time_memory = NULL;
-                thread_data->size_memory = NULL;
-                N_time.push_back(N);
+            size_t N_steps = thread_data->N_memory_steps;
+            size_t N_alloc = thread_data->N_memory_alloc;
+            double* time = thread_data->time_memory;
+            size_t* size = thread_data->size_memory;
+            thread_data->N_memory_steps = 0;
+            thread_data->N_memory_alloc = 0;
+            thread_data->time_memory = NULL;
+            thread_data->size_memory = NULL;
+            bytes_changed -= N_alloc*(sizeof(double)+sizeof(size_t));
+            if ( N_steps>0 ) { 
+                N_time.push_back(N_steps);
                 data_time.push_back(time);
                 size_time.push_back(size);
             }
@@ -1137,6 +1162,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
         data_time.push_back(d_time_memory);
         size_time.push_back(d_size_memory);
     }
+    size_t N_memory_steps_old = d_N_memory_steps;
     mergeArrays<double,size_t>( N_time.size(), &N_time[0], &data_time[0], &size_time[0],
         &d_N_memory_steps, &d_time_memory, &d_size_memory );
     for (size_t i=0; i<data_time.size(); i++) {
@@ -1159,6 +1185,8 @@ MemoryResults ProfilerApp::getMemoryResults() const
         d_N_memory_steps = i+1;
     }
     d_max_trace_remaining = std::max((size_t)MAX_TRACE_MEMORY-d_N_memory_steps,(size_t)0);
+    bytes_changed += (d_N_memory_steps-N_memory_steps_old)*(sizeof(double)+sizeof(size_t));
+    atomic_add(&d_bytes,bytes_changed);
     // Release the mutex
     RELEASE_LOCK(&lock);
     // Copy the results to the output vector
@@ -1674,7 +1702,8 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
         size_t N1 = fread(trace.start(),sizeof(double),N,fid);
         size_t N2 = fread(trace.stop(),sizeof(double),N,fid);
         ASSERT(N1==N&&N2==N);
-        fread(field,1,1,fid);
+        size_t rtn2 = fread(field,1,1,fid);
+        ASSERT(rtn2==1);
     }
     fclose(fid);
 }
@@ -1825,6 +1854,7 @@ ProfilerApp::thread_info* ProfilerApp::get_thread_data( )
             thread_head[key]->next = NULL;
             thread_head[key]->thread_num = N_threads;
             N_threads++;
+            atomic_add(&d_bytes,sizeof(thread_info));
         }
         // Release the lock
         RELEASE_LOCK(&lock);
@@ -1848,6 +1878,7 @@ ProfilerApp::thread_info* ProfilerApp::get_thread_data( )
                 new_data->thread_num = N_threads;
                 N_threads++;
                 head->next = new_data;
+                atomic_add(&d_bytes,sizeof(thread_info));
             }
             // Release the lock
             RELEASE_LOCK(&lock);
@@ -1884,6 +1915,7 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
     if ( thread_data->head[key]==NULL ) {
         // The timer does not exist, create it
         store_timer *new_timer = new store_timer;
+        atomic_add(&d_bytes,sizeof(store_timer));
         new_timer->id = id;
         new_timer->is_active = false;
         new_timer->trace_index = thread_data->N_timers;
@@ -1895,6 +1927,7 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
         // Check if there is another entry to check (and create one if necessary)
         if ( timer->next==NULL ) {
             store_timer *new_timer = new store_timer;
+            atomic_add(&d_bytes,sizeof(store_timer));
             new_timer->id = id;
             new_timer->is_active = false;
             new_timer->trace_index = thread_data->N_timers;
@@ -1936,7 +1969,7 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
         // Multiple start lines were detected indicating duplicate timers
         std::stringstream msg;
         msg << "Multiple start calls with the same message are not allowed ("
-            << message << " in " << filename << " at lines " 
+            << global_info->message << " in " << global_info->filename << " at lines " 
             << start << ", " << global_info->start_line << ")\n";
         ERROR_MSG(msg.str());
     }
@@ -1944,7 +1977,7 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
         // Multiple start lines were detected indicating duplicate timers
         std::stringstream msg;
         msg << "Multiple start calls with the same message are not allowed ("
-            << message << " in " << filename << " at lines " << stop 
+            << global_info->message << " in " << global_info->filename << " at lines " << stop 
             << ", " << global_info->stop_line << ")\n";
         ERROR_MSG(msg.str());
     }
@@ -1974,6 +2007,7 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data( size_t id )
         if ( timer_table[key]==NULL ) {
             // Create a new entry
             store_timer_data_info *info_tmp = new store_timer_data_info;
+            atomic_add(&d_bytes,sizeof(store_timer_data_info));
             info_tmp->id = id;
             info_tmp->start_line = -2;
             info_tmp->stop_line = -1;
@@ -1996,6 +2030,7 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data( size_t id )
             if ( info->next==NULL ) {
                 // Create a new entry
                 store_timer_data_info *info_tmp = new store_timer_data_info;
+                atomic_add(&d_bytes,sizeof(store_timer_data_info));
                 info_tmp->id = id;
                 info_tmp->start_line = -2;
                 info_tmp->stop_line = -1;
@@ -2345,8 +2380,7 @@ static inline void quicksort2(int n, type_a *arr, type_b *brr)
 * Subroutine to perform a merge between two or more sorted lists       *
 ***********************************************************************/
 template <class type_a, class type_b>
-static inline void mergeArrays( size_t N_list, 
-    size_t *N, type_a **arr, type_b **brr,
+static inline void mergeArrays( size_t N_list, size_t *N, type_a **arr, type_b **brr,
     size_t *N_result, type_a **arr_result, type_b **brr_result )
 {
     // Check that the inputs are sorted

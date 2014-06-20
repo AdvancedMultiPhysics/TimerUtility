@@ -195,7 +195,7 @@ struct TimerMemoryResults {
   * For repeated calls the timer adds ~ 1us per call with without trace info, and ~1-10us per call with full trace info. 
   * Most of this overhead is not in the time returned by the timer.  The resolution is ~ 1us for a single timer call.
   * Note that when a timer is created the cost may be significantly higher, but this only occurs once per timer.  <BR>
-  * Example usage:
+  * Example usage: \verbatim
   *    void my_function(void *arg) {
   *       PROFILE_START("my function");
   *       int k;
@@ -218,6 +218,17 @@ struct TimerMemoryResults {
   *    }
   *    // Some where at the end of the calculation
   *    PROFILE_SAVE("filename");
+  * \endverbatim
+  * 
+  * Special notes:<BR>
+  * When using the memory tracing capabilities, the profiler application will attempt
+  * to keep track of it's own memory usage and subtract that from the total application
+  * memory.  The results will contain the memory used by the program without the overhead
+  * of the profiler app.  Consequently the actual memory usage will be higher than reported
+  * by this amount.  Users can query the profiler memory usage through the getMemoryUsed()
+  * function.  Additionally, the profiler uses a number of small and large allocations 
+  * which may be rounded to boundaries by the system.  This overhead is NOT accounted for,
+  * and may cause a slight variation in the reported memory usage. 
   */
 class ProfilerApp {
 public:
@@ -366,6 +377,12 @@ public:
      */
     MemoryResults getMemoryResults() const;
 
+    /*!
+     * \brief  Get the memory used by the profiler
+     * \details  Return the total memory usage of the profiler app
+     */
+    size_t getMemoryUsed() const { return static_cast<size_t>(d_bytes); }
+
 private:
 
     // Protect against copy of the class
@@ -381,11 +398,12 @@ private:
         double min_time;            // Store the minimum time spent in the given block (seconds)
         double max_time;            // Store the maximum time spent in the given block (seconds)
         double total_time;          // Store the total time spent in the given block (seconds)
+        size_t N_trace_alloc;       // The size of the arrays for start_time and stop_time
         double *start_time;         // Store when start was called for the given trace (seconds from constructor call)
         double *end_time;           // Store when stop was called for the given trace (seconds from constructor call)
         // Constructor
-        store_trace(): N_calls(0), id(0), next(NULL), min_time(1e100), 
-            max_time(0), total_time(0), start_time(NULL), end_time(NULL) {
+        store_trace(): N_calls(0), id(0), next(NULL), min_time(1e100), max_time(0), 
+            total_time(0), N_trace_alloc(0), start_time(NULL), end_time(NULL) {
             memset(trace,0,TRACE_SIZE*sizeof(size_t));
         }
         // Destructor
@@ -438,17 +456,14 @@ private:
         store_timer_data_info *timer_data;  // Pointer to the timer data
         TIME_TYPE start_time;               // Store when start was called for the given block
         // Constructor used to initialize key values
-		store_timer(): is_active(false), trace_index(0), N_calls(0), id(0), min_time(1e100), max_time(0), total_time(0), 
-            trace_head(NULL), next(NULL), timer_data(NULL) {
-            memset(trace,0,TRACE_SIZE*sizeof(size_t));
+		store_timer() {
+            memset(this,0,sizeof(store_timer));
 		}
         // Destructor 
 		~store_timer() {
             delete trace_head;
-            trace_head = NULL;
             delete next;
-            next = NULL;
-            timer_data = NULL;  // timer_data will be destroyed in the global list
+            memset(this,0,sizeof(store_timer));
 		}
       private:
         store_timer( const store_timer& rhs );              // Private copy constructor
@@ -464,21 +479,12 @@ private:
         size_t active[TRACE_SIZE];          // Store the current active traces
         store_timer *head[TIMER_HASH_SIZE]; // Store the timers in a hash table
         size_t N_memory_steps;              // The number of steps we have for the memory usage
+        size_t N_memory_alloc;              // The size of the arrays allocated for time_memory and size_memory
         double* time_memory;                // The times at which we know the memory usage
         size_t* size_memory;                // The memory usage at each time
         // Constructor used to initialize key values
 		thread_info() {
-            id = 0;
-            N_timers = 0;
-            thread_num = 0;
-            next = NULL;
-            for (int i=0; i<TRACE_SIZE; i++)
-                active[i] = 0;
-            for (int i=0; i<TIMER_HASH_SIZE; i++)
-                head[i] = NULL;
-            N_memory_steps = 0;
-            time_memory = NULL;
-            size_memory = NULL;
+            memset(this,0,sizeof(thread_info));
 		}
         // Destructor
 		~thread_info() {
@@ -490,9 +496,7 @@ private:
             }
             delete [] time_memory;
             delete [] size_memory;
-            N_memory_steps = 0;
-            time_memory = NULL;
-            size_memory = NULL;
+            memset(this,0,sizeof(thread_info));
 		}
       private:
         thread_info( const thread_info& rhs );              // Private copy constructor
@@ -562,7 +566,7 @@ private:
     mutable size_t d_N_memory_steps; // The number of steps we have for the memory usage
     mutable double* d_time_memory;  // The times at which we know the memory usage
     mutable size_t* d_size_memory;  // The memory usage at each time
-
+    mutable volatile int64_t d_bytes; // The current memory used by the profiler
 };
 
 
@@ -613,17 +617,18 @@ public:
                 recursive_level++;
                 sprintf(buffer,"-%i",recursive_level);
                 d_message = msg + std::string(buffer);
-                size_t id2 = ProfilerApp::get_timer_id(d_message.c_str(),d_filename.c_str());
-                bool test = d_app.active(d_message,d_filename.c_str(),id2);
+                size_t id2 = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
+                bool test = d_app.active(d_message,d_filename,id2);
                 d_id = test ? 0:id2;
             }
-            d_app.start(d_message,d_filename.c_str(),d_line,d_level,d_id);
+            d_app.start(d_message,d_filename,d_line,d_level,d_id);
         }
     }
     ~ScopedTimer()
     {
+        // Note: we do not require that d_filename is still in scope since we use the timer id
         if ( d_id != 0 ) 
-            d_app.stop(d_message,d_filename.c_str(),-1,d_level,d_id);
+            d_app.stop(d_message,d_filename,-1,d_level,d_id);
     }
 protected:
     ScopedTimer(const ScopedTimer&);            // Private copy constructor
@@ -631,11 +636,14 @@ protected:
 private:
     ProfilerApp& d_app;
     std::string d_message;
-    const std::string d_filename;
+    const char* d_filename;
     const int d_line;
     const int d_level;
     size_t d_id;
 };
+
+
+#include "ProfilerAppMacros.h"
 
 
 #endif

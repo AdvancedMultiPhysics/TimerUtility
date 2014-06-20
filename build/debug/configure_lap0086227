@@ -1,0 +1,13 @@
+rm -rf CMake*
+
+cmake                                                   \
+    -G "Unix Makefiles"                                 \
+    -D CMAKE_C_COMPILER:PATH=mpicc                      \
+    -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
+    -D CMAKE_BUILD_TYPE=Debug                           \
+    -D USE_MATLAB=0                                     \
+        -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
+    ../../src/
+
+
+
