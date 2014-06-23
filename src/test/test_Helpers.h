@@ -18,6 +18,7 @@
     #include <execinfo.h>
     #include <dlfcn.h>
     #include <mach/mach.h>
+    #include <unistd.h>
 #else
     #error Unknown OS
 #endif

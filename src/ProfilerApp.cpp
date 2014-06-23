@@ -64,6 +64,15 @@ extern "C" {
     #include <execinfo.h>
     #include <dlfcn.h>
     #include <mach/mach.h>
+    #include <libkern/OSAtomic.h>
+    #include <sys/time.h>
+    #include <execinfo.h>
+    #include <sys/time.h>
+    #include <cxxabi.h>
+    #include <stdint.h>
+    #include <sys/types.h>
+    #include <sys/sysctl.h>
+    #include <unistd.h>
     #define get_time(x) gettimeofday(x,NULL);
     #define get_frequency(f) (*f=timeval())
     #define get_diff(start,end,f) 1e-6*static_cast<double>( \
@@ -118,7 +127,7 @@ void atomic_add( int64_t volatile *x, int64_t y )
     #if defined(USE_WINDOWS)
         InterlockedExchangeAdd64(x,y);
     #elif defined(USE_MAC)
-        OSAtomicAdd64Barrier(x,y);
+        OSAtomicAdd64Barrier(y,x);
     #elif defined(__GNUC__)
         __sync_fetch_and_add(x,y);
     #else
