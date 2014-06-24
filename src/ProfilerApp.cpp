@@ -2436,3 +2436,46 @@ static inline void mergeArrays( size_t N_list, size_t *N, type_a **arr, type_b *
 }
 
 
+/***********************************************************************
+* C interfaces                                                         *
+***********************************************************************/
+extern "C" {
+    void global_profiler_enable( int level )
+    {
+        global_profiler.enable(level);
+    }
+    void global_profiler_disable( )
+    {
+        global_profiler.disable();
+    }
+    int global_profiler_get_level( )
+    {
+        return global_profiler.get_level();
+    }
+    void global_profiler_syncronize( )
+    {
+        global_profiler.syncronize();
+    }
+    void global_profiler_set_store_trace( int flag )
+    {
+        global_profiler.set_store_trace(flag);
+    }
+    void global_profiler_set_store_memory( int flag )
+    {
+        global_profiler.set_store_memory(flag);
+    }
+    void global_profiler_start( const char* name, const char* file, int line, int level )
+    {
+        global_profiler.start(name,file,line,level);
+    }
+    void global_profiler_stop( const char* name, const char* file, int line, int level )
+    {
+        global_profiler.stop(name,file,line,level);
+    }
+    void global_profiler_save( const char* name, int global )
+    {
+        global_profiler.save(name,global!=0);
+    }
+}
+
+
