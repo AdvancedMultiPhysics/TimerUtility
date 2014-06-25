@@ -270,7 +270,7 @@ for i = 1:length(timers)
     tot_t = sum(timers(i).tot,1);
     tot_t2 = sum(timers(i).tot2,1);
     max_t = max(timers(i).max,[],1);
-    thread = false(size(N));
+    thread = false(size(timers(i).N));
     thread(k) = true;
     tmp = timers(i).min;
     tmp(~k) = 1e100;
@@ -294,7 +294,7 @@ for i = 1:length(timers)
         timers(i).max = mean(timers(i).max);
         timers(i).tot = mean(timers(i).tot);
         timers(i).tot2 = mean(timers(i).tot2);
-        timers(i).thread = find(timers(i).thread,2);
+        timers(i).thread = find(any(timers(i).thread,2));
     elseif get(handles.select_proc,'Value')==2
         % We want to take the minimum value for each processor
         timers(i).N = round(min(timers(i).N));
@@ -302,7 +302,7 @@ for i = 1:length(timers)
         timers(i).max = min(timers(i).max);
         timers(i).tot = min(timers(i).tot);
         timers(i).tot2 = min(timers(i).tot2);
-        timers(i).thread = find(timers(i).thread,2);
+        timers(i).thread = find(any(timers(i).thread,2));
     elseif get(handles.select_proc,'Value')==3
         % We want to take the maximum value for each processor
         timers(i).N = round(max(timers(i).N));
@@ -310,7 +310,7 @@ for i = 1:length(timers)
         timers(i).max = max(timers(i).max);
         timers(i).tot = max(timers(i).tot);
         timers(i).tot2 = max(timers(i).tot2);
-        timers(i).thread = find(timers(i).thread,2);
+        timers(i).thread = find(any(timers(i).thread,2));
     else
         % We have selected a specific processor
         p = get(handles.select_proc,'Value')-3;
@@ -319,7 +319,7 @@ for i = 1:length(timers)
         timers(i).max = timers(i).max(p);
         timers(i).tot = timers(i).tot(p);
         timers(i).tot2 = timers(i).tot2(p);
-        timers(i).thread = find(timers(i).thread(:,p));
+        timers(i).thread = find(any(timers(i).thread,2));
     end
 end
 % Update the table
