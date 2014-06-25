@@ -1,0 +1,187 @@
+             Message                 Filename        Thread  Start Line  Stop Line  N_calls  Min Time  Max Time  Total Time
+---------------------------------------------------------------------------------------------------------------------------
+                    Main             testDriver.cc      0        34        401         1     29991.125  29991.125   29991.125
+                   solve  MultiPelletThermalSolver.cc      0       174        188         1     29833.003  29833.003   29833.003
+                   solve        PetscSNESSolver.cc      0       234        310         1     29356.737  29356.737   29356.737
+                   apply        CoupledOperator.cc      0        28         44       119      214.977   354.763   27193.204
+                   apply        PetscSNESSolver.cc      0       199        223       117      214.977   354.764   26755.078
+                   apply         ColumnOperator.cc      0        15         20       241        0.012   321.794   25049.938
+                   apply  AsyncMapColumnOperator.cc      0        52         59       357        0.621   318.629   24719.738
+             applyFinish             Map3to1to3.cc      0       203        276      5712        0.016   316.844   24523.654
+                   apply   NonlinearBVPOperator.cc      0        22         81      2856        0.111     0.272     325.841
+                   apply    NonlinearFEOperator.cc      0        15         60      2904        0.063     0.177     191.468
+      loop over elements    NonlinearFEOperator.cc      0        33         39      2904        0.062     0.176     188.050
+              initialize  MultiPelletThermalSolver.cc      0        20        155         1      143.612   143.612     143.612
+                   apply  RobinVectorCorrection.cc      0        50        258      5712        0.020     0.067     136.782
+        integration loop  RobinVectorCorrection.cc      0       121        236      5712        0.018     0.064     121.251
+             buildReturn      ScalarN2GZAxisMap.cc      0       106        180      2856        0.036     0.114     108.211
+              applyStart             Map3to1to3.cc      0        91        192      5712        0.005     0.118      90.219
+            prepare data             Map3to1to3.cc      0       102        166      5712        0.001     0.113      62.682
+                buildMap      ScalarN2GZAxisMap.cc      0        81         95      5712        0.000     0.113      60.299
+              applyStart          NodeToNodeMap.cc      0       115        157      3000        0.002     0.050      41.060
+             setJacobian        PetscSNESSolver.cc      0       319        337         6        5.626     6.644      35.482
+           resetOperator       TrilinosMLSolver.cc      0       153        157       144        0.231     0.508      35.224
+             applyFinish          NodeToNodeMap.cc      0       170        193      3000        0.000     2.436      28.645
+                  subset             Map3to1to3.cc      0        94         99      5712        0.004     0.030      26.373
+                  subset          NodeToNodeMap.cc      0       118        123      3000        0.001     0.043      26.201
+             buildReturn             GapSizeMap.cc      0        68        132      2856        0.003     0.012       9.513
+                   solve       TrilinosMLSolver.cc      0       176        263      2496        0.002     0.306       8.113
+               writeFile                 SiloIO.cc      0        58        137         1        7.147     7.147       7.147
+          formThermalRHS  MultiPelletThermalSolver.cc      0       210        314         1        5.395     5.395       5.395
+               writeMesh                 SiloIO.cc      0       287        442        24        0.143     0.281       4.033
+                buildMap             GapSizeMap.cc      0        39         57      2856        0.001     0.027       1.711
+             Load meshes             testDriver.cc      0        48         54         1        0.894     0.894       0.894
+              initialize        PetscSNESSolver.cc      0        62        153         1        0.685     0.685       0.685
+             Constructor                BoxMesh.cc      0        31        293        24        0.022     0.023       0.523
+              initialize                BoxMesh.cc      0       302        646        24        0.020     0.022       0.489
+create_ghost_elements: 2                BoxMesh.cc      0       496        556        24        0.014     0.015       0.335
+                sync dim                 SiloIO.cc      0        64         71         1        0.193     0.193       0.193
+                   apply       AsyncMapOperator.cc      0        58         65        25        0.003     0.008       0.184
+                   reset       TrilinosMLSolver.cc      0       161        171       144        0.000     0.154       0.173
+   getJacobianParameters         ColumnOperator.cc      0        26         36         6        0.015     0.039       0.130
+            writeSummary                 SiloIO.cc      0       645        774         1        0.127     0.127       0.127
+        syncVariableList                 SiloIO.cc      0       571        636         1        0.120     0.120       0.120
+   getJacobianParameters   NonlinearBVPOperator.cc      0        99        106       144        0.001     0.021       0.118
+ create_surface_elements                BoxMesh.cc      0       578        593        24        0.002     0.002       0.050
+create_boundary_elements                BoxMesh.cc      0       595        645        24        0.002     0.002       0.047
+          makeConsistent             Map3to1to3.cc      0       271        273      5712        0.000     0.000       0.040
+   create_owned_elements                BoxMesh.cc      0       308        441        24        0.000     0.001       0.009
+       syncMultiMeshData                 SiloIO.cc      0       452        561         1        0.004     0.004       0.004
+create_ghost_elements: 1                BoxMesh.cc      0       446        494        24        0.000     0.000       0.004
+          makeConsistent                 SiloIO.cc      0        74         82         1        0.000     0.000       0.000
+     setZeroInitialGuess  MultiPelletThermalSolver.cc      0       197        200         1        0.000     0.000       0.000
+              initialize  DenovoTransportSolver.cc      0        32         98         1        0.000     0.000       0.000
+         Mechanics solve             testDriver.cc      0       366        384         1        0.000     0.000       0.000
+
+
+<N_procs=4,id=1>
+<timer:id=RueJ,message=Main,file=testDriver.cc,thread=0,start=34,stop=401,N=1,min=2.999112e+04,max=2.999112e+04,tot=2.999112e+04>
+<trace:id=RueJ,thread=0,N=1,min=2.999112e+04,max=2.999112e+04,tot=2.999112e+04,active=[ ]>
+<timer:id=g1LA,message=solve,file=MultiPelletThermalSolver.cc,thread=0,start=174,stop=188,N=1,min=2.983300e+04,max=2.983300e+04,tot=2.983300e+04>
+<trace:id=g1LA,thread=0,N=1,min=2.983300e+04,max=2.983300e+04,tot=2.983300e+04,active=[ RueJ ]>
+<timer:id=7G5O,message=solve,file=PetscSNESSolver.cc,thread=0,start=234,stop=310,N=1,min=2.935674e+04,max=2.935674e+04,tot=2.935674e+04>
+<trace:id=7G5O,thread=0,N=1,min=2.935674e+04,max=2.935674e+04,tot=2.935674e+04,active=[ RueJ g1LA ]>
+<timer:id=Oss2,message=apply,file=CoupledOperator.cc,thread=0,start=28,stop=44,N=119,min=2.149768e+02,max=3.547635e+02,tot=2.719320e+04>
+<trace:id=Oss2,thread=0,N=2,min=2.155123e+02,max=2.226450e+02,tot=4.381572e+02,active=[ RueJ g1LA ]>
+<trace:id=Oss2,thread=0,N=117,min=2.149768e+02,max=3.547635e+02,tot=2.675505e+04,active=[ RueJ g1LA 7G5O Z7as ]>
+<timer:id=Z7as,message=apply,file=PetscSNESSolver.cc,thread=0,start=199,stop=223,N=117,min=2.149769e+02,max=3.547636e+02,tot=2.675508e+04>
+<trace:id=Z7as,thread=0,N=117,min=2.149769e+02,max=3.547636e+02,tot=2.675508e+04,active=[ RueJ g1LA 7G5O ]>
+<timer:id=eJeN,message=apply,file=ColumnOperator.cc,thread=0,start=15,stop=20,N=241,min=1.246400e-02,max=3.217936e+02,tot=2.504994e+04>
+<trace:id=eJeN,thread=0,N=3,min=1.246400e-02,max=2.645979e+00,tot=4.286780e+00,active=[ RueJ 9lkE ]>
+<trace:id=eJeN,thread=0,N=4,min=2.709631e+00,max=2.032170e+02,tot=4.047222e+02,active=[ RueJ g1LA Oss2 ]>
+<trace:id=eJeN,thread=0,N=234,min=2.680138e+00,max=3.217936e+02,tot=2.464093e+04,active=[ RueJ g1LA Oss2 7G5O Z7as ]>
+<timer:id=&ndQ,message=apply,file=AsyncMapColumnOperator.cc,thread=0,start=52,stop=59,N=357,min=6.212270e-01,max=3.186287e+02,tot=2.471974e+04>
+<trace:id=&ndQ,thread=0,N=6,min=6.232600e-01,max=2.009251e+02,tot=3.992625e+02,active=[ RueJ eJeN g1LA Oss2 ]>
+<trace:id=&ndQ,thread=0,N=351,min=6.212270e-01,max=3.186287e+02,tot=2.432048e+04,active=[ RueJ eJeN g1LA Oss2 7G5O Z7as ]>
+<timer:id=FjQU,message=applyFinish,file=Map3to1to3.cc,thread=0,start=203,stop=276,N=5712,min=1.551400e-02,max=3.168443e+02,tot=2.452365e+04>
+<trace:id=FjQU,thread=0,N=96,min=1.932700e-02,max=2.003289e+02,tot=3.965017e+02,active=[ RueJ eJeN g1LA Oss2 &ndQ ]>
+<trace:id=FjQU,thread=0,N=5616,min=1.551400e-02,max=3.168443e+02,tot=2.412715e+04,active=[ RueJ eJeN g1LA Oss2 &ndQ 7G5O Z7as ]>
+<timer:id=oJem,message=apply,file=NonlinearBVPOperator.cc,thread=0,start=22,stop=81,N=2856,min=1.105880e-01,max=2.723700e-01,tot=3.258406e+02>
+<trace:id=oJem,thread=0,N=48,min=1.111340e-01,max=1.160990e-01,tot=5.458620e+00,active=[ RueJ eJeN g1LA Oss2 ]>
+<trace:id=oJem,thread=0,N=2808,min=1.105880e-01,max=2.723700e-01,tot=3.203819e+02,active=[ RueJ eJeN g1LA Oss2 7G5O Z7as ]>
+<timer:id=2kFJ,message=apply,file=NonlinearFEOperator.cc,thread=0,start=15,stop=60,N=2904,min=6.299900e-02,max=1.771490e-01,tot=1.914682e+02>
+<trace:id=2kFJ,thread=0,N=48,min=6.721600e-02,max=1.109280e-01,tot=4.272862e+00,active=[ RueJ 9lkE eJeN ]>
+<trace:id=2kFJ,thread=0,N=48,min=6.332900e-02,max=6.736300e-02,tot=3.136538e+00,active=[ RueJ eJeN g1LA Oss2 oJem ]>
+<trace:id=2kFJ,thread=0,N=2808,min=6.299900e-02,max=1.771490e-01,tot=1.840588e+02,active=[ RueJ eJeN g1LA Oss2 oJem 7G5O Z7as ]>
+<timer:id=T9ct,message=loop over elements,file=NonlinearFEOperator.cc,thread=0,start=33,stop=39,N=2904,min=6.185200e-02,max=1.759310e-01,tot=1.880497e+02>
+<trace:id=T9ct,thread=0,N=48,min=6.583400e-02,max=1.097220e-01,tot=4.214565e+00,active=[ RueJ 9lkE eJeN 2kFJ ]>
+<trace:id=T9ct,thread=0,N=48,min=6.218400e-02,max=6.623200e-02,tot=3.081686e+00,active=[ RueJ eJeN 2kFJ g1LA Oss2 oJem ]>
+<trace:id=T9ct,thread=0,N=2808,min=6.185200e-02,max=1.759310e-01,tot=1.807535e+02,active=[ RueJ eJeN 2kFJ g1LA Oss2 oJem 7G5O Z7as ]>
+<timer:id=eg0D,message=initialize,file=MultiPelletThermalSolver.cc,thread=0,start=20,stop=155,N=1,min=1.436124e+02,max=1.436124e+02,tot=1.436124e+02>
+<trace:id=eg0D,thread=0,N=1,min=1.436124e+02,max=1.436124e+02,tot=1.436124e+02,active=[ RueJ ]>
+<timer:id=KycQ,message=apply,file=RobinVectorCorrection.cc,thread=0,start=50,stop=258,N=5712,min=2.035100e-02,max=6.724900e-02,tot=1.367821e+02>
+<trace:id=KycQ,thread=0,N=96,min=2.038600e-02,max=2.715400e-02,tot=2.268460e+00,active=[ RueJ eJeN g1LA Oss2 oJem ]>
+<trace:id=KycQ,thread=0,N=5616,min=2.035100e-02,max=6.724900e-02,tot=1.345136e+02,active=[ RueJ eJeN g1LA Oss2 oJem 7G5O Z7as ]>
+<timer:id=1iD3,message=integration loop,file=RobinVectorCorrection.cc,thread=0,start=121,stop=236,N=5712,min=1.769800e-02,max=6.442000e-02,tot=1.212511e+02>
+<trace:id=1iD3,thread=0,N=96,min=1.771900e-02,max=2.450100e-02,tot=2.012326e+00,active=[ RueJ eJeN g1LA Oss2 oJem KycQ ]>
+<trace:id=1iD3,thread=0,N=5616,min=1.769800e-02,max=6.442000e-02,tot=1.192388e+02,active=[ RueJ eJeN g1LA Oss2 oJem KycQ 7G5O Z7as ]>
+<timer:id=74zQ,message=buildReturn,file=ScalarN2GZAxisMap.cc,thread=0,start=106,stop=180,N=2856,min=3.646500e-02,max=1.138370e-01,tot=1.082109e+02>
+<trace:id=74zQ,thread=0,N=48,min=3.665900e-02,max=3.728900e-02,tot=1.772542e+00,active=[ RueJ eJeN g1LA Oss2 &ndQ FjQU ]>
+<trace:id=74zQ,thread=0,N=2808,min=3.646500e-02,max=1.138370e-01,tot=1.064383e+02,active=[ RueJ eJeN g1LA Oss2 &ndQ FjQU 7G5O Z7as ]>
+<timer:id=JvT7,message=applyStart,file=Map3to1to3.cc,thread=0,start=91,stop=192,N=5712,min=4.889000e-03,max=1.178030e-01,tot=9.021889e+01>
+<trace:id=JvT7,thread=0,N=96,min=4.988000e-03,max=2.486200e-02,tot=1.418185e+00,active=[ RueJ eJeN g1LA Oss2 &ndQ ]>
+<trace:id=JvT7,thread=0,N=5616,min=4.889000e-03,max=1.178030e-01,tot=8.880070e+01,active=[ RueJ eJeN g1LA Oss2 &ndQ 7G5O Z7as ]>
+<timer:id=23bV,message=prepare data,file=Map3to1to3.cc,thread=0,start=102,stop=166,N=5712,min=6.720000e-04,max=1.128220e-01,tot=6.268158e+01>
+<trace:id=23bV,thread=0,N=96,min=6.790000e-04,max=2.003100e-02,tot=9.802760e-01,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 ]>
+<trace:id=23bV,thread=0,N=5616,min=6.720000e-04,max=1.128220e-01,tot=6.170130e+01,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 7G5O Z7as ]>
+<timer:id=Vx6f,message=buildMap,file=ScalarN2GZAxisMap.cc,thread=0,start=81,stop=95,N=5712,min=0.000000e+00,max=1.127190e-01,tot=6.029939e+01>
+<trace:id=Vx6f,thread=0,N=96,min=1.000000e-06,max=1.993900e-02,tot=9.421270e-01,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 23bV ]>
+<trace:id=Vx6f,thread=0,N=5616,min=0.000000e+00,max=1.127190e-01,tot=5.935726e+01,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 23bV 7G5O Z7as ]>
+<timer:id=1h6r,message=applyStart,file=NodeToNodeMap.cc,thread=0,start=115,stop=157,N=3000,min=1.848000e-03,max=5.017600e-02,tot=4.105977e+01>
+<trace:id=1h6r,thread=0,N=25,min=1.848000e-03,max=5.087000e-03,tot=1.196750e-01,active=[ RueJ eg0D Ezxs ]>
+<trace:id=1h6r,thread=0,N=50,min=1.059700e-02,max=1.411000e-02,tot=6.531260e-01,active=[ RueJ eJeN g1LA Oss2 &ndQ ]>
+<trace:id=1h6r,thread=0,N=2925,min=1.055500e-02,max=5.017600e-02,tot=4.028697e+01,active=[ RueJ eJeN g1LA Oss2 &ndQ 7G5O Z7as ]>
+<timer:id=t8fe,message=setJacobian,file=PetscSNESSolver.cc,thread=0,start=319,stop=337,N=6,min=5.626403e+00,max=6.644324e+00,tot=3.548225e+01>
+<trace:id=t8fe,thread=0,N=6,min=5.626403e+00,max=6.644324e+00,tot=3.548225e+01,active=[ RueJ g1LA 7G5O ]>
+<timer:id=MMyK,message=resetOperator,file=TrilinosMLSolver.cc,thread=0,start=153,stop=157,N=144,min=2.313520e-01,max=5.076540e-01,tot=3.522374e+01>
+<trace:id=MMyK,thread=0,N=144,min=2.313520e-01,max=5.076540e-01,tot=3.522374e+01,active=[ RueJ g1LA 7G5O t8fe ]>
+<timer:id=JfN$,message=applyFinish,file=NodeToNodeMap.cc,thread=0,start=170,stop=193,N=3000,min=4.670000e-04,max=2.435758e+00,tot=2.864524e+01>
+<trace:id=JfN$,thread=0,N=25,min=1.114000e-03,max=2.671000e-03,tot=6.257900e-02,active=[ RueJ eg0D Ezxs ]>
+<trace:id=JfN$,thread=0,N=50,min=4.740000e-04,max=5.493800e-02,tot=1.055000e-01,active=[ RueJ eJeN g1LA Oss2 &ndQ ]>
+<trace:id=JfN$,thread=0,N=2925,min=4.670000e-04,max=2.435758e+00,tot=2.847716e+01,active=[ RueJ eJeN g1LA Oss2 &ndQ 7G5O Z7as ]>
+<timer:id=o4au,message=subset,file=Map3to1to3.cc,thread=0,start=94,stop=99,N=5712,min=4.107000e-03,max=3.041800e-02,tot=2.637258e+01>
+<trace:id=o4au,thread=0,N=96,min=4.155000e-03,max=4.642000e-03,tot=4.217260e-01,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 ]>
+<trace:id=o4au,thread=0,N=5616,min=4.107000e-03,max=3.041800e-02,tot=2.595086e+01,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 7G5O Z7as ]>
+<timer:id=WNVB,message=subset,file=NodeToNodeMap.cc,thread=0,start=118,stop=123,N=3000,min=1.016000e-03,max=4.268500e-02,tot=2.620096e+01>
+<trace:id=WNVB,thread=0,N=25,min=1.016000e-03,max=1.937000e-03,tot=4.625000e-02,active=[ RueJ eg0D Ezxs 1h6r ]>
+<trace:id=WNVB,thread=0,N=50,min=8.170000e-03,max=8.653000e-03,tot=4.145960e-01,active=[ RueJ 1h6r eJeN g1LA Oss2 &ndQ ]>
+<trace:id=WNVB,thread=0,N=2925,min=8.165000e-03,max=4.268500e-02,tot=2.574011e+01,active=[ RueJ 1h6r eJeN g1LA Oss2 &ndQ 7G5O Z7as ]>
+<timer:id=Bzwv,message=buildReturn,file=GapSizeMap.cc,thread=0,start=68,stop=132,N=2856,min=3.185000e-03,max=1.191000e-02,tot=9.513482e+00>
+<trace:id=Bzwv,thread=0,N=48,min=3.191000e-03,max=3.303000e-03,tot=1.550210e-01,active=[ RueJ eJeN g1LA Oss2 &ndQ FjQU ]>
+<trace:id=Bzwv,thread=0,N=2808,min=3.185000e-03,max=1.191000e-02,tot=9.358461e+00,active=[ RueJ eJeN g1LA Oss2 &ndQ FjQU 7G5O Z7as ]>
+<timer:id=xsNz,message=solve,file=TrilinosMLSolver.cc,thread=0,start=176,stop=263,N=2496,min=1.569000e-03,max=3.058000e-01,tot=8.112816e+00>
+<trace:id=xsNz,thread=0,N=2496,min=1.569000e-03,max=3.058000e-01,tot=8.112816e+00,active=[ RueJ g1LA 7G5O ]>
+<timer:id=J0Oz,message=writeFile,file=SiloIO.cc,thread=0,start=58,stop=137,N=1,min=7.146803e+00,max=7.146803e+00,tot=7.146803e+00>
+<trace:id=J0Oz,thread=0,N=1,min=7.146803e+00,max=7.146803e+00,tot=7.146803e+00,active=[ RueJ ]>
+<timer:id=9lkE,message=formThermalRHS,file=MultiPelletThermalSolver.cc,thread=0,start=210,stop=314,N=1,min=5.394781e+00,max=5.394781e+00,tot=5.394781e+00>
+<trace:id=9lkE,thread=0,N=1,min=5.394781e+00,max=5.394781e+00,tot=5.394781e+00,active=[ RueJ ]>
+<timer:id=dg57,message=writeMesh,file=SiloIO.cc,thread=0,start=287,stop=442,N=24,min=1.432710e-01,max=2.806070e-01,tot=4.032964e+00>
+<trace:id=dg57,thread=0,N=24,min=1.432710e-01,max=2.806070e-01,tot=4.032964e+00,active=[ RueJ J0Oz ]>
+<timer:id=Pot9,message=buildMap,file=GapSizeMap.cc,thread=0,start=39,stop=57,N=2856,min=5.430000e-04,max=2.670900e-02,tot=1.710936e+00>
+<trace:id=Pot9,thread=0,N=48,min=5.490000e-04,max=6.150000e-04,tot=2.755800e-02,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 23bV ]>
+<trace:id=Pot9,thread=0,N=2808,min=5.430000e-04,max=2.670900e-02,tot=1.683378e+00,active=[ RueJ eJeN g1LA Oss2 &ndQ JvT7 23bV 7G5O Z7as ]>
+<timer:id=1wqj,message=Load meshes,file=testDriver.cc,thread=0,start=48,stop=54,N=1,min=8.944910e-01,max=8.944910e-01,tot=8.944910e-01>
+<trace:id=1wqj,thread=0,N=1,min=8.944910e-01,max=8.944910e-01,tot=8.944910e-01,active=[ RueJ ]>
+<timer:id=lUUY,message=initialize,file=PetscSNESSolver.cc,thread=0,start=62,stop=153,N=1,min=6.846070e-01,max=6.846070e-01,tot=6.846070e-01>
+<trace:id=lUUY,thread=0,N=1,min=6.846070e-01,max=6.846070e-01,tot=6.846070e-01,active=[ RueJ eg0D ]>
+<timer:id=XH$z,message=Constructor,file=BoxMesh.cc,thread=0,start=31,stop=293,N=24,min=2.155000e-02,max=2.326300e-02,tot=5.232630e-01>
+<trace:id=XH$z,thread=0,N=24,min=2.155000e-02,max=2.326300e-02,tot=5.232630e-01,active=[ RueJ 1wqj ]>
+<timer:id=KhR4,message=initialize,file=BoxMesh.cc,thread=0,start=302,stop=646,N=24,min=2.015200e-02,max=2.159900e-02,tot=4.893050e-01>
+<trace:id=KhR4,thread=0,N=24,min=2.015200e-02,max=2.159900e-02,tot=4.893050e-01,active=[ RueJ 1wqj XH$z ]>
+<timer:id=2Id8,message=create_ghost_elements: 2,file=BoxMesh.cc,thread=0,start=496,stop=556,N=24,min=1.377600e-02,max=1.460000e-02,tot=3.353990e-01>
+<trace:id=2Id8,thread=0,N=24,min=1.377600e-02,max=1.460000e-02,tot=3.353990e-01,active=[ RueJ 1wqj XH$z KhR4 ]>
+<timer:id=jxxn,message=sync dim,file=SiloIO.cc,thread=0,start=64,stop=71,N=1,min=1.930860e-01,max=1.930860e-01,tot=1.930860e-01>
+<trace:id=jxxn,thread=0,N=1,min=1.930860e-01,max=1.930860e-01,tot=1.930860e-01,active=[ RueJ J0Oz ]>
+<timer:id=Ezxs,message=apply,file=AsyncMapOperator.cc,thread=0,start=58,stop=65,N=25,min=3.023000e-03,max=7.826000e-03,tot=1.839690e-01>
+<trace:id=Ezxs,thread=0,N=25,min=3.023000e-03,max=7.826000e-03,tot=1.839690e-01,active=[ RueJ eg0D ]>
+<timer:id=1K3w,message=reset,file=TrilinosMLSolver.cc,thread=0,start=161,stop=171,N=144,min=0.000000e+00,max=1.535270e-01,tot=1.727610e-01>
+<trace:id=1K3w,thread=0,N=144,min=0.000000e+00,max=1.535270e-01,tot=1.727610e-01,active=[ RueJ g1LA 7G5O t8fe MMyK ]>
+<timer:id=wtPn,message=getJacobianParameters,file=ColumnOperator.cc,thread=0,start=26,stop=36,N=6,min=1.548800e-02,max=3.858400e-02,tot=1.300710e-01>
+<trace:id=wtPn,thread=0,N=6,min=1.548800e-02,max=3.858400e-02,tot=1.300710e-01,active=[ RueJ g1LA 7G5O t8fe ]>
+<timer:id=x&Qr,message=writeSummary,file=SiloIO.cc,thread=0,start=645,stop=774,N=1,min=1.273570e-01,max=1.273570e-01,tot=1.273570e-01>
+<trace:id=x&Qr,thread=0,N=1,min=1.273570e-01,max=1.273570e-01,tot=1.273570e-01,active=[ RueJ J0Oz ]>
+<timer:id=COPO,message=syncVariableList,file=SiloIO.cc,thread=0,start=571,stop=636,N=1,min=1.200440e-01,max=1.200440e-01,tot=1.200440e-01>
+<trace:id=COPO,thread=0,N=1,min=1.200440e-01,max=1.200440e-01,tot=1.200440e-01,active=[ RueJ J0Oz x&Qr ]>
+<timer:id=rpXQ,message=getJacobianParameters,file=NonlinearBVPOperator.cc,thread=0,start=99,stop=106,N=144,min=6.110000e-04,max=2.133300e-02,tot=1.183150e-01>
+<trace:id=rpXQ,thread=0,N=144,min=6.110000e-04,max=2.133300e-02,tot=1.183150e-01,active=[ RueJ g1LA 7G5O t8fe wtPn ]>
+<timer:id=xN&4,message=create_surface_elements,file=BoxMesh.cc,thread=0,start=578,stop=593,N=24,min=2.069000e-03,max=2.167000e-03,tot=5.041700e-02>
+<trace:id=xN&4,thread=0,N=24,min=2.069000e-03,max=2.167000e-03,tot=5.041700e-02,active=[ RueJ 1wqj XH$z KhR4 ]>
+<timer:id=SBcv,message=create_boundary_elements,file=BoxMesh.cc,thread=0,start=595,stop=645,N=24,min=1.929000e-03,max=1.967000e-03,tot=4.675100e-02>
+<trace:id=SBcv,thread=0,N=24,min=1.929000e-03,max=1.967000e-03,tot=4.675100e-02,active=[ RueJ 1wqj XH$z KhR4 ]>
+<timer:id=fyO9,message=makeConsistent,file=Map3to1to3.cc,thread=0,start=271,stop=273,N=5712,min=4.000000e-06,max=4.000000e-05,tot=3.994500e-02>
+<trace:id=fyO9,thread=0,N=96,min=4.000000e-06,max=1.200000e-05,tot=5.560000e-04,active=[ RueJ eJeN g1LA Oss2 &ndQ FjQU ]>
+<trace:id=fyO9,thread=0,N=5616,min=4.000000e-06,max=4.000000e-05,tot=3.938900e-02,active=[ RueJ eJeN g1LA Oss2 &ndQ FjQU 7G5O Z7as ]>
+<timer:id=y1JY,message=create_owned_elements,file=BoxMesh.cc,thread=0,start=308,stop=441,N=24,min=3.460000e-04,max=5.830000e-04,tot=8.766000e-03>
+<trace:id=y1JY,thread=0,N=24,min=3.460000e-04,max=5.830000e-04,tot=8.766000e-03,active=[ RueJ 1wqj XH$z KhR4 ]>
+<timer:id=&IGw,message=syncMultiMeshData,file=SiloIO.cc,thread=0,start=452,stop=561,N=1,min=3.937000e-03,max=3.937000e-03,tot=3.937000e-03>
+<trace:id=&IGw,thread=0,N=1,min=3.937000e-03,max=3.937000e-03,tot=3.937000e-03,active=[ RueJ J0Oz x&Qr ]>
+<timer:id=r8Le,message=create_ghost_elements: 1,file=BoxMesh.cc,thread=0,start=446,stop=494,N=24,min=1.450000e-04,max=1.570000e-04,tot=3.517000e-03>
+<trace:id=r8Le,thread=0,N=24,min=1.450000e-04,max=1.570000e-04,tot=3.517000e-03,active=[ RueJ 1wqj XH$z KhR4 ]>
+<timer:id=lOKa,message=makeConsistent,file=SiloIO.cc,thread=0,start=74,stop=82,N=1,min=2.650000e-04,max=2.650000e-04,tot=2.650000e-04>
+<trace:id=lOKa,thread=0,N=1,min=2.650000e-04,max=2.650000e-04,tot=2.650000e-04,active=[ RueJ J0Oz ]>
+<timer:id=eDP9,message=setZeroInitialGuess,file=MultiPelletThermalSolver.cc,thread=0,start=197,stop=200,N=1,min=1.000000e-04,max=1.000000e-04,tot=1.000000e-04>
+<trace:id=eDP9,thread=0,N=1,min=1.000000e-04,max=1.000000e-04,tot=1.000000e-04,active=[ RueJ ]>
+<timer:id=FMtK,message=initialize,file=DenovoTransportSolver.cc,thread=0,start=32,stop=98,N=1,min=4.200000e-05,max=4.200000e-05,tot=4.200000e-05>
+<trace:id=FMtK,thread=0,N=1,min=4.200000e-05,max=4.200000e-05,tot=4.200000e-05,active=[ RueJ ]>
+<timer:id=8QQQ,message=Mechanics solve,file=testDriver.cc,thread=0,start=366,stop=384,N=1,min=0.000000e+00,max=0.000000e+00,tot=0.000000e+00>
+<trace:id=8QQQ,thread=0,N=1,min=0.000000e+00,max=0.000000e+00,tot=0.000000e+00,active=[ RueJ ]>

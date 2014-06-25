@@ -1,0 +1,53 @@
+                  Message                      Filename          Thread  Start Line  Stop Line  N_calls  Min Time  Max Time  Total Time
+---------------------------------------------------------------------------------------------------------------------------------------
+                          MAIN            test_ProfilerApp.cpp      0        49        151         1        0.021     0.021       0.021
+                       gettime            test_ProfilerApp.cpp      0       112        116       100        0.000     0.002       0.014
+                          SAVE            test_ProfilerApp.cpp      0       146        148         1        0.002     0.002       0.002
+                     allocate1            test_ProfilerApp.cpp      0       131        142       100        0.000     0.000       0.002
+                     allocate2            test_ProfilerApp.cpp      0       132        135       100        0.000     0.000       0.000
+                          LOAD            test_ProfilerApp.cpp      0       169        175         1        0.000     0.000       0.000
+                        dummy3            test_ProfilerApp.cpp      0        97        101         1        0.000     0.000       0.000
+                      scoped-1            test_ProfilerApp.cpp      0        31         -1         1        0.000     0.000       0.000
+                     allocate3            test_ProfilerApp.cpp      0       137        140       100        0.000     0.000       0.000
+                      scoped-2            test_ProfilerApp.cpp      0        31         -1         1        0.000     0.000       0.000
+                      scoped-3            test_ProfilerApp.cpp      0        31         -1         1        0.000     0.000       0.000
+                      scoped-4            test_ProfilerApp.cpp      0        31         -1         1        0.000     0.000       0.000
+                      scoped-5            test_ProfilerApp.cpp      0        31         -1         1        0.000     0.000       0.000
+                      scoped-6            test_ProfilerApp.cpp      0        31         -1         1        0.000     0.000       0.000
+                        dummy1            test_ProfilerApp.cpp      0        86         87         1        0.000     0.000       0.000
+
+
+<N_procs=4,id=0,store_trace=1,store_memory=1,date='Sat Apr  5 20:39:44 2014'>
+<timer:id=A$hy,message=MAIN,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=49,stop=151>
+<trace:id=A$hy,thread=0,rank=0,N=1,min=2.102400e-02,max=2.102400e-02,tot=2.102400e-02,active=[ ]>
+<timer:id=OjQt,message=gettime,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=112,stop=116>
+<trace:id=OjQt,thread=0,rank=0,N=100,min=1.030000e-04,max=1.887000e-03,tot=1.415400e-02,active=[ A$hy ]>
+<timer:id=GjUz,message=SAVE,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=146,stop=148>
+<trace:id=GjUz,thread=0,rank=0,N=1,min=1.986000e-03,max=1.986000e-03,tot=1.986000e-03,active=[ A$hy ]>
+<timer:id=$xgn,message=allocate1,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=131,stop=142>
+<trace:id=$xgn,thread=0,rank=0,N=100,min=1.200000e-05,max=3.570000e-04,tot=1.762000e-03,active=[ A$hy ]>
+<timer:id=D4Kh,message=allocate2,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=132,stop=135>
+<trace:id=D4Kh,thread=0,rank=0,N=100,min=3.000000e-06,max=2.200000e-05,tot=4.310000e-04,active=[ A$hy $xgn ]>
+<timer:id=6Lel,message=LOAD,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=169,stop=175>
+<trace:id=6Lel,thread=0,rank=0,N=1,min=3.730000e-04,max=3.730000e-04,tot=3.730000e-04,active=[ ]>
+<timer:id=SBsW,message=dummy3,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=97,stop=101>
+<trace:id=SBsW,thread=0,rank=0,N=1,min=8.400000e-05,max=8.400000e-05,tot=8.400000e-05,active=[ A$hy ]>
+<timer:id=nQST,message=scoped-1,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=31,stop=-1>
+<trace:id=nQST,thread=0,rank=0,N=1,min=6.600000e-05,max=6.600000e-05,tot=6.600000e-05,active=[ A$hy ]>
+<timer:id=eEcb,message=allocate3,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=137,stop=140>
+<trace:id=eEcb,thread=0,rank=0,N=100,min=0.000000e+00,max=4.000000e-06,tot=6.600000e-05,active=[ A$hy $xgn ]>
+<timer:id=xata,message=scoped-2,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=31,stop=-1>
+<trace:id=xata,thread=0,rank=0,N=1,min=5.600000e-05,max=5.600000e-05,tot=5.600000e-05,active=[ A$hy nQST ]>
+<timer:id=8JX4,message=scoped-3,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=31,stop=-1>
+<trace:id=8JX4,thread=0,rank=0,N=1,min=4.500000e-05,max=4.500000e-05,tot=4.500000e-05,active=[ A$hy nQST xata ]>
+<timer:id=i3xn,message=scoped-4,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=31,stop=-1>
+<trace:id=i3xn,thread=0,rank=0,N=1,min=3.200000e-05,max=3.200000e-05,tot=3.200000e-05,active=[ A$hy nQST xata 8JX4 ]>
+<timer:id=VC$g,message=scoped-5,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=31,stop=-1>
+<trace:id=VC$g,thread=0,rank=0,N=1,min=1.700000e-05,max=1.700000e-05,tot=1.700000e-05,active=[ A$hy nQST xata 8JX4 i3xn ]>
+<timer:id=2YBz,message=scoped-6,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=31,stop=-1>
+<trace:id=2YBz,thread=0,rank=0,N=1,min=3.000000e-06,max=3.000000e-06,tot=3.000000e-06,active=[ A$hy nQST xata 8JX4 i3xn VC$g ]>
+<timer:id=Dux6,message=dummy1,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=86,stop=87>
+<trace:id=Dux6,thread=0,rank=0,N=1,min=1.000000e-06,max=1.000000e-06,tot=1.000000e-06,active=[ A$hy ]>
+<timer:id=DdWL,message=NULL,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=-1,stop=-1>
+<timer:id=u8WQ,message=dummy2,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=-1,stop=92>
+<timer:id=Gw3t,message=scoped-7,file=test_ProfilerApp.cpp,path=/projects/AtomicModel/src/utilities/test/,start=-1,stop=-1>
