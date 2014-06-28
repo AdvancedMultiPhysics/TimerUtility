@@ -167,42 +167,24 @@ end
 % Keep only the traces that are directly inherited from the current call hierarchy
 if subfunctions==1
     ids = [timers.id];
-    trace_list = {};
-    for k = 1:length(id_list)
-        i = find(ids==id_list(k));
-        if ~isempty(i)
-            for j = 1:length(timers(i).trace(j))
-                active = sort([timers(i).id timers(i).trace(j).active]);
-                trace_list(length(trace_list)+1,1) = {active}; %#ok<AGROW>
+    keep1 = false(size(timers));
+    for i = 1:length(timers)
+        keep2 = false(size(timers(i).trace));
+        for j = 1:length(keep2)
+            id2 = [timers(i).trace(j).active];
+            tmp = zeros(1,max(ids));
+            tmp(ids) = 1;
+            tmp(id2) = tmp(id2)+1;
+            if sum(tmp==2)<=1
+                keep2(j) = true;
             end
         end
-    end
-    if isempty(trace_list)
-        trace_list = {zeros(1,0)};
-    end
-    for i = length(timers):-1:1
-        if any(timers(i).id==id_list)
-            continue;
-        end
-        trace = timers(i).trace;
-        index = false(size(trace));
-        for j = 1:length(trace)
-            active = sort(trace(j).active);
-            for k = 1:length(trace_list)
-                if length(active) ~= length(trace_list{k})
-                    index(j) = true;
-                elseif any(active~=trace_list{k})
-                    index(j) = true;
-                end
-            end
-        end
-        trace(index) = [];
-        if isempty(trace)
-            timers(i) = [];
-        else
-            timers(i).trace = trace;
+        timers(i).trace = timers(i).trace(keep2);
+        if any(keep2)
+            keep1(i) = true;
         end
     end
+    timers = timers(keep1);
 end
 % Update the timers to remove the time from sub-timers if necessary
 for i = 1:length(timers)
