@@ -361,6 +361,9 @@ FUNCTION( ADD_TIMER_PROVISIONAL_TEST EXEFILE )
     SET( EXCLUDE_TESTS_FROM_ALL 0 )
     # Check if test has already been added
     GET_TARGET_PROPERTY(tmp ${EXEFILE} LOCATION)
+    IF ( tmp )
+        STRING(REGEX REPLACE "//" "/" tmp "${tmp}" )        
+    ENDIF()
     IF ( NOT tmp )
         # The target has not been added
         SET( TESTFILE ${EXEFILE} )
