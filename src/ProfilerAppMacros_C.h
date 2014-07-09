@@ -18,7 +18,7 @@ extern void global_profiler_save( const char* name, int global );
 #define GET_LEVEL(_0,N,...) N 
 #define PROFILE_START_LEVEL(NAME,FILE,LINE,LEVEL)                       \
     do {                                                                \
-      if ( ((int) LEVEL) <= global_profiler_get_level() )                       \
+      if ( ((int) LEVEL) <= global_profiler_get_level() )               \
         global_profiler_start( NAME, FILE, LINE, LEVEL );               \
     } while(0)
 #define PROFILE_STOP_LEVEL(NAME,FILE,LINE,LEVEL)                        \
@@ -126,8 +126,8 @@ extern void global_profiler_save( const char* name, int global );
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE(...) \
-    global_profiler_enable( GET_LEVEL(_0,##__VA_ARGS__,0) )
+#define PROFILE_ENABLE(LEVEL) \
+    global_profiler_enable( LEVEL )
 
 
 /*! \def PROFILE_DISABLE()

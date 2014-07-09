@@ -8,6 +8,7 @@
     #include <windows.h>
     #include <stdio.h>   
     #include <tchar.h>
+    #include "psapi.h"
 #elif defined(USE_LINUX)
     #include <signal.h>
     #include <execinfo.h>

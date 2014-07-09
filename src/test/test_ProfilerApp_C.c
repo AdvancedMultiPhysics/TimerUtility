@@ -4,6 +4,7 @@
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+    #include <windows.h>
     #define TIME_TYPE LARGE_INTEGER
     #define get_time(x) QueryPerformanceCounter(x)
     #define get_diff(start,end,f) (((double)(end.QuadPart-start.QuadPart))/((double)f.QuadPart))
@@ -31,13 +32,6 @@ typedef int bool;
 
 int run_tests( bool enable_trace, const char* save_name ) 
 {
-    PROFILE_ENABLE();
-    PROFILE_SYNCRONIZE();
-    if ( enable_trace ) {
-        PROFILE_ENABLE_TRACE();
-        PROFILE_ENABLE_MEMORY();
-    }
-    PROFILE_START("MAIN");
 
     const int N_it = 100;
     const int N_timers = 1000;
@@ -45,6 +39,15 @@ int run_tests( bool enable_trace, const char* save_name )
     int N_errors = 0;
     int i, j;
     double *tmp;
+    TIME_TYPE time1;
+
+    PROFILE_ENABLE(0);
+    PROFILE_SYNCRONIZE();
+    if ( enable_trace ) {
+        PROFILE_ENABLE_TRACE();
+        PROFILE_ENABLE_MEMORY();
+    }
+    PROFILE_START("MAIN");
 
     // Get a list of timer names
     for (i=0; i<N_timers; i++)
@@ -58,7 +61,6 @@ int run_tests( bool enable_trace, const char* save_name )
     for (i=0; i<N_it; i++) {
         // Test how long it takes to get the time
         PROFILE_START("gettime");
-        TIME_TYPE time1;
         for (j=0; j<N_timers; j++)
             get_time(&time1);
         PROFILE_STOP("gettime");

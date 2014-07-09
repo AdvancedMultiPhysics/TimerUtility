@@ -26,7 +26,7 @@ IF ( USE_MATLAB )
 
 
     # Add the mex target
-    ADD_CUSTOM_TARGET ( mex ALL DEPENDS atomic )
+    ADD_CUSTOM_TARGET ( mex ALL DEPENDS timerutility )
     ADD_MEXCLEAN()
 
 
@@ -41,7 +41,7 @@ IF ( USE_MATLAB )
     ADD_MATLAB_MEX( profile_mex.cpp )
 
     # Add subdirectory
-    ADD_SUBDIRECTORY( matlab )
+    ADD_SUBDIRECTORY( test )
 ENDIF()
 
 
