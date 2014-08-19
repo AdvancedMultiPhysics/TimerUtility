@@ -144,6 +144,7 @@ end
 % Get the relavent timers
 timers = getappdata(handles.figure1,'timer');
 subfunctions = get(handles.subfunctions,'Value');
+id_max = max([timers.id]);
 % Keep only those traces that have all of the selected call hierarchy
 for i = length(timers):-1:1
     trace = timers(i).trace;
@@ -172,7 +173,7 @@ if subfunctions==1
         keep2 = false(size(timers(i).trace));
         for j = 1:length(keep2)
             id2 = [timers(i).trace(j).active];
-            tmp = zeros(1,max(ids));
+            tmp = zeros(1,id_max);
             tmp(ids) = 1;
             tmp(id2) = tmp(id2)+1;
             if sum(tmp==2)<=1
