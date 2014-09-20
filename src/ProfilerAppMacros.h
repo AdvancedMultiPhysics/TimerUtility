@@ -110,8 +110,8 @@
  *        to multiple calls.
  *      Note: this is blocking call.
  */
-#define PROFILE_SYNCRONIZE() \
-    global_profiler.syncronize( )
+#define PROFILE_SYNCHRONIZE() \
+    global_profiler.synchronize( )
 
 
 /*! \def PROFILE_SAVE(FILE,...)

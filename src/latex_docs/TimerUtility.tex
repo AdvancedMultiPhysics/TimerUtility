@@ -1,0 +1,438 @@
+%%\documentclass[10pt]{article}
+\documentclass[fleqn,10pt,letterpaper]{article}
+\usepackage{amsmath}
+\usepackage{appendix}
+\usepackage{amsmath}
+\usepackage{fancyvrb}
+
+\usepackage{listings} %include code in your document
+\usepackage[section]{placeins}
+
+\usepackage{listings}
+\lstloadlanguages{Matlab}
+\lstnewenvironment{PseudoCode}[2][]{ \vspace{1ex}\noindent
+  \lstset{ 
+    language=Matlab,
+    basicstyle=\small\ttfamily,
+    numbers=left,
+     numberstyle=\tiny\color{gray},
+    backgroundcolor=\color{white},
+    firstnumber=auto,
+    stepnumber=1,
+    backgroundcolor=\color{white},
+    tabsize=4,
+    showspaces=false,
+    showstringspaces=false,
+    numbers=left,
+    xleftmargin=.1\textwidth,
+    keywords={break,case,catch,continue,else,elseif,end,for,function,
+        global,if,otherwise,persistent,return,switch,try,while},
+    keywordstyle=\color{blue},
+    commentstyle=\color{red},
+    stringstyle=\color{dkgreen}
+  } 
+}{ }
+
+
+\setlength{\mathindent}{24pt}
+
+\setlength{\textwidth}{6.5in}
+\setlength{\oddsidemargin}{0.0in}
+\setlength{\evensidemargin}{0.0in}
+\setlength{\textheight}{9.0in}
+\setlength{\topmargin}{0.0in}
+\setlength{\headheight}{0.0in}
+\setlength{\headsep}{0.0in}
+\setlength{\footskip}{0.5in}
+
+\usepackage{setspace}\onehalfspacing
+\AtBeginDocument{%
+  \addtolength\abovedisplayskip{-0.5\baselineskip}%
+  \addtolength\belowdisplayskip{-0.5\baselineskip}%
+  %%\addtolength\abovedisplayshortskip{-0.5\baselineskip}%
+  %%\addtolength\belowdisplayshortskip{-0.5\baselineskip}%
+}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    citecolor=green,
+    filecolor=cyan,
+    linkcolor=red,
+    urlcolor=magenta
+}
+
+\newcommand\abs[1]{\left|#1\right|}
+\newcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
+
+
+
+%%---------------------------------------------------------------------------%%
+%% DEFINE SPECIFIC ENVIRONMENTS HERE
+%%---------------------------------------------------------------------------%%
+\newenvironment{codelisting}
+{\begin{list}{}{\setlength{\leftmargin}{2em}}\item\scriptsize\normalsize}
+{\end{list}}
+
+
+\usepackage{hyperref}
+%\usepackage{algorithm}
+%\usepackage{algpseudocode}
+
+
+%% Add tikz package for creating some of the figures
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+% Define block styles
+\tikzstyle{decision} = [diamond, draw, fill=blue!20, 
+    text width=4.5em, text badly centered, node distance=3cm, inner sep=0pt]
+\tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+    minimum width=6em, text centered, rounded corners, minimum height=4em]
+\tikzstyle{line} = [draw, -latex']
+\tikzstyle{cloud} = [draw, ellipse,fill=red!20, node distance=3cm,
+    minimum height=2em]
+    
+
+
+\begin{document}
+
+\title{Timer Utility}
+\author{Mark Berrill}
+\maketitle
+
+
+
+%%---------------------------------------------------------------------------%%
+%% Basics
+%%---------------------------------------------------------------------------%%
+\section{Introduction}
+
+This program is a utility program to help time routines in a user's application.
+More specifically, it fulfills an need where users need to understand and monitor 
+the performance of applications in a production environment.  It provides the 
+capability between a user implementing specific calls to get the elapsed time 
+(such as MPI\_Wtime), and a detailed profiler such as gprof or VampirTrace.  
+Using individual calls to get the time and recording the time elapsed requires
+excessive effort on the user's part including tracing the total time spend in 
+different routines and presenting it in an easy to understand manor, while many
+automatic profilers can be heavy weight, provide an excess of information that
+has to be interpreted, and can affect performance which prevent's its use in a 
+production environment.  Additionally the capabilities provided by this program
+are thread-safe and MPI aware, and can be used in a hybrid and high performance
+environment.  The timers have been used to profile applications with ~100,000
+processes.  Some libraries may provide similar functionality at part of a larger 
+infrastructure, and it is not the goal of this document to compare features, but 
+this program may be used to provide additional capabilities or used without requiring
+incorporating a large library.  
+Installation of the program is described in section \ref{sec:install}.  
+Simple usage is covered in section \ref{sec:usage}.  
+Analysis of the timer files is covered in section \ref{sec:analysis},
+while the graphical user interface is covered in section \ref{sec:gui}.
+Advanced topics are covered in section \ref{sec:advanced}.  
+
+
+
+%%---------------------------------------------------------------------------%%
+%% Installation
+%%---------------------------------------------------------------------------%%
+\section{Installation}  \label{sec:install}
+
+This program is designed to be easily incorporated into a user's application.  
+There are two methods of linking the timers into a project.  The first method 
+is by using the timer utility as a third party library that is installed, and 
+then linked to the user's application like any other third party library.  
+The installation of this application and installation of the library is covered
+in sub-section \ref{sec:install_library}.  The second method is to incorporate 
+the source code directly into the user's application.  The timer utility consists
+of a handful of files that can be found in the src directory.  They are 
+"ProfilerApp.h", "ProfilerApp.cpp", "ProfilerAppMacros.h", and "ProfilerAppMacros\_C.h".
+The files can be copied to the user's application and built as part of their 
+build process.  The major disadvantage to the later method is that changes or
+improvements to the timer utility requires replacing the files in the user's 
+source tree.  Installation of the tests and the documentation must be done by 
+installing the library as described in section \ref{sec:install_library}. 
+
+\subsection{Compiling}  \label{sec:install_library}
+
+Installing the timer utility library requires a C++ compiler and CMake.  
+We assume that the user is familiar with compiling software on their machine
+and will be using the same compiler as they use to build their application.
+Once the application is downloaded, the user needs to choose a build directory
+and an install directory.  The build and install directories may be the same
+path, but must be different from the source tree.  To configure, the user should
+create a CMake script.  An example is given below:
+\begin{Verbatim}[baselinestretch=1.0]
+   cmake                                                \
+      -G "Unix Makefiles"                               \
+      -D TIMER_INSTALL_DIR:PATH="path to install"       \
+      -D CMAKE_C_COMPILER:PATH=mpicc                    \
+         -D CFLAGS="-fPIC"                              \
+      -D CMAKE_CXX_COMPILER:PATH=mpic++                 \
+         -D CXXFLAGS="-fPIC"                            \
+      -D CMAKE_BUILD_TYPE=Debug                         \
+      -D USE_MATLAB=0                                   \
+         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
+      "path to src"
+\end{Verbatim}
+The first argument is the generator that CMake will create and available generators
+can be found using "cmake --help".  TIMER\_INSTALL\_DIR is an optional argument
+that controls the install path of the libraries.  The default path is the build directory.
+The next arguments are the C and C++ compilers
+to use and any optional compile flags that are required.  CMAKE\_BUILD\_TYPE 
+indicates the desired build type (Debug, Release).  If MATLAB is installed,
+this flag can be set and the directory specified.  This is necessary to install the 
+graphical user interface that is described in section \ref{sec:gui} or the 
+MATLAB interface.  The final argument is the path to the source tree.
+Example configure scripts can be found in the build folder.
+
+Once the configure script has been generated, the user should cd to build directory
+and run the configure script.  This will generate build files for the platform.
+Assuming the user is generating "Unix Makefiles", the user then simply types 
+"make install" to compile the code and install the files.  The documentation
+can be compiled using "make docs" and will be installed in the doc folder.  
+
+Under normal usage it is possible most commands can utilized a set of macro 
+functions.  If the library is not used, the user can leave the timer commands in
+their source code by creating dummy headers that replace these macros.
+See \ref{sec:advanced} for advanced cases that will not fit into this model.
+Examples of these headers are given below: 
+\begin{Verbatim}[baselinestretch=1.0]
+ProfilerApp.h:
+    #define PROFILE_START(...)       do {} while(0)
+    #define PROFILE_STOP(...)        do {} while(0)
+    #define PROFILE_START2(...)      do {} while(0)
+    #define PROFILE_STOP2(...)       do {} while(0)
+    #define PROFILE_SCOPED(...)      do {} while(0)
+    #define PROFILE_SYNCRONIZE()     do {} while(0)
+    #define PROFILE_SAVE(...)        do {} while(0)
+    #define PROFILE_STORE_TRACE(X)   do {} while(0)
+    #define PROFILE_ENABLE(...)      do {} while(0)
+    #define PROFILE_DISABLE()        do {} while(0)
+    #define PROFILE_ENABLE_TRACE()   do {} while(0)
+    #define PROFILE_DISABLE_TRACE()  do {} while(0)
+    #define PROFILE_ENABLE_MEMORY()  do {} while(0)
+    #define PROFILE_DISABLE_MEMORY() do {} while(0)
+\end{Verbatim}
+
+
+
+%%---------------------------------------------------------------------------%%
+%% Usage
+%%---------------------------------------------------------------------------%%
+\section{Usage}  \label{sec:usage}
+
+Using the timer utility is relatively simple, consisting of inserting a few macro
+commands into the user's application.  These commands allow the user to easily create
+timers that will record the minimum/maximum/total time spent in the timer and the
+number of calls to the timer.  In addition, information about which timers are 
+active when another timer is called is also computed/stored.  This information
+can be used to determine where a given timer's time is spent.  The timer data can be 
+analyzed using the timer files directly (see section \ref{sec:analysis}) or using 
+the provided GUI (see section \ref{sec:gui} to visualize both the timer data and 
+time spent in sub-timers.  
+The available commands are: \\
+
+\hangindent=2em\noindent
+PROFILE\_START(name,level):  This will start a timer.  The arguments are the
+    timer name and an optional level.  The timer is identified by the name
+    of the timer and the file.  Multiple timers with the same name in the same 
+    file are not allowed.  The filename and line numbers are automatically added.
+    Error checking to ensure that there is only one timer with a given name per
+    file is automatically performed.  Additional check to ensure the timer is not
+    currently running are also performed.  If either of these tests failed, the 
+    timer utility with throw a std::exception with the given error.  
+    Sometimes it is necessary to start a timer on different lines, for example
+    starting within a case statement or starting/stopping a timer multiple times
+    in a single function.  To allow this there is a second macro PROFILE\_START2
+    that take identical argments, but does not check the line number.  The user should
+    use PROFILE\_START for the primary call, and PROFILE\_START2 for all remaining calls.
+    The level number is optional with values from 0-127.  If specified it indicates 
+    the level of the timer, with all levels higher than the runtime level automatically
+    disabled.  This allows the user to enable/disable the level of detail for their 
+    profiling at runtime (see PROFILE\_ENABLE).  The default level if level is not specified
+    is 0.  
+
+\hangindent=2em\noindent
+PROFILE\_STOP(name,level):  This will start a timer.  It contains the same arguments
+    as PROFILE\_START and will exhibit identical behavior except that it stops a
+    timer instead of starting one.
+
+\hangindent=2em\noindent
+PROFILE\_SCOPED(object,name,level):  This creates a helper object to start/stop a timer.
+    More specifically, it will create a timer object that will start a timer with the given
+    name and level like PROFILE\_START.  The timer will automatically stop when the object
+    looses scope.  This can be helpful when a routine has several return statements.  
+    Unlike PROFILE\_START / PROFILE\_STOP it is recursion safe, automatically appending "-1",
+    "-2", ... to the timer name to indicate the recursion level.  There is a slightly higher 
+    cost to using PROFILE\_SCOPED due to the cost of creating/destroying a C++ class object.
+    Like PROFILE\_START / PROFILE\_STOP the level is optional.  
+
+\hangindent=2em\noindent
+PROFILE\_SAVE(filename,global):  This will save the current timer data to a file (or set 
+    of files) with the name given by filename.  The program will automatically append the
+    appropriate suffix to the filename (e.g. ".timer").  The global argument is an optional
+    argument specifying if we want to write a single global timer file or one file/rank (default).
+    Note that if a single file is written, it will require all processors to call this macro
+    and will require communication on MPI\_COMM\_WORLD.
+
+\hangindent=2em\noindent
+PROFILE\_ENABLE(level):  This enables the timers.  This should be called at the begining of
+    the application.  The argument level is optional (default value is 0), and indicates the
+    level of timers that will be enabled.  All timers with a value greater than this value
+    are automatically disabled.
+
+\hangindent=2em\noindent
+PROFILE\_DISABLE():  This disables the timers and deletes all data.  This allows the user to 
+    reset the timer data.
+
+\hangindent=2em\noindent
+PROFILE\_ENABLE\_TRACE():  This enables trace level timer data.  The trace data records the
+    time at which each call to start/stop a timer is called.  This can be utilized to generate
+    a trace graph with the time at which each timer is active as a function to the wall time.
+    See section \ref{sec:gui} for documentation on the GUI that can generate this graph.  
+
+\hangindent=2em\noindent
+PROFILE\_DISABLE\_TRACE():  This disables the trace level data.
+
+\hangindent=2em\noindent
+PROFILE\_ENABLE\_MEMORY():  This enables memory statistics.  When enabled, this will record 
+    the memory in use by the application with each call to start/stop.  This can be utilized
+    to generate a plot of the memory used as a function of time in the application.  This is
+    useful to help locate memory problems and can be combined with trace data and visualized with
+    the GUI.  
+
+\hangindent=2em\noindent
+PROFILE\_DISABLE\_MEMORY():  This disables the memory statistics.  
+
+\hangindent=2em\noindent
+PROFILE\_PROFILE\_SYNCHRONIZE():  When start/stop is called, the time relative to the start
+    of the program is recorded.  This is then used when trace or memory level data is used.
+    When using MPI, the different processes may actually start at different times due to 
+    delays starting each process.  The user can call this function at the start of the 
+    application to synchronize the times between the processes.  This will ensure the times 
+    recorded match for all processes.  This required global communication.
+
+
+
+%%---------------------------------------------------------------------------%%
+%% Usage
+%%---------------------------------------------------------------------------%%
+\section{Timer Files}  \label{sec:analysis}
+
+The timer utility writes a set of files depending on the timer properties set.  
+The program may write 1 file for the timers or 1 file/rank depending on the 
+options given to PROFILE\_SAVE.  In addition there are 3 types of files that 
+may be written.  The first is the timer files (.timer) which is an ASCII file
+that is human readable.  This file contains the timer summaries.  The other file
+types are the trace (.trace) and memory (memory) files.  These are binary files 
+that can be read by load function in the timer class (see section \ref{sec:advanced}).  
+The format of the timer files consists of two parts.  The first section is
+a summary for the file that contains a list of all timers and their results. 
+This is the section that is meant to be human readable, and can be opened by any
+editor.  The second section contains details about the timers that are read by 
+the GUI (\ref{sec:gui}).  These are generally not useful for direct interpretation.
+The format for the first section is:
+
+\begin{Verbatim}[fontsize=\footnotesize,baselinestretch=1.0]
+        Message              Filename         Thread  Start Line  Stop Line  N_calls  Min Time  Max Time  Total Time
+--------------------------------------------------------------------------------------------------------------------
+                MAIN       run_ray_trace.cpp     0        74        675         1     1440.894  1440.894    1440.894
+           Main Loop       run_ray_trace.cpp     0       353        660         1     1439.656  1439.656    1439.656
+               apply            RayTrace.cpp     0      2395       2714       948        0.703     1.979    1428.089
+      Calculate gain            RayTrace.cpp     0      2475       2581       948        0.699     0.867     723.456
+  update_populations   update_ionization.cpp     0       150        490       948        0.696     0.864     720.733
+       Calculate ASE            RayTrace.cpp     0      2584       2610       948        0.000     1.123     704.450
+       propagate_ASE            RayTrace.cpp     1       530        587       868        0.377     0.958     650.758
+       propagate_ASE            RayTrace.cpp     2       530        587       868        0.408     0.979     660.674
+       propagate_ASE            RayTrace.cpp     3       530        587       868        0.334     0.952     650.014
+       propagate_ASE            RayTrace.cpp     4       530        587       868        0.335     0.994     635.733
+ advance_populations   update_ionization.cpp     1       712        743      3606        0.085     0.388     625.076
+ advance_populations   update_ionization.cpp     2       712        743      3362        0.093     0.430     624.464
+ advance_populations   update_ionization.cpp     3       712        743      3378        0.092     0.446     622.196
+ advance_populations   update_ionization.cpp     4       712        743      3212        0.087     0.435     615.354
+\end{Verbatim}
+
+The first two columns contain the timer name and filename for the timer.  
+The thread column indicates which threads contained the thread that called the timer.
+The next two columns show the start and stop lines corresponding to the lines that
+contain the PROFILE\_START and PROFILE\_STOP commands.  A value of -1 indicates that
+there is no such line.  This will happen if PROFILE\_START2 or PROFILE\_STOP2 is used,
+or if PROFILE\_SCOPED is used, there is no value for the stop line.  
+The final columns indicate the number of calls to the timer, the minimum time for a
+single call, the maximum call for a call, and the total time spent in the timer.  
+If a global summary is written, then these values are averaged across all ranks.  
+More detailed analysis including the load balance, the sub-timers, inclusive/exclusive
+time, etc. can be obtained by using the graphical user interface (section \ref{sec:gui}).  
+
+
+
+%%---------------------------------------------------------------------------%%
+%% Usage
+%%---------------------------------------------------------------------------%%
+\section{Graphical User Interface}  \label{sec:gui}
+
+The graphical user interface provides a way to utilize the additional information
+that the timer utility provides for a more complete analysis.  This interface 
+is currently written in MATLAB.  To install a gui, first make sure that MATLAB
+is set up to compile C++ files using the mex interface.  To do this, use the command
+"mex -setup" within MATLAB.  Note that this is only required once.  Then configure 
+the application with "-D USE\_MATLAB=1" and the MATLAB directory specified to install 
+the gui directory (will be located in the install/gui folder).  
+
+Once the gui has been installed, open MATLAB (requires the MATLAB display) and 
+change to the gui directory and type "load\_timer".  This will open a MATLAB gui.  
+Load a timer set using the "Load" button, navigating to the appropriate timer 
+file and open it.  The first time that this is done, there may be a few messages 
+that indicate that MATLAB is compiling some files (this is normal).  
+Once the file has been loaded the timer list will be populated.  If the timer file
+is part of a set (e.g. a parallel program with 1 file/rank), the data from all files 
+will automatically be loaded.  
+
+
+
+%%---------------------------------------------------------------------------%%
+%% Usage
+%%---------------------------------------------------------------------------%%
+\section{Advanced Topics}  \label{sec:advanced}
+
+In section \ref{sec:usage} the macro interface was described.  This is a simplified
+interface that can be used for most use cases.  However the timer utility consists
+of a C++ class (ProfilerApp) that has a range of capabilities.  This includes the
+ability to create multiple profiler objects within an application.  The macro interface
+wraps the function calls to this class on a global object for convince.  All of 
+the functions available are described through the doxygen documentation and the global
+object containing the default object is "global\_profiler".  Some specific capabilities 
+are discussed below.
+
+\subsection{Loading Timer Results}
+
+Users can load timer files within their own application for analysis.  This can
+be done using the ProfilerApp::load command.  This is a static member function
+that will load all of the timer data for a set of results or a specific rank.  
+Its interface is:
+\begin{Verbatim}[fontsize=\normal,baselinestretch=1.0]
+    TimerMemoryResults  ProfilerApp::load(filename,rank);
+\end{Verbatim}
+The value for rank is optional (default value is -1), and a value of -1 indicates to
+load all results.  
+The TimerMemoryResults structure is defined in ProfilerApp.h.  
+
+
+%%%---------------------------------------------------------------------------%%
+%%% Bibliography
+%%%---------------------------------------------------------------------------%%
+%\begin{thebibliography}{10}
+
+%\bibitem{Kuba03}
+%Jaroslav Kuba, Djamel Benredjem, Clary Mo¨ller, Ladislav Drsˇka
+%\newblock {\em "Analytical and numerical ray tracing of a transient x-ray laser:
+%Ni-like Ag laser at 13.9 nm"},
+%\newblock Journal of the Optical Society of America B, Vol. 20, No. 3, (2003).
+
+%\end{thebibliography}
+
+
+\end{document}
+
+
+

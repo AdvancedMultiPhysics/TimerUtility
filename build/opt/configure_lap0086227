@@ -6,7 +6,7 @@ cmake                                                   \
         -D CFLAGS="-fPIC"                               \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
         -D CXXFLAGS="-fPIC"                             \
-    -D CMAKE_BUILD_TYPE=Debug                           \
+    -D CMAKE_BUILD_TYPE=Release                         \
     -D USE_MATLAB=0                                     \
         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
     ../../src/

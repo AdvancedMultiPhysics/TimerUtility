@@ -299,13 +299,13 @@ public:
     static TimerMemoryResults load( const std::string& filename, int rank=-1 );
 
     /*!
-     * \brief  Function to syncronize the timers
-     * \details  This function will syncronize the timers across multiple processors.  
+     * \brief  Function to synchronize the timers
+     * \details  This function will synchronize the timers across multiple processors.  
      *   If used, this function only needs to be called once.  This is only needed if 
-     *   the trace level data is being stored and the user wants the times syncronized.
+     *   the trace level data is being stored and the user wants the times synchronized.
      *   Note: This is a blocking call for all processors and must be called after MPI_INIT.
      */
-    void syncronize();
+    void synchronize();
 
     /*!
      * \brief  Function to enable the timers

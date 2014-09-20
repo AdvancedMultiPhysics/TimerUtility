@@ -6,7 +6,7 @@
 extern void global_profiler_enable( int level );
 extern void global_profiler_disable( );
 extern int  global_profiler_get_level( );
-extern void global_profiler_syncronize( );
+extern void global_profiler_synchronize( );
 extern void global_profiler_set_store_trace( int flag );
 extern void global_profiler_set_store_memory( int flag );
 extern void global_profiler_start( const char* name, const char* file, int line, int level );
@@ -82,20 +82,20 @@ extern void global_profiler_save( const char* name, int global );
     PROFILE_STOP_LEVEL( NAME, __FILE__, -1, GET_LEVEL(_0,##__VA_ARGS__,0) )
 
 
-/*! \def PROFILE_SYNCRONIZE()
- *  \brief Syncronize the time across multiple processors
- *  \details This will syncronize time zero across all processors.
+/*! \def PROFILE_SYNCHRONIZE()
+ *  \brief Synchronize the time across multiple processors
+ *  \details This will synchronize time zero across all processors.
  *      In a MPI program, the different processes may start a slightly
  *      different times.  Since we often want to examine the timers
- *      on different processors we need to syncronize time zero so it is 
+ *      on different processors we need to synchronize time zero so it is 
  *      consistent.  
  *      Note:  This program should be called once after MPI has been initialized.
  *        it does not need to be called in a serial program and there is no benifit
  *        to multiple calls.
  *      Note: this is blocking call.
  */
-#define PROFILE_SYNCRONIZE() \
-    global_profiler_syncronize( )
+#define PROFILE_SYNCHRONIZE() \
+    global_profiler_synchronize( )
 
 
 /*! \def PROFILE_SAVE(FILE,...)

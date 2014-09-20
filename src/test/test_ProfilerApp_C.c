@@ -42,7 +42,7 @@ int run_tests( bool enable_trace, const char* save_name )
     TIME_TYPE time1;
 
     PROFILE_ENABLE(0);
-    PROFILE_SYNCRONIZE();
+    PROFILE_SYNCHRONIZE();
     if ( enable_trace ) {
         PROFILE_ENABLE_TRACE();
         PROFILE_ENABLE_MEMORY();

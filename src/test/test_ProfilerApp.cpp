@@ -40,7 +40,7 @@ bool call_recursive_scope( int N, int i=0 )
 int run_tests( bool enable_trace, std::string save_name ) 
 {
     PROFILE_ENABLE();
-    PROFILE_SYNCRONIZE();
+    PROFILE_SYNCHRONIZE();
     if ( enable_trace ) {
         PROFILE_ENABLE_TRACE();
         PROFILE_ENABLE_MEMORY();

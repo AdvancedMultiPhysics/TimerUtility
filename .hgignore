@@ -13,6 +13,7 @@ build/*/TimerUtilitiy.cmake
 build/*/include/*
 build/*/lib/*
 build/*/gui/*
+build/*/doc/*
 build/*/latex_docs/*
 build/*/matlab/*
 build/*/mex/*

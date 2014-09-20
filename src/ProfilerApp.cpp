@@ -715,7 +715,7 @@ ProfilerApp::~ProfilerApp() {
 /***********************************************************************
 * Function to syncronize the timers                                    *
 ***********************************************************************/
-void ProfilerApp::syncronize() {
+void ProfilerApp::synchronize() {
     GET_LOCK(&lock);
 	comm_barrier();
     TIME_TYPE sync_time_local;
@@ -2452,9 +2452,9 @@ extern "C" {
     {
         return global_profiler.get_level();
     }
-    void global_profiler_syncronize( )
+    void global_profiler_synchronize( )
     {
-        global_profiler.syncronize();
+        global_profiler.synchronize();
     }
     void global_profiler_set_store_trace( int flag )
     {
