@@ -145,7 +145,7 @@ MACRO( CONFIGURE_MATLAB )
     CHECK_ENABLE_FLAG( USE_MATLAB 0 )
     SET( LIB_TYPE STATIC )      # By default we want to build static libraries
     IF ( USE_MATLAB )
-        SET( LIB_TYPE SHARED ) # If we are using MATLAB, we must build dynamic libraries for ProfilerApp to work properly
+        SET( LIB_TYPE SHARED )  # If we are using MATLAB, we must build dynamic libraries for ProfilerApp to work properly
         IF ( MATLAB_DIRECTORY )
             VERIFY_PATH ( ${MATLAB_DIRECTORY} )
         ELSE()
