@@ -194,6 +194,11 @@ MACRO( CONFIGURE_TIMER )
     IF ( NOT TEST_MAX_PROCS )
         SET( TEST_MAX_PROCS 32 )
     ENDIF()
+    # Check if we want to enable the traps for new/delete
+    CHECK_ENABLE_FLAG( OVERLOAD_NEW 1 )
+    IF ( NOT OVERLOAD_NEW )
+        ADD_DEFINITIONS( -DDISABLE_NEW_OVERLOAD )
+    ENDIF()
 ENDMACRO()
 
 

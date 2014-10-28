@@ -1,4 +1,5 @@
 #include "ProfilerApp.h"
+#include "MemoryApp.h"
 
 #include <stdio.h>
 #include <iostream>
@@ -766,7 +767,7 @@ void ProfilerApp::start( const std::string& message, const char* filename,
         check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
         thread_data->time_memory[N_size] = -1.0;
-        thread_data->size_memory[N_size] = get_memory_usage()-d_bytes;
+        thread_data->size_memory[N_size] = MemoryApp::getTotalMemoryUsage()-d_bytes;
     }
     // Start the timer 
     memcpy(timer->trace,thread_data->active,TRACE_SIZE*sizeof(size_t));
@@ -880,7 +881,7 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
         check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
         thread_data->time_memory[N_size] = get_diff(d_construct_time,end_time,d_frequency);
-        thread_data->size_memory[N_size] = get_memory_usage()-d_bytes;
+        thread_data->size_memory[N_size] = MemoryApp::getTotalMemoryUsage()-d_bytes;
         thread_data->N_memory_steps++;
     }
     #if MONITOR_PROFILER_PERFORMANCE > 0
@@ -2242,39 +2243,6 @@ inline size_t ProfilerApp::get_trace_id( const size_t *trace )
 
 
 /***********************************************************************
-* Function to return the current memory usage                          *
-* Note: this function should be thread-safe                            *
-***********************************************************************/
-#if defined(USE_MAC)
-    // Get the page size on mac
-    static size_t page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
-#endif
-inline size_t ProfilerApp::get_memory_usage( )
-{
-    size_t N_bytes = 0;
-    #if defined(USE_LINUX)
-        struct mallinfo meminfo = mallinfo();
-        size_t size_hblkhd = static_cast<unsigned int>( meminfo.hblkhd );
-        size_t size_uordblks = static_cast<unsigned int>( meminfo.uordblks );
-        N_bytes = size_hblkhd + size_uordblks;
-    #elif defined(USE_MAC)
-        struct task_basic_info t_info;
-        mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
-        kern_return_t rtn = task_info( mach_task_self(), 
-            TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count );
-        if ( rtn != KERN_SUCCESS ) { return 0; }
-        N_bytes = t_info.virtual_size;
-    #elif defined(USE_WINDOWS)
-        PROCESS_MEMORY_COUNTERS memCounter;
-        GetProcessMemoryInfo( GetCurrentProcess(), &memCounter, sizeof(memCounter) );
-        N_bytes = memCounter.WorkingSetSize;
-    #endif
-    ASSERT(N_bytes<1e12);
-    return N_bytes;
-}
-
-
-/***********************************************************************
 * Subroutine to perform a quicksort                                    *
 ***********************************************************************/
 template <class type_a, class type_b>
@@ -2477,5 +2445,6 @@ extern "C" {
         global_profiler.save(name,global!=0);
     }
 }
+
 
 

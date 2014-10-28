@@ -1,4 +1,5 @@
 #include "ProfilerApp.h"
+#include "MemoryApp.h"
 #include "test_Helpers.h"
 #include <string>
 #include <vector>
@@ -220,6 +221,7 @@ int run_tests( bool enable_trace, std::string save_name )
 
     PROFILE_SAVE(save_name);
     PROFILE_SAVE(save_name,true);
+    MemoryApp::print(std::cout);
     return N_errors;
 }
 
@@ -231,26 +233,32 @@ int main(int argc, char* argv[])
         MPI_Init(&argc,&argv);
     #endif
     
-    // Run the tests
     int N_errors=0;
-    std::vector<std::pair<bool,std::string> > tests;
-    tests.push_back( std::pair<bool,std::string>(false,"test_ProfilerApp"));
-    tests.push_back( std::pair<bool,std::string>(true,"test_ProfilerApp-trace"));
-    for (size_t i=0; i<tests.size(); i++) {
+    { // Limit scope
+
+        // Run the tests
+        std::vector<std::pair<bool,std::string> > tests;
+        tests.push_back( std::pair<bool,std::string>(false,"test_ProfilerApp"));
+        tests.push_back( std::pair<bool,std::string>(true,"test_ProfilerApp-trace"));
+        for (size_t i=0; i<tests.size(); i++) {
+            int m1 = getMemoryUsage();
+            int m2 = global_profiler.getMemoryUsed();
+            printf("%i %i %i\n",m1-m2,m1,m2);
+            N_errors += run_tests( tests[i].first, tests[i].second );
+            m1 = getMemoryUsage();
+            m2 = global_profiler.getMemoryUsed();
+            printf("%i %i %i\n",m1-m2,m1,m2);
+            PROFILE_DISABLE();
+        }
         int m1 = getMemoryUsage();
         int m2 = global_profiler.getMemoryUsed();
-        printf("%i %i %i\n",m1-m2,m1,m2);
-        N_errors += run_tests( tests[i].first, tests[i].second );
-        m1 = getMemoryUsage();
-        m2 = global_profiler.getMemoryUsed();
-        printf("%i %i %i\n",m1-m2,m1,m2);
-        PROFILE_DISABLE();
-    }
-    int m1 = getMemoryUsage();
-    int m2 = global_profiler.getMemoryUsed();
-    printf("%i %i %i\n\n",m1-m2,m1,m2);
+        printf("%i %i %i\n\n",m1-m2,m1,m2);
     
+    }
+
     // Finalize MPI and SAMRAI
+    MemoryApp::print(std::cout);
+    std::cout << std::endl;
     if ( N_errors==0 ) 
         std::cout << "All tests passed" << std::endl;
     else
