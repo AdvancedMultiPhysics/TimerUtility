@@ -38,6 +38,21 @@ bool call_recursive_scope( int N, int i=0 )
 }
 
 
+size_t getStackSize1()
+{
+    MemoryApp::MemoryStats stats = MemoryApp::getMemoryStats();
+    return stats.stack_used;
+}
+size_t getStackSize2()
+{
+    int tmp[500000];
+    memset(tmp,0,1000*sizeof(double));
+    MemoryApp::MemoryStats stats = MemoryApp::getMemoryStats();
+    if ( tmp[999] !=0 ) std::cout << std::endl;
+    return stats.stack_used;
+}
+
+
 int run_tests( bool enable_trace, std::string save_name ) 
 {
     PROFILE_ENABLE();
@@ -256,9 +271,13 @@ int main(int argc, char* argv[])
     
     }
 
-    // Finalize MPI and SAMRAI
+    // Print the memory stats
     MemoryApp::print(std::cout);
+    std::cout << "Stack size 1: " << getStackSize1() << std::endl;
+    std::cout << "Stack size 2: " << getStackSize2() << std::endl;
     std::cout << std::endl;
+
+    // Finalize MPI and SAMRAI
     if ( N_errors==0 ) 
         std::cout << "All tests passed" << std::endl;
     else

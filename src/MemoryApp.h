@@ -49,6 +49,26 @@
 class MemoryApp {
 public:
 
+    
+    /** \class MemoryStats
+      * This is a structure to hold memory statistics.  This will include
+      * information about the number of bytes allocated/deleted by new/delete
+      * throughout the lifetime of the program and the total memory used by 
+      * the program.  The number of bytes currently in use by new/delete can be 
+      * obtained by subtracting the deallocated bytes for the allocated bytes.  
+      * Note: if overloading new/delete is disabled, some of the fields may be zero.
+      */
+    struct MemoryStats { 
+        size_t bytes_new;           //!<  Total number of bytes allocated by new
+        size_t bytes_delete;        //!<  Total number of bytes de-allocated by new
+        size_t N_new;               //!<  Total number of calls to new
+        size_t N_delete;            //!<  Total number of calls to delete
+        size_t tot_bytes_used;      //!<  Total memory used by program stack+heap
+        size_t system_memory;       //!<  Total physical memory on the machine
+        size_t stack_used;          //!<  An estimate for the current stack size
+        size_t stack_size;          //!<  The maximum stack size
+    };
+
     /**                 
      * @brief  Print memory statistics
      * @details  This function will print some basic memory statistics for new/delete.
@@ -62,7 +82,7 @@ public:
      * @brief  Get the number of bytes in use
      * @details  This function will return the number of bytes in use by new/delete
      */
-    static inline size_t getMemoryUsage( ) { return bytes_allocated-bytes_deallocated; }
+    static inline size_t getMemoryUsage( ) { return d_bytes_allocated-d_bytes_deallocated; }
 
     /**                 
      * @brief  Return the total memory usage
@@ -78,7 +98,13 @@ public:
      * to a multiple of the page size.
      * If this function fails, it will return 0.
      */
-    static size_t getSystemMemory();
+    static inline size_t getSystemMemory() { return d_physical_memory; }
+
+
+    /*!
+     * Function to get the memory statistics
+     */
+    static MemoryStats getMemoryStats();
 
 private:
 
@@ -96,11 +122,13 @@ private:
     #else
         #error Unknown OS
     #endif
-    static int64_atomic bytes_allocated;
-    static int64_atomic bytes_deallocated;
-    static int64_atomic calls_new;
-    static int64_atomic calls_delete;
-    static size_t page_size;
+    static int64_atomic d_bytes_allocated;
+    static int64_atomic d_bytes_deallocated;
+    static int64_atomic d_calls_new;
+    static int64_atomic d_calls_delete;
+    static size_t d_page_size;
+    static size_t d_physical_memory;
+    static void* d_base_frame;
 
     // Friends
     friend void* operator new(size_t size) throw(std::bad_alloc);
@@ -122,7 +150,7 @@ inline size_t MemoryApp::getTotalMemoryUsage( )
         size_t size_uordblks = static_cast<unsigned int>( meminfo.uordblks );
         N_bytes = size_hblkhd + size_uordblks;
         // Correct for possible 32-bit wrap around
-        size_t N_bytes_new = bytes_allocated-bytes_deallocated;
+        size_t N_bytes_new = d_bytes_allocated-d_bytes_deallocated;
         while( N_bytes<N_bytes_new )
             N_bytes += 0x100000000;
     #elif defined(USE_MAC)

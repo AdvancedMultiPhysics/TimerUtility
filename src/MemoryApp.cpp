@@ -1,5 +1,6 @@
 #include "MemoryApp.h"
 #include <malloc.h>
+#include <cmath>
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
@@ -52,16 +53,51 @@
 
 
 /***********************************************************************
+* Return the physical system memory                                    *
+***********************************************************************/
+static size_t getPhysicalMemory()
+{
+    size_t N_bytes = 0;
+    #if defined(USE_LINUX)
+        size_t page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+        static long pages = sysconf(_SC_PHYS_PAGES);
+        N_bytes = pages * page_size;
+    #elif defined(USE_MAC)
+        int mib[2] = { CTL_HW, HW_MEMSIZE };
+        u_int namelen = sizeof(mib) / sizeof(mib[0]);
+        uint64_t size;
+        size_t len = sizeof(size);
+        if (sysctl(mib, namelen, &size, &len, NULL, 0) == 0)
+            N_bytes = size;
+    #elif defined(USE_WINDOWS)
+        MEMORYSTATUSEX status;
+        status.dwLength = sizeof(status);
+        GlobalMemoryStatusEx(&status);
+        N_bytes = status.ullTotalPhys;
+    #endif
+    return N_bytes;
+}
+
+
+
+
+/***********************************************************************
 * Initialize variables                                                 *
 ***********************************************************************/
-int64_atomic MemoryApp::bytes_allocated = 0;
-int64_atomic MemoryApp::bytes_deallocated = 0;
-int64_atomic MemoryApp::calls_new = 0;
-int64_atomic MemoryApp::calls_delete = 0;
+int64_atomic MemoryApp::d_bytes_allocated = 0;
+int64_atomic MemoryApp::d_bytes_deallocated = 0;
+int64_atomic MemoryApp::d_calls_new = 0;
+int64_atomic MemoryApp::d_calls_delete = 0;
 #if defined(USE_MAC) || defined(USE_LINUX)
-    size_t MemoryApp::page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+    size_t MemoryApp::d_page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
 #else
-    size_t MemoryApp::page_size = 0;
+    size_t MemoryApp::d_page_size = 0;
+#endif
+size_t MemoryApp::d_physical_memory = getPhysicalMemory();
+#if __GNUC__
+    void* MemoryApp::d_base_frame = __builtin_frame_address(0);
+#else
+    void* MemoryApp::d_base_frame = 0;
 #endif
 
 
@@ -83,8 +119,8 @@ int64_atomic MemoryApp::calls_delete = 0;
         void* ret = malloc(size);
         if (!ret) throw std::bad_alloc();
         size_t block_size = get_malloc_size(ret);
-        atomic_add(&MemoryApp::bytes_allocated,block_size);
-        atomic_increment(&MemoryApp::calls_new);
+        atomic_add(&MemoryApp::d_bytes_allocated,block_size);
+        atomic_increment(&MemoryApp::d_calls_new);
         return ret;
     }
     void* operator new[] (size_t size) throw(std::bad_alloc) 
@@ -92,23 +128,23 @@ int64_atomic MemoryApp::calls_delete = 0;
         void* ret = malloc(size);
         if (!ret) throw std::bad_alloc();
         size_t block_size = get_malloc_size(ret);
-        atomic_add(&MemoryApp::bytes_allocated,block_size);
-        atomic_increment(&MemoryApp::calls_new);
+        atomic_add(&MemoryApp::d_bytes_allocated,block_size);
+        atomic_increment(&MemoryApp::d_calls_new);
         return ret;
     }
     void operator delete(void* data) throw()
     {
         size_t block_size = get_malloc_size(data);
         free(data);
-        atomic_add(&MemoryApp::bytes_deallocated,block_size);
-        atomic_increment(&MemoryApp::calls_delete);
+        atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+        atomic_increment(&MemoryApp::d_calls_delete);
     }
     void operator delete[] (void* data) throw()
     {
         size_t block_size = get_malloc_size(data);
         free(data);
-        atomic_add(&MemoryApp::bytes_deallocated,block_size);
-        atomic_increment(&MemoryApp::calls_delete);
+        atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+        atomic_increment(&MemoryApp::d_calls_delete);
     }
 #endif
 
@@ -116,41 +152,46 @@ int64_atomic MemoryApp::calls_delete = 0;
 /***********************************************************************
 * Class functions                                                      *
 ***********************************************************************/
+MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
+{
+    MemoryStats stats;
+    stats.bytes_new = MemoryApp::d_bytes_allocated;
+    stats.bytes_delete = MemoryApp::d_bytes_deallocated;
+    stats.N_new = MemoryApp::d_calls_new;
+    stats.N_delete = MemoryApp::d_calls_delete;
+    stats.tot_bytes_used = MemoryApp::getTotalMemoryUsage();
+    stats.system_memory = MemoryApp::d_physical_memory;
+    stats.stack_used = 0;
+    stats.stack_size = 0;
+    #if defined(__linux) || defined(__unix) || defined(__posix)
+        pthread_attr_t attr;
+        void* stackaddr;
+        size_t stacksize;
+        pthread_getattr_np(pthread_self(), &attr);
+        pthread_attr_getstack( &attr, &stackaddr, &stacksize );
+        stats.stack_used = stacksize - 
+            std::abs(reinterpret_cast<int64_t>(stackaddr)
+                    -reinterpret_cast<int64_t>(&stackaddr));
+        stats.stack_size = stacksize;
+    #endif
+    #if defined(__GNUC__)
+        stats.stack_used = std::abs(reinterpret_cast<int64_t>(d_base_frame)
+            - reinterpret_cast<int64_t>(__builtin_frame_address(0)));
+    #endif
+    return stats;
+}
 void MemoryApp::print( std::ostream& os )
 {
-    size_t t1 = MemoryApp::bytes_allocated;
-    size_t t2 = MemoryApp::bytes_deallocated;
-    size_t t3 = MemoryApp::calls_new;
-    size_t t4 = MemoryApp::calls_delete;
+    MemoryStats stats = getMemoryStats();
     os << "Statistics from new/delete:\n";
-    os << "   Bytes allocated: " << t1 << std::endl;
-    os << "   Bytes deallocated: " << t2 << std::endl;
-    os << "   Bytes in use: " << t1-t2 << std::endl;
-    os << "   Number of calls to new: " << t3 << std::endl;
-    os << "   Number of calls to delete: " << t4 << std::endl;
-    os << "   Number of calls to new without delete: " << t3-t4 << std::endl;
-    os << "   Total memory in use: " << MemoryApp::getTotalMemoryUsage() << std::endl;
+    os << "   Bytes allocated:   " << stats.bytes_new << std::endl;
+    os << "   Bytes deallocated: " << stats.bytes_delete << std::endl;
+    os << "   Bytes in use: " << stats.bytes_new-stats.bytes_delete << std::endl;
+    os << "   Number of calls to new:    " << stats.N_new << std::endl;
+    os << "   Number of calls to delete: " << stats.N_delete << std::endl;
+    os << "   Number of calls to new without delete: " << stats.N_new-stats.N_delete << std::endl;
+    os << "   Total memory in use: " << stats.tot_bytes_used << std::endl;
+    os << "   Stack used: " << stats.stack_used << std::endl;
+    os << "   Stack size: " << stats.stack_size << std::endl;
 }
-size_t MemoryApp::getSystemMemory()
-{
-    size_t N_bytes = 0;
-    #if defined(USE_LINUX)
-        static long pages = sysconf(_SC_PHYS_PAGES);
-        N_bytes = pages * page_size;
-    #elif defined(USE_MAC)
-        int mib[2] = { CTL_HW, HW_MEMSIZE };
-        u_int namelen = sizeof(mib) / sizeof(mib[0]);
-        uint64_t size;
-        size_t len = sizeof(size);
-        if (sysctl(mib, namelen, &size, &len, NULL, 0) == 0)
-            N_bytes = size;
-    #elif defined(USE_WINDOWS)
-        MEMORYSTATUSEX status;
-        status.dwLength = sizeof(status);
-        GlobalMemoryStatusEx(&status);
-        N_bytes = status.ullTotalPhys;
-    #endif
-    return N_bytes;
-}
-
 
