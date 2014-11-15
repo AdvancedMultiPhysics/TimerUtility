@@ -27,6 +27,7 @@
     #include <sys/time.h>
     #include <pthread.h>
     #include <string.h>
+    #include <mach/mach.h>
 #elif defined(USE_LINUX)
     // Linux
     #include <sys/time.h>

@@ -1,5 +1,4 @@
 #include "MemoryApp.h"
-#include <malloc.h>
 #include <cmath>
 
 
@@ -10,14 +9,22 @@
     #include <stdlib.h>
     #include <windows.h>
     #include <process.h>
+    #include <malloc.h>
 #elif defined(__APPLE__)
     // Using MAC
     #define USE_MAC
     #include <libkern/OSAtomic.h>
+    #include <malloc/malloc.h>
+    #include <sys/types.h>
+    #include <sys/sysctl.h>
+    #include <unistd.h>
+#elif defined(__APPLE__)
 #elif defined(__linux) || defined(__unix) || defined(__posix)
     // Using Linux
     #define USE_LINUX
     #include <unistd.h>
+    #include <malloc.h>
+#elif defined(__APPLE__)
 #else
     #error Unknown OS
 #endif
@@ -38,7 +45,7 @@
 #elif defined(USE_MAC)
     typedef int64_t int64_atomic;
     #define atomic_add( X, Y ) \
-        OSAtomicAdd64Barrier(X,Y)
+        OSAtomicAdd64Barrier(Y,X)
     #define atomic_increment(X) \
         OSAtomicIncrement64Barrier(X)
 #elif defined(USE_LINUX)
