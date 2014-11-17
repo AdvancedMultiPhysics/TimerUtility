@@ -18,13 +18,11 @@
     #include <sys/types.h>
     #include <sys/sysctl.h>
     #include <unistd.h>
-#elif defined(__APPLE__)
 #elif defined(__linux) || defined(__unix) || defined(__posix)
     // Using Linux
     #define USE_LINUX
     #include <unistd.h>
     #include <malloc.h>
-#elif defined(__APPLE__)
 #else
     #error Unknown OS
 #endif
