@@ -174,6 +174,7 @@ MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
         size_t stacksize;
         pthread_getattr_np(pthread_self(), &attr);
         pthread_attr_getstack( &attr, &stackaddr, &stacksize );
+        pthread_attr_destroy( &attr );
         stats.stack_used = stacksize - 
             std::abs(reinterpret_cast<int64_t>(stackaddr)
                     -reinterpret_cast<int64_t>(&stackaddr));

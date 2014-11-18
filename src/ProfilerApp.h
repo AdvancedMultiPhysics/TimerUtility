@@ -561,7 +561,7 @@ private:
     char d_level;                   // Level of timing to use (default is 0, -1 is disabled)
     TIME_TYPE d_construct_time;     // Store when the constructor was called
     TIME_TYPE d_frequency;          // Clock frequency (only used for windows)
-    double d_shift;                 // Offset to add to all trace times when saving (used to syncronize the trace data)
+    double d_shift;                 // Offset to add to all trace times when saving (used to synchronize the trace data)
     mutable size_t d_max_trace_remaining; // The number of traces remaining to store for each thread
     mutable size_t d_N_memory_steps; // The number of steps we have for the memory usage
     mutable double* d_time_memory;  // The times at which we know the memory usage
