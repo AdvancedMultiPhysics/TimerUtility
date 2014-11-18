@@ -84,6 +84,8 @@ if show_all
 end
 handles.last_load_plot_pos = [];
 handles.load_plot_rectangle = 0;
+handles.pathname = '';
+handles.filename = '';
 guidata(hObject, handles);
 if isempty(which('get_active_times'))
     warning('get_active_times.cpp does not appear to be compiled, attempting to compile now'); %#ok<WNTAG>
@@ -240,6 +242,10 @@ if handles.load_plot_rectangle ~= 0
     handles.load_plot_rectangle = 0;
 end
 guidata(hObject,handles);
+% Update the name of the figure
+if ~isempty(handles.filename)
+    set(handles.figure1,'Name',sprintf('load_timer - %s%s',handles.pathname,handles.filename));
+end
 % Load the data for the function selected
 N_proc = getappdata(h,'N_procs');
 if isempty(N_proc)
@@ -504,6 +510,7 @@ set(handles.inclusive_exclusive,'String','Exclusive Time','Value',0,'Visible','o
 handles.id_data = id_data;
 handles.call = [];
 handles.pathname = PathName;
+handles.filename = FileName;
 guidata(hObject,handles);
 reset_Callback(handles.reset,[],handles);
 

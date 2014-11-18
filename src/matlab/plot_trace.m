@@ -319,6 +319,9 @@ if isappdata(handles.parent_figure,'memory')
     end
 end
 clear('data','tmp');
+% Update the title of the figure
+name = strrep(get(handles.parent_figure,'Name'),'load_timer','plot_trace');
+set(handles.figure1,'Name',name);
 % Plot the results for the small window (all times, all timers)
 set(0,'currentfigure',handles.figure1);
 set(handles.figure1,'CurrentAxes',handles.small_plot);
@@ -528,6 +531,9 @@ function figure1_ResizeFcn(hObject, eventdata, handles) %#ok<INUSL>
 % hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+if isempty(handles)
+    return;
+end
 plot_memory = false;    % Are we going to include memory data
 if isfield(handles,'parent_figure')
     if isappdata(handles.parent_figure,'N_proc')
