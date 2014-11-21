@@ -283,6 +283,7 @@ int main(int argc, char* argv[])
     else
         std::cout << "Some tests failed" << std::endl;
     #ifdef USE_MPI
+        MPI_Barrier(MPI_COMM_WORLD);
         MPI_Finalize();
     #endif
     return(N_errors);
