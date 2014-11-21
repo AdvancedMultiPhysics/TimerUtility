@@ -353,7 +353,7 @@ public:
      *   The user should only disable theses checks if they understand the behavior.  
      * @param flag        Do we want to ignore timer errors
      */
-    void ignore_timer_errors(bool flag=false) { d_check_timer_error = flag; }
+    void ignore_timer_errors(bool flag=false) { d_check_timer_error = !flag; }
 
     /*!
      * \brief  Function to get the timer id
@@ -542,7 +542,7 @@ private:
 
     // Functions to send all timers/memory to rank 0
     static void gather_timers( std::vector<TimerResults>& timers );
-    static void add_timers( std::vector<TimerResults>& timers, const std::vector<TimerResults> add );
+    static void add_timers( std::vector<TimerResults>& timers, const std::vector<TimerResults>& add );
     static void gather_memory( std::vector<MemoryResults>& memory );
 
     // Handle to a mutex lock

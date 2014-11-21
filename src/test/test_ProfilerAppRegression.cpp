@@ -22,7 +22,7 @@ int load_test( const std::string& name, size_t size, bool includes_trace, bool i
         for (size_t j=0; j<timers[i].trace.size(); j++) {
             const TraceResults& trace = timers[i].trace[j];
             rank_called[trace.rank] = true;
-            if ( trace.N==0 || trace.rank<0 || trace.rank>=size ) {
+            if ( trace.N==0 || trace.rank>=size ) {
                 error = true;
                 break;
             }

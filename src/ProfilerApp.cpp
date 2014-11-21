@@ -608,7 +608,7 @@ void TimerResults::unpack( const void* data_in )
     path = std::string(&data[pos],tmp[2]);
     pos += path.size();
     start = tmp[3];
-    start = tmp[4];
+    stop  = tmp[4];
     trace.resize(tmp[5]);
     for (size_t i=0; i<trace.size(); i++) {
         trace[i].unpack(&data[pos]);
@@ -660,7 +660,8 @@ void MemoryResults::unpack( const void* data_in )
 /***********************************************************************
 * Consructor                                                           *
 ***********************************************************************/
-ProfilerApp::ProfilerApp() {
+ProfilerApp::ProfilerApp() 
+{
     if ( 8*sizeof(size_t) != ARCH_SIZE )
         ERROR_MSG("Incorrectly identified architecture?\n");
     if ( sizeof(id_struct)!=8 )
@@ -684,19 +685,22 @@ ProfilerApp::ProfilerApp() {
     d_shift = 0.0;
     d_store_trace_data = false;
     d_store_memory_data = false;
+    d_check_timer_error = true;
     d_max_trace_remaining = static_cast<size_t>(MAX_TRACE_MEMORY);
     d_N_memory_steps = 0;
     d_time_memory = NULL;
     d_size_memory = NULL;
     d_bytes = sizeof(ProfilerApp);
 }
-void ProfilerApp::set_store_trace( bool profile ) { 
+void ProfilerApp::set_store_trace( bool profile ) 
+{ 
     if ( N_timers==0 ) 
         d_store_trace_data = profile;
     else
         ERROR_MSG("Cannot change trace status after a timer is started\n");
 }
-void ProfilerApp::set_store_memory( bool memory ) { 
+void ProfilerApp::set_store_memory( bool memory ) 
+{ 
     if ( N_timers==0 ) 
         d_store_memory_data = memory;
     else
@@ -707,7 +711,8 @@ void ProfilerApp::set_store_memory( bool memory ) {
 /***********************************************************************
 * Deconsructor                                                         *
 ***********************************************************************/
-ProfilerApp::~ProfilerApp() {
+ProfilerApp::~ProfilerApp() 
+{
     // Disable and delete the timers
     disable();
 }
@@ -716,7 +721,8 @@ ProfilerApp::~ProfilerApp() {
 /***********************************************************************
 * Function to syncronize the timers                                    *
 ***********************************************************************/
-void ProfilerApp::synchronize() {
+void ProfilerApp::synchronize() 
+{
     GET_LOCK(&lock);
 	comm_barrier();
     TIME_TYPE sync_time_local;
@@ -1499,6 +1505,7 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
         // We do not yet support large files, we need to read the data in chunks
         fclose(fid);
         ERROR_MSG("Large timer files are not yet supported (likely to exhaust ram)");
+        return;  // This is unnecessary but suppresses warnings from cppcheck
     }
     char *buffer = new char[file_length+10];
     memset(buffer,0,file_length+10);
@@ -2079,7 +2086,7 @@ void ProfilerApp::gather_timers( std::vector<TimerResults>& timers )
                 pos += add[i].size();
             }
             add_timers( timers, add );
-            delete [] reinterpret_cast<const double*>(buffer);
+            delete [] reinterpret_cast<const char*>(buffer);
         }
     } else {
         size_t N_bytes = sizeof(size_t);
@@ -2121,7 +2128,7 @@ void ProfilerApp::gather_memory( std::vector<MemoryResults>& memory )
     comm_barrier();
 }
 void ProfilerApp::add_timers( std::vector<TimerResults>& timers, 
-    const std::vector<TimerResults> add )
+    const std::vector<TimerResults>& add )
 {
     std::map<id_struct,size_t> id_map;
     for (size_t i=0; i<timers.size(); i++)
