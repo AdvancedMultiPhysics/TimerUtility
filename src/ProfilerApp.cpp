@@ -46,18 +46,23 @@ extern "C" {
     #include <stdio.h>   
     #include <tchar.h>
     #include <Psapi.h>
-    #define get_time(x) QueryPerformanceCounter(x)
-    #define get_frequency(f) QueryPerformanceFrequency(f)
+    static inline TIME_TYPE get_frequency() { TIME_TYPE f; QueryPerformanceFrequency(&f); return f; }
+    static inline TIME_TYPE get_time() { TIME_TYPE t; QueryPerformanceFrequency(&t); return t; }
     #define get_diff(start,end,f) \
         static_cast<double>(end.QuadPart-start.QuadPart)/static_cast<double>(f.QuadPart)
+    #define get_diff_ns(start,end,f) \
+        0x3B9ACA00*static_cast<int64_t>(end.QuadPart-start.QuadPart))/static_cast<int64_t>(f.QuadPart)
 #elif defined(USE_LINUX)
     #include <signal.h>
     #include <execinfo.h>
     #include <dlfcn.h>
     #include <malloc.h>
-    #define get_time(x) gettimeofday(x,NULL);
-    #define get_frequency(f) (*f=timeval())
+    static TIME_TYPE get_frequency() { return timeval(); }
+    static inline TIME_TYPE get_time() { TIME_TYPE t; gettimeofday(&t,NULL); return t; }
     #define get_diff(start,end,f) 1e-6*static_cast<double>( \
+        0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
+                (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
+    #define get_diff_ns(start,end,f) 0x3E8*( \
         0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
                 (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
 #elif defined(USE_MAC)
@@ -74,9 +79,12 @@ extern "C" {
     #include <sys/types.h>
     #include <sys/sysctl.h>
     #include <unistd.h>
-    #define get_time(x) gettimeofday(x,NULL);
-    #define get_frequency(f) (*f=timeval())
+    static TIME_TYPE get_frequency() { return timeval(); }
+    static inline TIME_TYPE get_time() { TIME_TYPE t; gettimeofday(&t,NULL); return t; }
     #define get_diff(start,end,f) 1e-6*static_cast<double>( \
+        0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
+                (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
+    #define get_diff_ns(start,end,f) 0x3E8*( \
         0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
                 (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
     #ifdef __LP64__
@@ -660,13 +668,14 @@ void MemoryResults::unpack( const void* data_in )
 /***********************************************************************
 * Consructor                                                           *
 ***********************************************************************/
-ProfilerApp::ProfilerApp() 
+ProfilerApp::ProfilerApp(): 
+    d_construct_time(get_time()),
+    d_frequency(get_frequency())
 {
     if ( 8*sizeof(size_t) != ARCH_SIZE )
         ERROR_MSG("Incorrectly identified architecture?\n");
     if ( sizeof(id_struct)!=8 )
         ERROR_MSG("id_struct is an unexpected size\n");
-    get_frequency( &d_frequency );
     #ifdef USE_WINDOWS
         lock = CreateMutex (NULL, FALSE, NULL);
     #elif defined(USE_LINUX) || defined(USE_MAC)
@@ -678,14 +687,13 @@ ProfilerApp::ProfilerApp()
         thread_head[i] = NULL;
     for (int i=0; i<TIMER_HASH_SIZE; i++)
         timer_table[i] = NULL;
-    get_time(&d_construct_time);
     N_threads = 0;
     N_timers = 0;
     d_level = 0;
     d_shift = 0.0;
     d_store_trace_data = false;
     d_store_memory_data = false;
-    d_check_timer_error = true;
+    d_disable_timer_error = false;
     d_max_trace_remaining = static_cast<size_t>(MAX_TRACE_MEMORY);
     d_N_memory_steps = 0;
     d_time_memory = NULL;
@@ -725,8 +733,7 @@ void ProfilerApp::synchronize()
 {
     GET_LOCK(&lock);
 	comm_barrier();
-    TIME_TYPE sync_time_local;
-    get_time(&sync_time_local);
+    TIME_TYPE sync_time_local = get_time();
     double current_time = get_diff(d_construct_time,sync_time_local,d_frequency);
     double max_current_time = comm_max_reduce(current_time);
     d_shift = max_current_time - current_time;
@@ -745,15 +752,14 @@ void ProfilerApp::start( const std::string& message, const char* filename,
     if ( this->d_level<level )
         return;
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE start_time_local;
-        get_time(&start_time_local);
+        TIME_TYPE start_time_local = get_time();
     #endif
     // Get the thread data
     thread_info* thread_data = get_thread_data();
     // Get the appropriate timer
     store_timer* timer = get_block(thread_data,message.c_str(),filename,timer_id,line,-1);
     if ( timer->is_active ) {
-        if ( d_check_timer_error ) {
+        if ( d_disable_timer_error ) {
             // Stop the timer before starting
             this->stop( message, filename, -1, level, timer_id );
         } else {
@@ -772,7 +778,7 @@ void ProfilerApp::start( const std::string& message, const char* filename,
         // Check the memory allocation
         check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
-        thread_data->time_memory[N_size] = -1.0;
+        thread_data->time_memory[N_size] = 0;
         thread_data->size_memory[N_size] = MemoryApp::getTotalMemoryUsage()-d_bytes;
     }
     // Start the timer 
@@ -780,16 +786,15 @@ void ProfilerApp::start( const std::string& message, const char* filename,
     timer->is_active = true;
     timer->N_calls++;
     set_trace_bit(timer->trace_index,TRACE_SIZE,thread_data->active);
-    get_time(&timer->start_time);
+    timer->start_time = get_time();
     // Record the time of the memory usage
     if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
         thread_data->time_memory[thread_data->N_memory_steps] = 
-            get_diff(d_construct_time,timer->start_time,d_frequency);
+            get_diff_ns(d_construct_time,timer->start_time,d_frequency);
         thread_data->N_memory_steps++;
     }
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE stop_time_local;
-        get_time(&stop_time_local);
+        TIME_TYPE stop_time_local = get_time();
         total_start_time += get_diff(start_time_local,stop_time_local,d_frequency);
     #endif
 }
@@ -806,20 +811,19 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
     if ( this->d_level<level )
         return;
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE start_time_local;
-        get_time(&start_time_local);
+        TIME_TYPE start_time_loca = get_time();
     #endif
     // Use the current time (minimize the effects of the overhead of the timer)
-    TIME_TYPE end_time;
-    get_time(&end_time);
+    TIME_TYPE end_time = get_time();
     // Get the thread data
     thread_info* thread_data = get_thread_data();
     // Get the appropriate timer
     store_timer* timer = get_block(thread_data,message.c_str(),filename,timer_id,-1,line);
     if ( !timer->is_active ) {
-        if ( d_check_timer_error) {
+        if ( d_disable_timer_error ) {
             // Stop the timer before starting
             this->start( message, filename, -1, level, timer_id );
+            end_time = get_time();  // Use the current time as the new stop
         } else {
             std::stringstream msg;
             msg << "Timer is not active, did you forget to call start? (" << 
@@ -886,13 +890,12 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
         // Check the memory allocation
         check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
-        thread_data->time_memory[N_size] = get_diff(d_construct_time,end_time,d_frequency);
+        thread_data->time_memory[N_size] = get_diff_ns(d_construct_time,end_time,d_frequency);
         thread_data->size_memory[N_size] = MemoryApp::getTotalMemoryUsage()-d_bytes;
         thread_data->N_memory_steps++;
     }
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE stop_time_local;
-        get_time(&stop_time_local);
+        TIME_TYPE stop_time_local = get_time();
         total_stop_time += get_diff(start_time_local,stop_time_local,d_frequency);
     #endif
 }
@@ -926,9 +929,6 @@ void ProfilerApp::disable( )
     // First, change the status flag
     GET_LOCK(&lock);
     d_level = -1;
-    // Stop ALL timers
-    TIME_TYPE end_time;
-    get_time(&end_time);
     // delete the thread structures
     for (int i=0; i<THREAD_HASH_SIZE; i++) {
         delete thread_head[i];
@@ -959,8 +959,7 @@ void ProfilerApp::disable( )
 std::vector<TimerResults> ProfilerApp::getTimerResults() const
 {
     // Get the current time in case we need to "stop" and timers
-    TIME_TYPE end_time;
-    get_time(&end_time);
+    TIME_TYPE end_time = get_time();
     int rank = comm_rank();
     // Get the mutex for thread safety (we don't want the list changing while we are saving the data)
     // Note: Because we don't block for most operations in the timer this is not full proof but should help
@@ -1150,7 +1149,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     // First unify the memory info from the different threads
     int64_t bytes_changed = 0;
     std::vector<size_t> N_time;
-    std::vector<double*> data_time;
+    std::vector<size_t*> data_time;
     std::vector<size_t*> size_time;
     for (int i=0; i<THREAD_HASH_SIZE; i++) {
         volatile thread_info *thread_data = thread_head[i];
@@ -1158,7 +1157,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
             // Copy the pointers so that we minimize the chance of the data being modified
             size_t N_steps = thread_data->N_memory_steps;
             size_t N_alloc = thread_data->N_memory_alloc;
-            double* time = thread_data->time_memory;
+            size_t* time = thread_data->time_memory;
             size_t* size = thread_data->size_memory;
             thread_data->N_memory_steps = 0;
             thread_data->N_memory_alloc = 0;
@@ -1179,7 +1178,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
         size_time.push_back(d_size_memory);
     }
     size_t N_memory_steps_old = d_N_memory_steps;
-    mergeArrays<double,size_t>( N_time.size(), &N_time[0], &data_time[0], &size_time[0],
+    mergeArrays<size_t,size_t>( N_time.size(), &N_time[0], &data_time[0], &size_time[0],
         &d_N_memory_steps, &d_time_memory, &d_size_memory );
     for (size_t i=0; i<data_time.size(); i++) {
         delete [] data_time[i];
@@ -1209,7 +1208,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     data.time.resize(d_N_memory_steps);
     data.bytes.resize(d_N_memory_steps);
     for (size_t i=0; i<d_N_memory_steps; i++) {
-        data.time[i]  = d_time_memory[i];
+        data.time[i]  = 1e-9*static_cast<double>(d_time_memory[i]);
         data.bytes[i] = d_size_memory[i];
     }
     return data;

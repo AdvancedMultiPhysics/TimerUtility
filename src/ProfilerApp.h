@@ -353,7 +353,7 @@ public:
      *   The user should only disable theses checks if they understand the behavior.  
      * @param flag        Do we want to ignore timer errors
      */
-    void ignore_timer_errors(bool flag=false) { d_check_timer_error = !flag; }
+    void ignore_timer_errors(bool flag=false) { d_disable_timer_error = !flag; }
 
     /*!
      * \brief  Function to get the timer id
@@ -480,7 +480,7 @@ private:
         store_timer *head[TIMER_HASH_SIZE]; // Store the timers in a hash table
         size_t N_memory_steps;              // The number of steps we have for the memory usage
         size_t N_memory_alloc;              // The size of the arrays allocated for time_memory and size_memory
-        double* time_memory;                // The times at which we know the memory usage
+        size_t* time_memory;                // The times at which we know the memory usage (ns from start)
         size_t* size_memory;                // The memory usage at each time
         // Constructor used to initialize key values
 		thread_info() {
@@ -557,14 +557,14 @@ private:
     // Misc variables
     bool d_store_trace_data;        // Do we want to store trace information
     bool d_store_memory_data;       // Do we want to store memory information
-    bool d_check_timer_error;       // Do we want to store memory information
+    bool d_disable_timer_error;     // Do we want to disable the timer errors for start/stop
     char d_level;                   // Level of timing to use (default is 0, -1 is disabled)
-    TIME_TYPE d_construct_time;     // Store when the constructor was called
-    TIME_TYPE d_frequency;          // Clock frequency (only used for windows)
+    const TIME_TYPE d_construct_time; // Store when the constructor was called
+    const TIME_TYPE d_frequency;    // Clock frequency (only used for windows)
     double d_shift;                 // Offset to add to all trace times when saving (used to synchronize the trace data)
     mutable size_t d_max_trace_remaining; // The number of traces remaining to store for each thread
     mutable size_t d_N_memory_steps; // The number of steps we have for the memory usage
-    mutable double* d_time_memory;  // The times at which we know the memory usage
+    mutable size_t* d_time_memory;  // The times at which we know the memory usage (ns from creation)
     mutable size_t* d_size_memory;  // The memory usage at each time
     mutable volatile int64_t d_bytes; // The current memory used by the profiler
 };
