@@ -22,6 +22,7 @@
     // Windows
     #include <windows.h>
     #include <string>
+    #include <Psapi.h>
 #elif defined(USE_MAC)
     // Mac
     #include <sys/time.h>

@@ -139,17 +139,21 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
     }
     void operator delete(void* data) throw()
     {
-        size_t block_size = get_malloc_size(data);
-        free(data);
-        atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
-        atomic_increment(&MemoryApp::d_calls_delete);
+        if ( data != NULL ) {
+            size_t block_size = get_malloc_size(data);
+            free(data);
+            atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            atomic_increment(&MemoryApp::d_calls_delete);
+        }
     }
     void operator delete[] (void* data) throw()
     {
-        size_t block_size = get_malloc_size(data);
-        free(data);
-        atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
-        atomic_increment(&MemoryApp::d_calls_delete);
+        if ( data != NULL ) {
+            size_t block_size = get_malloc_size(data);
+            free(data);
+            atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            atomic_increment(&MemoryApp::d_calls_delete);
+        }
     }
 #endif
 

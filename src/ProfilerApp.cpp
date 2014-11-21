@@ -51,7 +51,7 @@ extern "C" {
     #define get_diff(start,end,f) \
         static_cast<double>(end.QuadPart-start.QuadPart)/static_cast<double>(f.QuadPart)
     #define get_diff_ns(start,end,f) \
-        0x3B9ACA00*static_cast<int64_t>(end.QuadPart-start.QuadPart))/static_cast<int64_t>(f.QuadPart)
+        (0x3B9ACA00*static_cast<int64_t>(end.QuadPart-start.QuadPart))/static_cast<int64_t>(f.QuadPart)
 #elif defined(USE_LINUX)
     #include <signal.h>
     #include <execinfo.h>
@@ -265,6 +265,8 @@ void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max,
 #else
     #error Unknown OS
 #endif
+
+
 
 
 /******************************************************************
@@ -1383,8 +1385,9 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             }
             // Save the results
             ASSERT(sizeof(unsigned int)==4);
-            fprintf(memoryFile,"<N=%zi,type1=%s,type2=%s,units=%s,rank=%i>\n",
-                data[k].time.size(),"double","uint32",units.c_str(),rank);
+            fprintf(memoryFile,"<N=%li,type1=%s,type2=%s,units=%s,rank=%i>\n",
+                static_cast<long int>(data[k].time.size()),
+                "double","uint32",units.c_str(),rank);  // Visual studio has an issue with type %zi
             size_t N1 = fwrite(time,sizeof(double),d_N_memory_steps,memoryFile);
             size_t N2 = fwrite(size,sizeof(unsigned int),d_N_memory_steps,memoryFile);
             fprintf(memoryFile,"\n");
@@ -1399,6 +1402,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         printp("start = %e, stop = %e, block = %e, thread = %e, trace_id = %e\n",
             total_start_time,total_stop_time,total_block_time,total_thread_time,total_trace_id_time);
     #endif
+
 }
 
 

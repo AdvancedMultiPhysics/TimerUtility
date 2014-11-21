@@ -45,7 +45,7 @@ size_t getStackSize1()
 }
 size_t getStackSize2()
 {
-    int tmp[500000];
+    int tmp[50000];
     memset(tmp,0,1000*sizeof(double));
     MemoryApp::MemoryStats stats = MemoryApp::getMemoryStats();
     if ( tmp[999] !=0 ) std::cout << std::endl;

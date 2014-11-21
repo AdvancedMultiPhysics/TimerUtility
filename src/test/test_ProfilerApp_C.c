@@ -32,7 +32,6 @@ typedef int bool;
 
 int run_tests( bool enable_trace, const char* save_name ) 
 {
-
     const int N_it = 100;
     const int N_timers = 1000;
     char names[1000][16];
@@ -40,6 +39,7 @@ int run_tests( bool enable_trace, const char* save_name )
     int i, j;
     double *tmp;
     TIME_TYPE time1;
+    printf("Sizeof size_t* = %i\n",(int)sizeof(size_t*));
 
     PROFILE_ENABLE(0);
     PROFILE_SYNCHRONIZE();
