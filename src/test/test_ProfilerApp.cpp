@@ -228,6 +228,20 @@ int run_tests( bool enable_trace, std::string save_name )
             if ( memory1.time[i]!=memory2.time[i] || memory1.bytes[i]!=memory2.bytes[i] )
                 error = true;
         }
+        // Test packing/unpacking a buffer
+        MemoryResults memory3;
+        size_t bytes = memory1.size();
+        char *data = new char[bytes];
+        memory1.pack(data);
+        memory3.unpack(data);
+        if ( memory1.time.size()==memory3.time.size() ) {
+            for (size_t i=0; i<memory1.time.size(); i++) {
+                if ( memory1.time[i]!=memory3.time[i] || memory1.bytes[i]!=memory3.bytes[i] )
+                    error = true;
+            }
+        } else {
+            error = true;
+        }
     }
     if ( error ) {
         std::cout << "Memory trace does not match\n";
