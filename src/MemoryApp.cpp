@@ -162,6 +162,16 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
 /***********************************************************************
 * Class functions                                                      *
 ***********************************************************************/
+static size_t subtract_address_abs( const void* x1, const void* x2 ) 
+{
+    // Return the absolute difference between two addresses abs(x-y)
+    size_t y1 = reinterpret_cast<size_t>(x1);
+    size_t y2 = reinterpret_cast<size_t>(x2);
+    int64_t v1 = static_cast<int64_t>(y1);
+    int64_t v2 = static_cast<int64_t>(y2);
+    int64_t diff = v1>v2 ? (v1-v2):(v2-v1);
+    return static_cast<size_t>(diff);
+}
 MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
 {
     MemoryStats stats;
@@ -180,17 +190,11 @@ MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
         pthread_getattr_np(pthread_self(), &attr);
         pthread_attr_getstack( &attr, &stackaddr, &stacksize );
         pthread_attr_destroy( &attr );
-        int64_t tmp1 = reinterpret_cast<int64_t>(stackaddr)
-	  -reinterpret_cast<int64_t>(&stackaddr);
-        if(tmp1<0) { tmp1 = -tmp1; }
-        stats.stack_used = stacksize - static_cast<size_t>(tmp1);
+        stats.stack_used = stacksize - subtract_address_abs(stackaddr,&stackaddr);
         stats.stack_size = stacksize;
     #endif
     #if defined(__GNUC__)
-        int64_t tmp2 = reinterpret_cast<int64_t>(d_base_frame)
-	  - reinterpret_cast<int64_t>(__builtin_frame_address(0));
-	if ( tmp2 < 0 ) { tmp2 = -tmp2; }
-        stats.stack_used = static_cast<size_t>(tmp2);
+        stats.stack_used = subtract_address_abs(d_base_frame,__builtin_frame_address(0));
     #endif
     return stats;
 }

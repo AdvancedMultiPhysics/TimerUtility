@@ -87,10 +87,12 @@ extern "C" {
     #define get_diff_ns(start,end,f) 0x3E8*( \
         0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
                 (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
-    #ifdef __LP64__
-        #define ARCH_SIZE 64
-    #else
-        #define ARCH_SIZE 32
+    #ifndef ARCH_SIZE
+        #ifdef __LP64__
+            #define ARCH_SIZE 64
+        #else
+            #define ARCH_SIZE 32
+        #endif
     #endif
 #else
     #error Unknown OS
