@@ -23,6 +23,7 @@
     #define USE_LINUX
     #include <unistd.h>
     #include <malloc.h>
+    #include <sys/types.h>
 #else
     #error Unknown OS
 #endif
@@ -179,14 +180,17 @@ MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
         pthread_getattr_np(pthread_self(), &attr);
         pthread_attr_getstack( &attr, &stackaddr, &stacksize );
         pthread_attr_destroy( &attr );
-        stats.stack_used = stacksize - 
-            std::abs(reinterpret_cast<int64_t>(stackaddr)
-                    -reinterpret_cast<int64_t>(&stackaddr));
+        int64_t tmp1 = reinterpret_cast<int64_t>(stackaddr)
+	  -reinterpret_cast<int64_t>(&stackaddr);
+        if(tmp1<0) { tmp1 = -tmp1; }
+        stats.stack_used = stacksize - static_cast<size_t>(tmp1);
         stats.stack_size = stacksize;
     #endif
     #if defined(__GNUC__)
-        stats.stack_used = std::abs(reinterpret_cast<int64_t>(d_base_frame)
-            - reinterpret_cast<int64_t>(__builtin_frame_address(0)));
+        int64_t tmp2 = reinterpret_cast<int64_t>(d_base_frame)
+	  - reinterpret_cast<int64_t>(__builtin_frame_address(0));
+	if ( tmp2 < 0 ) { tmp2 = -tmp2; }
+        stats.stack_used = static_cast<size_t>(tmp2);
     #endif
     return stats;
 }
