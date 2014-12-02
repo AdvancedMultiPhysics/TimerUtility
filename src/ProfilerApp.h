@@ -353,7 +353,7 @@ public:
      *   The user should only disable theses checks if they understand the behavior.  
      * @param flag        Do we want to ignore timer errors
      */
-    void ignore_timer_errors(bool flag=false) { d_disable_timer_error = !flag; }
+    void ignore_timer_errors(bool flag=false) { d_disable_timer_error = flag; }
 
     /*!
      * \brief  Function to get the timer id
