@@ -328,7 +328,7 @@ public:
      *  that get called repeatedly and may negitivly impact the performance.
      * @param profile       Do we want to store detailed profiling data
      */
-    void set_store_trace(bool profile=false);
+    void set_store_trace(bool profile);
 
     /*!
      * \brief  Function to change if we are storing memory information
@@ -340,7 +340,7 @@ public:
      *  when memory is allocated and which timers are active.
      * @param memory        Do we want to store detailed profiling data
      */
-    void set_store_memory(bool memory=false);
+    void set_store_memory(bool memory);
 
     //! Return the current timer level
     inline int get_level( ) const { return d_level; }
@@ -353,7 +353,7 @@ public:
      *   The user should only disable theses checks if they understand the behavior.  
      * @param flag        Do we want to ignore timer errors
      */
-    void ignore_timer_errors(bool flag=false) { d_disable_timer_error = flag; }
+    void ignore_timer_errors(bool flag) { d_disable_timer_error = flag; }
 
     /*!
      * \brief  Function to get the timer id

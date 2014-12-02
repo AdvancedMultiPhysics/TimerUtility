@@ -825,7 +825,7 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
     store_timer* timer = get_block(thread_data,message.c_str(),filename,timer_id,-1,line);
     if ( !timer->is_active ) {
         if ( d_disable_timer_error ) {
-            // Stop the timer before starting
+            // Start the timer before starting
             this->start( message, filename, -1, level, timer_id );
             end_time = get_time();  // Use the current time as the new stop
         } else {
