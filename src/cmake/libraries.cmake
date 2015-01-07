@@ -3,6 +3,7 @@ MACRO( CONFIGURE_LINE_COVERAGE )
     IF ( ENABLE_GCOV )
         ADD_DEFINITIONS( -fprofile-arcs -ftest-coverage )
         SET( COVERAGE_LIBS -lgcov -fprofile-arcs )
+        ADD_DEFINITIONS( "-D USE_GCOV" )  
     ENDIF()
 ENDMACRO()
 
@@ -164,6 +165,8 @@ MACRO ( CONFIGURE_SYSTEM )
     IF ( USE_STATIC )
         SET_STATIC_FLAGS()
     ENDIF()
+    # Print some flags
+    MESSAGE( "LDLIBS = ${LDLIBS}" )
 ENDMACRO ()
 
 
@@ -218,7 +221,7 @@ ENDMACRO()
 
 # Macro to configure TimerUtility-specific options
 MACRO( CONFIGURE_TIMER )
-    SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH} ${TIMER_INSTALL_DIR}/lib )
+    SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH} "${TIMER_INSTALL_DIR}/lib" )
     # Set the maximum number of processors for the tests
     IF ( NOT TEST_MAX_PROCS )
         SET( TEST_MAX_PROCS 32 )

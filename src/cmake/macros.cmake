@@ -2,6 +2,17 @@ INCLUDE(CheckCSourceCompiles)
 SET( TEST_FAIL_REGULAR_EXPRESSION "(FAILED)|(leaked context IDs detected)|(handles are still allocated)" )
 
 
+# Check that the PROJ and ${PROJ}_INSTALL_DIR variables are set 
+# These variables are used to generate the ADD_PROJ_TEST macros
+IF ( NOT PROJ )
+    MESSAGE(FATAL_ERROR "PROJ must be set before including macros.cmake")
+ENDIF()
+IF ( NOT ${PROJ}_INSTALL_DIR )
+    MESSAGE(FATAL_ERROR "${PROJ}_INSTALL_DIR must be set before including macros.cmake")
+ENDIF()
+#MESSAGE("Installing project ${PROJ} in ${${PROJ}_INSTALL_DIR}")
+
+
 # Macro to print all variables
 MACRO( PRINT_ALL_VARIABLES )
     GET_CMAKE_PROPERTY(_variableNames VARIABLES)
@@ -11,15 +22,15 @@ MACRO( PRINT_ALL_VARIABLES )
 ENDMACRO()
 
 
-# Add a package to the TIMER library
-MACRO( ADD_TIMER_LIBRARY PACKAGE )
-    #INCLUDE_DIRECTORIES ( ${TIMER_INSTALL_DIR}/include/${PACKAGE} )
+# Add a package to the project's library
+MACRO( ADD_${PROJ}_LIBRARY PACKAGE )
+    #INCLUDE_DIRECTORIES ( ${${PROJ}_INSTALL_DIR}/include/${PACKAGE} )
     ADD_SUBDIRECTORY( ${PACKAGE} )
 ENDMACRO()
 
 
-# Add an TIMER executable
-MACRO( ADD_TIMER_EXECUTABLE PACKAGE )
+# Add a project executable
+MACRO( ADD_${PROJ}_EXECUTABLE PACKAGE )
     ADD_SUBDIRECTORY( ${PACKAGE} )
 ENDMACRO()
 
@@ -80,7 +91,7 @@ MACRO( ADD_PACKAGE_SUBDIRECTORY SUBDIR )
     FIND_FILES_PATH( ${SUBDIR} )
     FILE( GLOB HFILES RELATIVE ${FULLSUBDIR} ${SUBDIR}/*.h ${SUBDIR}/*.hh ${SUBDIR}/*.hpp  ${SUBDIR}/*.I )
     FOREACH( HFILE ${HFILES} )
-        CONFIGURE_FILE( ${FULLSUBDIR}/${HFILE} ${TIMER_INSTALL_DIR}/include/${SUBDIR}/${HFILE} COPYONLY )
+        CONFIGURE_FILE( ${FULLSUBDIR}/${HFILE} ${${PROJ}_INSTALL_DIR}/include/${SUBDIR}/${HFILE} COPYONLY )
         INCLUDE_DIRECTORIES( ${FULLSUBDIR} )
     ENDFOREACH()
     FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${SUBDIR})
@@ -89,14 +100,15 @@ ENDMACRO()
 
 
 # Install a package
-MACRO( INSTALL_TIMER_TARGET PACKAGE )
+MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
     # Find all files in the current directory
     FIND_FILES()
     # Copy the header files to the include path
-    FILE( GLOB HFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/*.h ${CMAKE_CURRENT_SOURCE_DIR}/*.hh ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/*.I )
+    FILE( GLOB HFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/*.h 
+        ${CMAKE_CURRENT_SOURCE_DIR}/*.hh ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/*.I )
     FOREACH( HFILE ${HFILES} )
-        #CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/${HFILE} ${TIMER_INSTALL_DIR}/include/${CURPACKAGE}/${HFILE} COPYONLY )
-        CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/${HFILE} ${TIMER_INSTALL_DIR}/include/${HFILE} COPYONLY )
+        #CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/${HFILE} ${${PROJ}_INSTALL_DIR}/include/${CURPACKAGE}/${HFILE} COPYONLY )
+        CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/${HFILE} ${${PROJ}_INSTALL_DIR}/include/${HFILE} COPYONLY )
     ENDFOREACH()
     # Add the library
     ADD_LIBRARY( ${PACKAGE} ${LIB_TYPE} ${SOURCES} )
@@ -107,8 +119,8 @@ MACRO( INSTALL_TIMER_TARGET PACKAGE )
     ENDIF()
     TARGET_LINK_LIBRARIES( ${PACKAGE} ${COVERAGE_LIBS} ${SYSTEM_LIBS} ${LDLIBS} )
     # Install the package
-    INSTALL( TARGETS ${PACKAGE} DESTINATION ${TIMER_INSTALL_DIR}/lib )
-    INSTALL( FILES ${HFILES} DESTINATION ${TIMER_INSTALL_DIR}/include )
+    INSTALL( TARGETS ${PACKAGE} DESTINATION ${${PROJ}_INSTALL_DIR}/lib )
+    INSTALL( FILES ${HFILES} DESTINATION ${${PROJ}_INSTALL_DIR}/include )
     # Clear the sources
     SET( HEADERS "" )
     SET( CSOURCES "" )
@@ -271,9 +283,9 @@ MACRO( SET_COMPILER_FLAGS )
     SET_COMPILER()
     # Set the default flags for each build type
     IF ( USING_MICROSOFT )
-        SET(CMAKE_C_FLAGS_DEBUG       "-D_DEBUG /DEBUG /Od /EHsc /MDd /Zi" )
+        SET(CMAKE_C_FLAGS_DEBUG       "-D_DEBUG /DEBUG /Od /EHsc /MDd /Zi /Z7" )
         SET(CMAKE_C_FLAGS_RELEASE     "/O2 /EHsc /MD"                      )
-        SET(CMAKE_CXX_FLAGS_DEBUG     "-D_DEBUG /DEBUG /Od /EHsc /MDd /Zi" )
+        SET(CMAKE_CXX_FLAGS_DEBUG     "-D_DEBUG /DEBUG /Od /EHsc /MDd /Zi /Z7" )
         SET(CMAKE_CXX_FLAGS_RELEASE   "/O2 /EHsc /MD"                      )
         SET(CMAKE_Fortran_FLAGS_DEBUG ""                                   )
         SET(CMAKE_Fortran_FLAGS_RELEASE ""                                 )
@@ -343,9 +355,9 @@ ENDMACRO()
 
 
 # Macro to add the dependencies and libraries to an executable
-MACRO( ADD_TIMER_EXE_DEP EXE )
+MACRO( ADD_PROJ_EXE_DEP EXE )
     # Add the package dependencies
-    IF( TIMER_TEST_LIB_EXISTS )
+    IF( ${PROJ}_TEST_LIB_EXISTS )
         ADD_DEPENDENCIES ( ${EXE} ${PACKAGE_TEST_LIB} )
         TARGET_LINK_LIBRARIES ( ${EXE} ${PACKAGE_TEST_LIB} )
     ENDIF()
@@ -353,7 +365,7 @@ MACRO( ADD_TIMER_EXE_DEP EXE )
     ADD_DEPENDENCIES( check ${EXE} )
     ADD_DEPENDENCIES( build-test ${EXE} )
     # Add the libraries
-    TARGET_LINK_LIBRARIES( ${EXE} ${TIMER_LIBS} )
+    TARGET_LINK_LIBRARIES( ${EXE} ${${PROJ}_LIBS} )
     # Add external libraries
     IF ( USE_MPI )
         TARGET_LINK_LIBRARIES( ${EXE} ${MPI_LINK_FLAGS} ${MPI_LIBRARIES} )
@@ -364,7 +376,7 @@ ENDMACRO()
 
 
 # Add a provisional test
-FUNCTION( ADD_TIMER_PROVISIONAL_TEST EXEFILE )
+FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE )
     # Check if we actually want to add the test
     SET( EXCLUDE_TESTS_FROM_ALL 0 )
     # Check if test has already been added
@@ -375,19 +387,21 @@ FUNCTION( ADD_TIMER_PROVISIONAL_TEST EXEFILE )
     ENDIF()
     IF ( NOT tmp )
         # The target has not been added
-        SET( TESTFILE ${EXEFILE} )
+        SET( CXXFILE ${EXEFILE} )
         SET( TESTS_SO_FAR ${TESTS_SO_FAR} ${EXEFILE} )
         IF ( NOT EXCLUDE_TESTS_FROM_ALL )
-            ADD_EXECUTABLE( ${EXEFILE} ${TESTFILE} )
+            ADD_EXECUTABLE( ${EXEFILE} ${CXXFILE} )
         ELSE()
-            ADD_EXECUTABLE( ${EXEFILE} EXCLUDE_FROM_ALL ${TESTFILE} )
+            ADD_EXECUTABLE( ${EXEFILE} EXCLUDE_FROM_ALL ${CXXFILE} )
         ENDIF()
-        ADD_TIMER_EXE_DEP( ${EXEFILE} )
+        ADD_PROJ_EXE_DEP( ${EXEFILE} )
     ELSEIF( ${tmp} STREQUAL "${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE}" )
         # The correct target has already been added
     ELSEIF( ${tmp} STREQUAL "${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE}.exe" )
         # The correct target has already been added
     ELSEIF( ${tmp} STREQUAL "${CMAKE_CURRENT_BINARY_DIR}/$(Configuration)/${EXEFILE}.exe" )
+        # The correct target has already been added
+    ELSEIF( ${tmp} STREQUAL "${CMAKE_CURRENT_BINARY_DIR}/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/${EXEFILE}" )
         # The correct target has already been added
     ELSEIF( ${tmp} STREQUAL "${CMAKE_CURRENT_BINARY_DIR}/$(OutDir)/${EXEFILE}.exe" )
         # The correct target has already been added
@@ -398,6 +412,10 @@ FUNCTION( ADD_TIMER_PROVISIONAL_TEST EXEFILE )
         MESSAGE( FATAL_ERROR "Trying to add 2 different tests with the same name" )
     ENDIF()
 ENDFUNCTION()
+FUNCTION( ADD_${PROJ}_PROVISIONAL_TEST EXEFILE )
+    ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
+ENDFUNCTION()
+
 
 
 # Macro to create the test name
@@ -411,8 +429,8 @@ ENDMACRO()
 
 
 # Add a executable as a test
-FUNCTION( ADD_TIMER_TEST EXEFILE ${ARGN} )
-    ADD_TIMER_PROVISIONAL_TEST ( ${EXEFILE} )
+FUNCTION( ADD_${PROJ}_TEST EXEFILE ${ARGN} )
+    ADD_PROJ_PROVISIONAL_TEST ( ${EXEFILE} )
     CREATE_TEST_NAME( ${EXEFILE} ${ARGN} )
     GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
     STRING(REGEX REPLACE "\\$\\(Configuration\\)" "${CONFIGURATION}" EXE "${EXE}" )
@@ -427,8 +445,8 @@ ENDFUNCTION()
 
 
 # Add a executable as a weekly test
-FUNCTION( ADD_TIMER_WEEKLY_TEST EXEFILE PROCS ${ARGN} )
-    ADD_TIMER_PROVISIONAL_TEST ( ${EXEFILE} )
+FUNCTION( ADD_${PROJ}_WEEKLY_TEST EXEFILE PROCS ${ARGN} )
+    ADD_PROJ_PROVISIONAL_TEST ( ${EXEFILE} )
     GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
     STRING(REGEX REPLACE "\\$\\(Configuration\\)" "${CONFIGURATION}" EXE "${EXE}" )
     IF( ${PROCS} STREQUAL "1" )
@@ -461,18 +479,10 @@ FUNCTION( ADD_TIMER_TEST_PARALLEL EXEFILE PROCS ${ARGN} )
 ENDFUNCTION()
 
 
-# Add a parallel test on 1, 2, and 4 processors
-MACRO( ADD_TIMER_TEST_1_2_4 EXENAME ${ARGN} )
-    ADD_TIMER_TEST ( ${EXENAME} ${ARGN} )
-    ADD_TIMER_TEST_PARALLEL ( ${EXENAME} 2 ${ARGN} )
-    ADD_TIMER_TEST_PARALLEL ( ${EXENAME} 4 ${ARGN} )
-ENDMACRO()
-
-
 # Add a parallel test that may use both MPI and threads
 # This allows us to correctly compute the number of processors used by the test
-MACRO( ADD_TIMER_TEST_THREAD_MPI EXEFILE PROCS THREADS ${ARGN} )
-    ADD_TIMER_PROVISIONAL_TEST( ${EXEFILE} )
+MACRO( ADD_${PROJ}_TEST_THREAD_MPI EXEFILE PROCS THREADS ${ARGN} )
+    ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
     GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
     STRING(REGEX REPLACE "\\$\\(Configuration\\)" "${CONFIGURATION}" EXE "${EXE}" )
     CREATE_TEST_NAME( "${EXEFILE}_${PROCS}procs_${THREADS}threads" ${ARGN} )
@@ -542,7 +552,7 @@ MACRO (ADD_LATEX_DOCS FILE)
     ADD_CUSTOM_COMMAND( 
         TARGET ${LATEX_TARGET}_pdf 
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${LATEX_TARGET}.pdf ${TIMER_INSTALL_DIR}/doc/.
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/${LATEX_TARGET}.pdf ${${PROJ}_INSTALL_DIR}/doc/.
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
     ADD_DEPENDENCIES( latex_docs ${LATEX_TARGET}_pdf )
@@ -565,7 +575,7 @@ MACRO( ADD_MATLAB_MEX MEXFILE )
         SET( MATLAB_LIB "-lmatlab" )
     ENDIF()
     # SET( MEX_FLAGS ${MEX_FLAGS} "-v" )
-    SET( MEX_INCLUDE -I${TIMER_INSTALL_DIR}/include )
+    SET( MEX_INCLUDE -I${${PROJ}_INSTALL_DIR}/include )
     IF ( USING_MICROSOFT )
         #SET(MEX_FLAGS ${MEX_FLAGS} "LINKFLAGS=\"/NODEFAULTLIB:MSVSRT.lib\"" )
         SET( MEX "\"${MATLAB_DIRECTORY}/sys/perl/win32/bin/perl.exe\" \"${MATLAB_DIRECTORY}/bin/mex.pl\"" )
@@ -678,7 +688,7 @@ ENDFUNCTION()
 
 # add custom target distclean
 # cleans and removes cmake generated files etc.
-MACRO( ADD_DISTCLEAN )
+MACRO( ADD_DISTCLEAN ${ARGN} )
     SET(DISTCLEANED
         cmake.depends
         cmake.check_depends
@@ -699,10 +709,9 @@ MACRO( ADD_DISTCLEAN )
         latex_docs
         lib
         test
-        libtimerutility.*
-        utilities
         matlab
         mex
+        ${ARGN}
     )
     ADD_CUSTOM_TARGET (distclean @echo cleaning for source distribution)
     IF (UNIX)
@@ -719,7 +728,6 @@ MACRO( ADD_DISTCLEAN )
             *.vcxproj*
             ipch
             x64
-            timerutility.*
             Debug
         )
         SET( DISTCLEAN_FILE "${CMAKE_CURRENT_BINARY_DIR}/distclean.bat" )

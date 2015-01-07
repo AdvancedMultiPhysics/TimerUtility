@@ -20,7 +20,19 @@ ENDIF ()
 PROJECT( TIMER )
 
 
+# Set some common paths
+SET( TIMER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
+SET( TIMER_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR} )
+IF( PREFIX )
+    SET( TIMER_INSTALL_DIR ${PREFIX} )
+ELSEIF( NOT TIMER_INSTALL_DIR )
+    SET( TIMER_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR} )
+ENDIF()
+SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
+
+
 # Check if we are only compiling docs
+SET( PROJ TIMER )
 INCLUDE( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake )
 INCLUDE( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake )
 CHECK_ENABLE_FLAG( ONLY_BUILD_DOCS 0 )
@@ -36,23 +48,12 @@ ENABLE_TESTING()
 INCLUDE( CTest )
 
 
-# Set some common paths
-SET( TIMER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
-SET( TIMER_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR} )
-IF( PREFIX )
-    SET( TIMER_INSTALL_DIR ${PREFIX} )
-ELSEIF( NOT TIMER_INSTALL_DIR )
-    SET( TIMER_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR} )
-ENDIF()
-SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
-
-
 # Create custom targets for build-test, check, and distclean
 ADD_CUSTOM_TARGET( doc )
 ADD_CUSTOM_TARGET( latex_docs )
 ADD_CUSTOM_TARGET( build-test )
 ADD_CUSTOM_TARGET( check COMMAND  make test  )
-ADD_DISTCLEAN()
+ADD_DISTCLEAN( libtimerutility.* utilities )
 
 
 # Check the compile mode and compile flags
@@ -94,6 +95,7 @@ ENDIF()
 EXECUTE_PROCESS(COMMAND hg id -i "${TIMER_SOURCE_DIR}/.." OUTPUT_VARIABLE TIMER_VERSION)
 STRING(REGEX REPLACE "(\r?\n)+$" "" TIMER_VERSION "${TIMER_VERSION}")
 FILE(WRITE  ${TIMER_INSTALL_DIR}/include/TimerUtilityVersion.h "#define TIMER_VERSION \"${TIMER_VERSION}\"\n" )
+MESSAGE("ProfilerApp Version = ${TIMER_VERSION}")
 
 
 # Configure external packages
@@ -111,6 +113,14 @@ ENDIF()
 
 # Configure internal libraries (order matters)
 SET( TIMER_LIBS  timerutility )
+
+
+# Macro to create 1,2,4 processor tests
+MACRO( ADD_TIMER_TEST_1_2_4 EXENAME ${ARGN} )
+    ADD_TIMER_TEST( ${EXENAME} ${ARGN} )
+    ADD_TIMER_TEST_PARALLEL( ${EXENAME} 2 ${ARGN} )
+    ADD_TIMER_TEST_PARALLEL( ${EXENAME} 4 ${ARGN} )
+ENDMACRO()
 
 
 # Add the src directories

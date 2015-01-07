@@ -6,12 +6,14 @@ rd /s/q CMakeCache.txt
 
 
 cmake                               ^
-    -G "NMake Makefiles"            ^
+    -G "Visual Studio 12 Win64"     ^
     -D CMAKE_BUILD_TYPE=Debug       ^
+    -D USE_MPI=1                    ^
     -D USE_MATLAB=0                 ^
         -D MATLAB_DIRECTORY:PATH="C:\Program Files\MATLAB\R2013a" ^
         -D USE_MATLAB_LAPACK=0      ^
     ..\..\src
 
 
+REM  "NMake Makefiles"   "Visual Studio 12 Win64" 
 
