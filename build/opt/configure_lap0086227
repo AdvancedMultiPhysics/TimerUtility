@@ -14,7 +14,7 @@ cmake                                                   \
         -D MPI_INCLUDE=/packages/mpich-3.1/opt/include  \
         -D MPI_LINK_FLAGS="-L/packages/mpich-3.1/opt/lib;-Wl,-rpath,/packages/mpich-3.1/opt/lib" \
         -D MPI_LIBRARIES="-lmpichcxx;-lmpich;-lopa;-lmpl;-lrt;-lpthread" \
-    -D USE_MATLAB=0                                     \
+    -D USE_MATLAB=1                                     \
         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
     ../../src/
 
