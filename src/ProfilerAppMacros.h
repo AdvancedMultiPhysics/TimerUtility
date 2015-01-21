@@ -98,15 +98,15 @@
     PROFILE_SCOPED_LEVEL(OBJ,NAME,__FILE__,__LINE__, GET_LEVEL(_0,##__VA_ARGS__,0))
 
 
-/*! \def PROFILE_SYNCRONIZE()
- *  \brief Syncronize the time across multiple processors
- *  \details This will syncronize time zero across all processors.
+/*! \def PROFILE_SYNCHRONIZE()
+ *  \brief Synchronize the time across multiple processors
+ *  \details This will synchronize time zero across all processors.
  *      In a MPI program, the different processes may start a slightly
  *      different times.  Since we often want to examine the timers
- *      on different processors we need to syncronize time zero so it is 
+ *      on different processors we need to synchronize time zero so it is 
  *      consistent.  
  *      Note:  This program should be called once after MPI has been initialized.
- *        it does not need to be called in a serial program and there is no benifit
+ *        it does not need to be called in a serial program and there is no benefit
  *        to multiple calls.
  *      Note: this is blocking call.
  */
