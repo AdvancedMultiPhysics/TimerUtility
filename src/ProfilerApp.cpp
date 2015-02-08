@@ -46,8 +46,8 @@ extern "C" {
     #include <stdio.h>   
     #include <tchar.h>
     #include <Psapi.h>
-    static inline TIME_TYPE get_frequency() { TIME_TYPE f; QueryPerformanceFrequency(&f); return f; }
-    static inline TIME_TYPE get_time() { TIME_TYPE t; QueryPerformanceFrequency(&t); return t; }
+    #define get_frequency( f ) QueryPerformanceFrequency(&f)
+    #define get_time( t ) QueryPerformanceCounter(&t)
     #define get_diff(start,end,f) \
         static_cast<double>(end.QuadPart-start.QuadPart)/static_cast<double>(f.QuadPart)
     #define get_diff_ns(start,end,f) \
@@ -57,8 +57,8 @@ extern "C" {
     #include <execinfo.h>
     #include <dlfcn.h>
     #include <malloc.h>
-    static TIME_TYPE get_frequency() { return timeval(); }
-    static inline TIME_TYPE get_time() { TIME_TYPE t; gettimeofday(&t,NULL); return t; }
+    #define get_frequency( f ) do { f.tv_sec=0; f.tv_usec=0 } while(0)
+    #define get_time( t ) gettimeofday(&t,NULL)
     #define get_diff(start,end,f) 1e-6*static_cast<double>( \
         0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
                 (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
@@ -79,8 +79,8 @@ extern "C" {
     #include <sys/types.h>
     #include <sys/sysctl.h>
     #include <unistd.h>
-    static TIME_TYPE get_frequency() { return timeval(); }
-    static inline TIME_TYPE get_time() { TIME_TYPE t; gettimeofday(&t,NULL); return t; }
+    #define get_frequency( f ) do { f.tv_sec=0; f.tv_usec=0 } while(0)
+    #define get_time( t ) gettimeofday(&t,NULL)
     #define get_diff(start,end,f) 1e-6*static_cast<double>( \
         0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
                 (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
@@ -672,10 +672,10 @@ void MemoryResults::unpack( const void* data_in )
 /***********************************************************************
 * Consructor                                                           *
 ***********************************************************************/
-ProfilerApp::ProfilerApp(): 
-    d_construct_time(get_time()),
-    d_frequency(get_frequency())
+ProfilerApp::ProfilerApp()
 {
+    get_time(d_construct_time);
+    get_time(d_frequency);
     if ( 8*sizeof(size_t) != ARCH_SIZE )
         ERROR_MSG("Incorrectly identified architecture?\n");
     if ( sizeof(id_struct)!=8 )
@@ -737,7 +737,8 @@ void ProfilerApp::synchronize()
 {
     GET_LOCK(&lock);
 	comm_barrier();
-    TIME_TYPE sync_time_local = get_time();
+    TIME_TYPE sync_time_local;
+    get_time(sync_time_local);
     double current_time = get_diff(d_construct_time,sync_time_local,d_frequency);
     double max_current_time = comm_max_reduce(current_time);
     d_shift = max_current_time - current_time;
@@ -790,7 +791,7 @@ void ProfilerApp::start( const std::string& message, const char* filename,
     timer->is_active = true;
     timer->N_calls++;
     set_trace_bit(timer->trace_index,TRACE_SIZE,thread_data->active);
-    timer->start_time = get_time();
+    get_time(timer->start_time);
     // Record the time of the memory usage
     if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
         thread_data->time_memory[thread_data->N_memory_steps] = 
@@ -818,7 +819,8 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
         TIME_TYPE start_time_loca = get_time();
     #endif
     // Use the current time (minimize the effects of the overhead of the timer)
-    TIME_TYPE end_time = get_time();
+    TIME_TYPE end_time;
+    get_time(end_time);
     // Get the thread data
     thread_info* thread_data = get_thread_data();
     // Get the appropriate timer
@@ -827,7 +829,7 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
         if ( d_disable_timer_error ) {
             // Start the timer before starting
             this->start( message, filename, -1, level, timer_id );
-            end_time = get_time();  // Use the current time as the new stop
+            get_time(end_time);  // Use the current time as the new stop
         } else {
             std::stringstream msg;
             msg << "Timer is not active, did you forget to call start? (" << 
@@ -963,7 +965,8 @@ void ProfilerApp::disable( )
 std::vector<TimerResults> ProfilerApp::getTimerResults() const
 {
     // Get the current time in case we need to "stop" and timers
-    TIME_TYPE end_time = get_time();
+    TIME_TYPE end_time;
+    get_time(end_time);
     int rank = comm_rank();
     // Get the mutex for thread safety (we don't want the list changing while we are saving the data)
     // Note: Because we don't block for most operations in the timer this is not full proof but should help

@@ -197,6 +197,22 @@ int run_tests( bool enable_trace, std::string save_name )
     }
     quicksort(id2.size(),&id2[0],&data2[0]);
 
+    // Find and check MAIN
+    const TraceResults *trace = NULL;
+    for (size_t i=0; i<data1.size(); i++) {
+        if ( data1[i].message=="MAIN" )
+            trace = &data1[i].trace[0];
+    }
+    if ( trace != NULL ) {
+        if ( trace->tot == 0 ) {
+            std::cout << "Error with trace results\n";
+            N_errors++;
+        }
+    } else {
+        std::cout << "MAIN was not found in trace results\n";
+        N_errors++;
+    }
+
     // Compare the sets of timers
     bool error = false;
     if ( data1.size()!=data2.size() || bytes1[0]==0 || bytes1[0]!=bytes2[0] || bytes1[1]!=bytes2[1] ) {

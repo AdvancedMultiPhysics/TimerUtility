@@ -559,8 +559,8 @@ private:
     bool d_store_memory_data;       // Do we want to store memory information
     bool d_disable_timer_error;     // Do we want to disable the timer errors for start/stop
     char d_level;                   // Level of timing to use (default is 0, -1 is disabled)
-    const TIME_TYPE d_construct_time; // Store when the constructor was called
-    const TIME_TYPE d_frequency;    // Clock frequency (only used for windows)
+    TIME_TYPE d_construct_time;     // Store when the constructor was called
+    TIME_TYPE d_frequency;          // Clock frequency (only used for windows)
     double d_shift;                 // Offset to add to all trace times when saving (used to synchronize the trace data)
     mutable size_t d_max_trace_remaining; // The number of traces remaining to store for each thread
     mutable size_t d_N_memory_steps; // The number of steps we have for the memory usage
