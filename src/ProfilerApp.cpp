@@ -132,6 +132,24 @@ extern "C" {
 }while(0)
 
 
+/******************************************************************
+* Special Notes                                                   *
+* Note 1: When using std::string in parallel, prior to C++11      *
+*    std::string had a reference count.  This makes the copy      *
+*    constructor and assignment operator unsafe when copying from *
+*    a common object.  For example the following pseudo code is   *
+*    not thread-safe because the reference counter in 'a' is      *
+*    modified and not thread safe for all enviornments:           *
+*       const std::string a;                                      *
+*       for all threads                                           *
+*           std::string b = a;      // Not thread safe            *
+******************************************************************/
+
+
+/******************************************************************
+* Define some helper functions                                    *
+******************************************************************/
+
 // Functions to wrap new/delete to track the bytes used
 void atomic_add( int64_t volatile *x, int64_t y ) 
 {
@@ -1965,16 +1983,8 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
     // Get the global timer info and create if necessary
     store_timer_data_info* global_info = timer->timer_data;
     if ( global_info == NULL ) {
-        global_info = get_timer_data( id );
+        global_info = get_timer_data( id, message, filename, start, stop );
         timer->timer_data = global_info;
-        if ( global_info->start_line==-2 ) {
-            const char* filename2 = strip_path(filename);
-            global_info->start_line = start;
-            global_info->stop_line = stop;
-            global_info->message = std::string(message);
-            global_info->filename = std::string(filename2);
-            global_info->path = std::string(filename,0,filename2-filename);
-        }
     }
     // Check the status of the timer
     int global_start = global_info->start_line;
@@ -2018,25 +2028,34 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
 /***********************************************************************
 * Function to return a pointer to the global timer info and create it  *
 * if necessary.                                                        *
+* Note: if we are creating the timer we need to intialize the          *
+*    the std::strings since the assignment operator and the destructor *
+*    may not be thread safe (see Note 1).                              *
 ***********************************************************************/
-ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data( size_t id )
+ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data( 
+    size_t id, const char* message, const char* filename, int start, int stop )
 {
     size_t key = GET_TIMER_HASH( id );    // Get the hash index
     if ( timer_table[key]==NULL ) {
         // The global timer does not exist, create it (requires blocking)
-        // Acquire the lock
+        // Acquire the lock (neccessary for modifying the timer_table)
         bool error = GET_LOCK(&lock);
         if ( error )
             return NULL;
         // Check if the entry is still NULL
         if ( timer_table[key]==NULL ) {
             // Create a new entry
+            // Note: we must initialize the std::string within a lock for thread safety
             store_timer_data_info *info_tmp = new store_timer_data_info;
             atomic_add(&d_bytes,sizeof(store_timer_data_info));
+            const char* filename2 = strip_path(filename);
             info_tmp->id = id;
-            info_tmp->start_line = -2;
-            info_tmp->stop_line = -1;
+            info_tmp->start_line = start;
+            info_tmp->stop_line = stop;
             info_tmp->next = NULL;
+            info_tmp->message = std::string(message);
+            info_tmp->filename = std::string(filename2);
+            info_tmp->path = std::string(filename,0,filename2-filename);
             timer_table[key] = info_tmp;
             N_timers++;
         }
@@ -2048,18 +2067,23 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data( size_t id )
         // Check if there is another entry to check (and create one if necessary)
         if ( info->next==NULL ) {
             // Acquire the lock
+            // Acquire the lock (neccessary for modifying the timer_table)
             bool error = GET_LOCK(&lock);
             if ( error )
                 return NULL;
             // Check if another thread created an entry while we were waiting for the lock
             if ( info->next==NULL ) {
                 // Create a new entry
+                // Note: we must initialize the std::string within a lock for thread safety
                 store_timer_data_info *info_tmp = new store_timer_data_info;
-                atomic_add(&d_bytes,sizeof(store_timer_data_info));
+                const char* filename2 = strip_path(filename);
                 info_tmp->id = id;
-                info_tmp->start_line = -2;
-                info_tmp->stop_line = -1;
+                info_tmp->start_line = start;
+                info_tmp->stop_line = stop;
                 info_tmp->next = NULL;
+                info_tmp->message = std::string(message);
+                info_tmp->filename = std::string(filename2);
+                info_tmp->path = std::string(filename,0,filename2-filename);
                 info->next = info_tmp;
                 N_timers++;
             }

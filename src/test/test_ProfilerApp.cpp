@@ -258,6 +258,7 @@ int run_tests( bool enable_trace, std::string save_name )
         } else {
             error = true;
         }
+        delete [] data;
     }
     if ( error ) {
         std::cout << "Memory trace does not match\n";

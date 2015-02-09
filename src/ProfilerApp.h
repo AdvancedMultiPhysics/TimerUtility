@@ -515,7 +515,9 @@ private:
     thread_info* get_thread_data( );
 
     // Function to return a pointer to the global timer info (or create it if necessary)
-    store_timer_data_info* get_timer_data( size_t id );
+    // Note: this function may block for thread safety
+    store_timer_data_info* get_timer_data( size_t id, 
+        const char* message, const char* filename, int start, int stop );
 
     // Function to return the appropriate timer block
     inline store_timer* get_block( thread_info *thread_data, const char* message, 
