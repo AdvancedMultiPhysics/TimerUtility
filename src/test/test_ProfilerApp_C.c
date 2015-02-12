@@ -108,9 +108,11 @@ int run_tests( bool enable_trace, const char* save_name )
 }
 
 
-int main(int argc, char* argv[])
+int main( int argc, char *argv[] )
 {
-    
+    NULL_USE(argc);
+    NULL_USE(argv);
+
     // Run the tests
     int N_errors=0;
     N_errors += run_tests( false, "test_ProfilerApp_C" );

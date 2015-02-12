@@ -1644,7 +1644,7 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
                 trace.rank = atoi(field);
             else
                 trace.rank = rank;
-            ASSERT(trace.rank>=0&&static_cast<int>(trace.rank)<N_procs);
+            ASSERT(static_cast<int>(trace.rank)<N_procs);
             // Load N
             get_field(line,"N=",field);
             ASSERT(field[0]!=0);
