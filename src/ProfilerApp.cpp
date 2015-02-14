@@ -149,6 +149,11 @@ extern "C" {
 /******************************************************************
 * Define some helper functions                                    *
 ******************************************************************/
+template<class TYPE>
+inline TYPE* getPtr( std::vector<TYPE>& x ) { return x.empty() ? NULL:&x[0]; }
+template<class TYPE>
+inline const TYPE* getPtr( const std::vector<TYPE>& x ) { return x.empty() ? NULL:&x[0]; }
+
 
 // Functions to wrap new/delete to track the bytes used
 void atomic_add( int64_t volatile *x, int64_t y ) 
@@ -1203,8 +1208,8 @@ MemoryResults ProfilerApp::getMemoryResults() const
         size_time.push_back(d_size_memory);
     }
     size_t N_memory_steps_old = d_N_memory_steps;
-    mergeArrays<size_t,size_t>( N_time.size(), &N_time[0], &data_time[0], &size_time[0],
-        &d_N_memory_steps, &d_time_memory, &d_size_memory );
+    mergeArrays<size_t,size_t>( N_time.size(), getPtr(N_time), getPtr(data_time), 
+        getPtr(size_time), &d_N_memory_steps, &d_time_memory, &d_size_memory );
     for (size_t i=0; i<data_time.size(); i++) {
         delete [] data_time[i];
         delete [] size_time[i];

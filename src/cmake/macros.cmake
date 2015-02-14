@@ -22,6 +22,24 @@ MACRO( PRINT_ALL_VARIABLES )
 ENDMACRO()
 
 
+# Macro to convert a m4 file
+# This command converts a file of the format "global_path/file.m4"
+# and convertes it to file.f.  It also requires the path.  
+MACRO (CONVERT_M4_FORTRAN IN LOCAL_PATH OUT_PATH )
+    STRING(REGEX REPLACE ${LOCAL_PATH} "" OUT ${IN} )
+    STRING(REGEX REPLACE "/" "" OUT ${OUT} )
+    STRING(REGEX REPLACE ".m4" ".f" OUT ${CMAKE_CURRENT_BINARY_DIR}/${OUT_PATH}/${OUT} )
+    CONFIGURE_FILE ( ${IN} ${IN} COPYONLY )
+    add_custom_command(
+        OUTPUT ${OUT}
+        COMMAND m4 -I${LOCAL_PATH} -I${SAMRAI_FORTDIR} ${M4DIRS} ${IN} > ${OUT}
+        DEPENDS ${IN}
+    )
+    set_source_files_properties(${OUT} PROPERTIES GENERATED true)
+    SET( SOURCES ${SOURCES} "${OUT}" )
+ENDMACRO ()
+
+
 # Add a package to the project's library
 MACRO( ADD_${PROJ}_LIBRARY PACKAGE )
     #INCLUDE_DIRECTORIES ( ${${PROJ}_INSTALL_DIR}/include/${PACKAGE} )
@@ -30,8 +48,9 @@ ENDMACRO()
 
 
 # Add a project executable
-MACRO( ADD_${PROJ}_EXECUTABLE PACKAGE )
-    ADD_SUBDIRECTORY( ${PACKAGE} )
+MACRO( ADD_${PROJ}_EXECUTABLE EXEFILE )
+    ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
+    INSTALL( TARGETS ${EXEFILE} DESTINATION ${${PROJ}_INSTALL_DIR}/bin )
 ENDMACRO()
 
 
@@ -58,11 +77,22 @@ MACRO (FIND_FILES)
     # Find the C++ sources
     SET( T_CXXSOURCES "" )
     FILE( GLOB T_CXXSOURCES "*.cc" "*.cpp" "*.cxx" "*.C" )
+    # Find the Fortran sources
+    SET( T_FSOURCES "" )
+    FILE( GLOB T_FSOURCES "*.f" "*.f90" )
+    # Find the m4 fortran source (and convert)
+    SET( T_M4FSOURCES "" )
+    FILE( GLOB T_M4FSOURCES "*.m4" )
+    FOREACH( m4file ${T_M4FSOURCES} )
+        CONVERT_M4_FORTRAN( ${m4file} ${CMAKE_CURRENT_SOURCE_DIR} "" )
+    ENDFOREACH ()
     # Add all found files to the current lists
     SET( HEADERS ${HEADERS} ${T_HEADERS} )
     SET( CXXSOURCES ${CXXSOURCES} ${T_CXXSOURCES} )
     SET( CSOURCES ${CSOURCES} ${T_CSOURCES} )
-    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} )
+    SET( FSOURCES ${FSOURCES} ${T_FSOURCES} )
+    SET( M4FSOURCES ${M4FSOURCES} ${T_M4FSOURCES} )
+    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_M4FSOURCES} )
 ENDMACRO()
 
 
@@ -77,11 +107,21 @@ MACRO (FIND_FILES_PATH IN_PATH)
     # Find the C++ sources
     SET( T_CXXSOURCES "" )
     FILE( GLOB T_CXXSOURCES "${IN_PATH}/*.cc" "${IN_PATH}/*.cpp" "${IN_PATH}/*.cxx" "${IN_PATH}/*.C" )
+    # Find the Fortran sources
+    SET( T_FSOURCES "" )
+    FILE( GLOB T_FSOURCES "${IN_PATH}/*.f" "${IN_PATH}/*.f90" )
+    # Find the m4 fortran source (and convert)
+    SET( T_M4FSOURCES "" )
+    FILE( GLOB T_M4FSOURCES "${IN_PATH}/*.m4" )
+    FOREACH (m4file ${T_M4FSOURCES})
+        CONVERT_M4_FORTRAN( ${m4file} ${CMAKE_CURRENT_SOURCE_DIR}/${IN_PATH} ${IN_PATH} )
+    ENDFOREACH ()
     # Add all found files to the current lists
     SET( HEADERS ${HEADERS} ${T_HEADERS} )
     SET( CXXSOURCES ${CXXSOURCES} ${T_CXXSOURCES} )
     SET( CSOURCES ${CSOURCES} ${T_CSOURCES} )
-    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} )
+    SET( FSOURCES ${FSOURCES} ${T_FSOURCES} )
+    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} )
 ENDMACRO()
 
 
@@ -112,8 +152,12 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
     ENDFOREACH()
     # Add the library
     ADD_LIBRARY( ${PACKAGE} ${LIB_TYPE} ${SOURCES} )
+    IF ( TARGET write_repo_version )
+        ADD_DEPENDENCIES( ${PACKAGE} write_repo_version )
+    ENDIF()
     SET( TEST_DEP_LIST ${PACKAGE} ${TEST_DEP_LIST} )
     TARGET_LINK_LIBRARIES( ${PACKAGE} ${COVERAGE_LIBS} ${SYSTEM_LIBS} ${LDLIBS} )
+    TARGET_LINK_LIBRARIES( ${PACKAGE} ${BLAS_LAPACK_LIBS} )
     IF ( USE_MPI )
         TARGET_LINK_LIBRARIES( ${PACKAGE} ${MPI_LIBRARIES} )
     ENDIF()
@@ -141,8 +185,8 @@ MACRO( VERIFY_PATH PATH_NAME )
     IF ("${PATH_NAME}" STREQUAL "")
         MESSAGE ( FATAL_ERROR "Path is not set: ${PATH_NAME}" )
     ENDIF()
-    IF ( NOT EXISTS ${PATH_NAME} )
-        MESSAGE ( FATAL_ERROR "Path does not exist: ${PATH_NAME}" )
+    IF ( NOT EXISTS "${PATH_NAME}" )
+        MESSAGE( FATAL_ERROR "Path does not exist: ${PATH_NAME}" )
     ENDIF()
 ENDMACRO()
 
@@ -202,7 +246,6 @@ ENDMACRO()
 MACRO ( SET_WARNINGS )
   IF ( USING_GCC )
     # Add gcc specific compiler options
-    #    -Wno-reorder:  warning: "" will be initialized after "" when initialized here
     SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra") 
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
   ELSEIF ( USING_MICROSOFT )
@@ -297,10 +340,10 @@ MACRO( SET_COMPILER_FLAGS )
         SET(CMAKE_Fortran_FLAGS_DEBUG "-g -O0"          )
         SET(CMAKE_Fortran_FLAGS_RELEASE "-O2"           )
     ENDIF()
-    #IF ( NOT DISABLE_GXX_DEBUG )
-    #    SET(CMAKE_C_FLAGS_DEBUG   " ${CMAKE_C_FLAGS_DEBUG}   -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
-    #    SET(CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
-    #ENDIF ()
+    IF ( NOT DISABLE_GXX_DEBUG )
+        SET(CMAKE_C_FLAGS_DEBUG   " ${CMAKE_C_FLAGS_DEBUG}   -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
+        SET(CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
+    ENDIF ()
     # Set the compiler flags to use
     IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL "DEBUG")
         SET(CMAKE_C_FLAGS       ${CMAKE_C_FLAGS_DEBUG}       )
@@ -327,21 +370,34 @@ ENDMACRO()
 
 
 # Macro to copy a data file
-MACRO( COPY_TEST_DATA_FILE ${ARGN} )
+FUNCTION( COPY_TEST_DATA_FILE ${ARGN} )
     FOREACH( FILENAME ${ARGN} )
-        SET( FILE_TO_COPY  ${CMAKE_CURRENT_SOURCE_DIR}/data/${FILENAME} )
-        SET( DESTINATION_NAME ${CMAKE_CURRENT_BINARY_DIR}/${FILENAME} )
-        IF ( EXISTS ${FILE_TO_COPY} )
-            COPY_DATA_FILE( ${FILE_TO_COPY} ${DESTINATION_NAME} )
+        # Check the local directory
+        FILE( GLOB FILEPATH "${CMAKE_CURRENT_SOURCE_DIR}/${FILENAME}" )
+        # Check the local data directory
+        IF ( NOT FILEPATH )
+            FILE( GLOB FILEPATH "${CMAKE_CURRENT_SOURCE_DIR}/data/${FILENAME}" )
+        ENDIF()
+        # Check DATA_DIRECTORY
+        IF ( NOT FILEPATH AND DATA_DIRECTORY )
+            FILE ( GLOB_RECURSE FILEPATH "${DATA_DIRECTORY}/${FILENAME}" )
+        ENDIF()
+        # Check RATES_DIRECTORY
+        IF ( NOT FILEPATH )
+            FILE( GLOB_RECURSE FILEPATH "${RATES_DIRECTORY}/${FILENAME}" )
+        ENDIF()
+        IF ( NOT FILEPATH )
+            MESSAGE ( WARNING "Cannot find file: ${FILENAME}" )
         ELSE()
-            MESSAGE ( WARNING "Cannot find file: " ${FILE_TO_COPY} )
+            SET( DESTINATION_NAME "${CMAKE_CURRENT_BINARY_DIR}/${FILENAME}" )
+            COPY_DATA_FILE( "${FILEPATH}" "${DESTINATION_NAME}" )
         ENDIF()
     ENDFOREACH()
-ENDMACRO()
+ENDFUNCTION()
 
 
 # Macro to copy a data file
-MACRO ( COPY_EXAMPLE_DATA_FILE FILENAME )
+FUNCTION( COPY_EXAMPLE_DATA_FILE FILENAME )
     SET( FILE_TO_COPY  ${CMAKE_CURRENT_SOURCE_DIR}/data/${FILENAME} )
     SET( DESTINATION1 ${CMAKE_CURRENT_BINARY_DIR}/${FILENAME} )
     SET( DESTINATION2 ${EXAMPLE_INSTALL_DIR}/${FILENAME} )
@@ -351,7 +407,7 @@ MACRO ( COPY_EXAMPLE_DATA_FILE FILENAME )
     ELSE()
         MESSAGE( WARNING "Cannot find file: " ${FILE_TO_COPY} )
     ENDIF()
-ENDMACRO()
+ENDFUNCTION()
 
 
 # Macro to add the dependencies and libraries to an executable
@@ -364,10 +420,13 @@ MACRO( ADD_PROJ_EXE_DEP EXE )
     # Add the executable to the dependencies of check and build-test
     ADD_DEPENDENCIES( check ${EXE} )
     ADD_DEPENDENCIES( build-test ${EXE} )
-    # Add the libraries
-    TARGET_LINK_LIBRARIES( ${EXE} ${${PROJ}_LIBS} )
+    # Add the project libraries
+    TARGET_LINK_LIBRARIES( ${EXE} ${${PROJ}_LIBS} ${${PROJ}_LIBS} )
+    TARGET_LINK_LIBRARIES( ${EXE} ${${PROJECT_NAME}_LIBRARIES} )
     # Add external libraries
-    IF ( USE_MPI )
+    SET_TARGET_PROPERTIES( ${EXE} PROPERTIES LINK_FLAGS "${LDFLAGS}" )
+    TARGET_LINK_LIBRARIES( ${EXE} ${EXTERNAL_LIBS} )
+    IF ( USE_MPI OR USE_EXT_MPI OR HAVE_MPI )
         TARGET_LINK_LIBRARIES( ${EXE} ${MPI_LINK_FLAGS} ${MPI_LIBRARIES} )
     ENDIF()
     TARGET_LINK_LIBRARIES( ${EXE} ${COVERAGE_LIBS} ${LDLIBS} )
@@ -466,8 +525,8 @@ ENDFUNCTION()
 
 
 # Add a executable as a parallel test
-FUNCTION( ADD_TIMER_TEST_PARALLEL EXEFILE PROCS ${ARGN} )
-    ADD_TIMER_PROVISIONAL_TEST ( ${EXEFILE} )
+FUNCTION( ADD_${PROJ}_TEST_PARALLEL EXEFILE PROCS ${ARGN} )
+    ADD_PROJ_PROVISIONAL_TEST ( ${EXEFILE} )
     GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
     STRING(REGEX REPLACE "\\$\\(Configuration\\)" "${CONFIGURATION}" EXE "${EXE}" )
     IF ( USE_MPI )
@@ -491,11 +550,11 @@ MACRO( ADD_${PROJ}_TEST_THREAD_MPI EXEFILE PROCS THREADS ${ARGN} )
         MESSAGE("Disabling test ${TESTNAME} (exceeds maximum number of processors ${TEST_MAX_PROCS}")
     ELSEIF ( ( ${PROCS} STREQUAL "1" ) AND NOT USE_MPI_FOR_SERIAL_TESTS )
         ADD_TEST ( ${TESTNAME} ${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE} ${ARGN} )
-        SET_TESTS_PROPERTIES ( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
+        SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
         SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES RESOURCE_LOCK ${EXEFILE} )
     ELSEIF ( USE_MPI )
         ADD_TEST( ${TESTNAME} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${EXE} ${ARGN} )
-        SET_TESTS_PROPERTIES ( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
+        SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
         SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES RESOURCE_LOCK ${EXEFILE} )
     ENDIF()
 ENDMACRO()
@@ -560,47 +619,21 @@ ENDMACRO()
 
 
 # Add a matlab mex file
-MACRO( ADD_MATLAB_MEX MEXFILE )
-    IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-        SET(MEX_FLAGS "-g")
-    ELSEIF ( ${CMAKE_BUILD_TYPE} STREQUAL "Release" )
-        SET(MEX_FLAGS "-O")
-    ELSE()
-        MESSAGE ( FATAL_ERROR "Unknown CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}" )
-    ENDIF()
-    SET( MATLAB_TARGET )
-    SET( MATLAB_LIB )
-    IF ( TARGET matlab )
-        SET( MATLAB_TARGET matlab )
-        SET( MATLAB_LIB "-lmatlab" )
-    ENDIF()
-    # SET( MEX_FLAGS ${MEX_FLAGS} "-v" )
-    SET( MEX_INCLUDE -I${${PROJ}_INSTALL_DIR}/include )
+FUNCTION( ADD_MATLAB_MEX MEXFILE )
     IF ( USING_MICROSOFT )
         #SET(MEX_FLAGS ${MEX_FLAGS} "LINKFLAGS=\"/NODEFAULTLIB:MSVSRT.lib\"" )
         SET( MEX "\"${MATLAB_DIRECTORY}/sys/perl/win32/bin/perl.exe\" \"${MATLAB_DIRECTORY}/bin/mex.pl\"" )
         SET( MEX_LDFLAGS -L${CMAKE_CURRENT_BINARY_DIR}/.. -L${CMAKE_CURRENT_BINARY_DIR}/../Debug -L${CMAKE_CURRENT_BINARY_DIR} )
-        SET( MEX_LIBS ${MATLAB_LIB} -ltimerutility )
-        #SET( MEX_LDFLAGS ${MEX_LDFLAGS} "-Wl,-rpath,${TIMER_INSTALL_DIR}/lib,--no-undefined" )
+        FOREACH( rpath ${CMAKE_INSTALL_RPATH} )
+            #SET( MEX_LDFLAGS ${MEX_LDFLAGS} "-Wl,-rpath,${rpath},--no-undefined" )
+        ENDFOREACH()
     ELSE()
         SET( MEX mex )
-        SET( MEX_LDFLAGS -L${CMAKE_CURRENT_BINARY_DIR}/.. -L${CMAKE_CURRENT_BINARY_DIR} )
-        SET( MEX_LIBS ${MATLAB_LIB} -l${TIMER_LIBS} )
-        SET( MEX_LDFLAGS ${MEX_LDFLAGS} "-Wl,-rpath,${TIMER_INSTALL_DIR}/lib,--no-undefined" )
+        FOREACH( rpath ${CMAKE_INSTALL_RPATH} )
+            SET( MEX_LDFLAGS ${MEX_LDFLAGS} "-Wl,-rpath,${rpath},--no-undefined" )
+        ENDFOREACH()
     ENDIF()
-    SET( MEX_FLAGS ${MEX_FLAGS} "-largeArrayDims" )
-    IF ( USE_MPI )
-        SET( MEX_FLAGS ${MEX_FLAGS} "-DUSE_MPI" )
-        IF ( NOT MPI_LIBRARIES )
-            SET( MEX_LIBS ${MEX_LIBS} "-lmpi" )
-        ELSE()
-            SET( MEX_LDFLAGS ${MEX_LDFLAGS} ${MPI_LINK_FLAGS} )
-            SET( MEX_LDFLAGS ${MEX_LDFLAGS} ${MPI_LIBRARIES} )
-            #SET( MEX_LIBS    ${MEX_LIBS}    ${MPI_LIBRARIES}  )
-            SET( MEX_FLAGS   ${MEX_FLAGS} "-I${MPI_INCLUDE}" )
-        ENDIF()
-    ENDIF()
-    SET( MEX_LDFLAGS ${MEX_LDFLAGS} ${SYSTEM_LDFLAGS} )
+    SET( MEX_LDFLAGS ${MEX_LDFLAGS} -L${CMAKE_CURRENT_BINARY_DIR}/.. ${SYSTEM_LDFLAGS} )
     SET( MEX_LIBS    ${MEX_LIBS}    ${SYSTEM_LIBS}    )
     IF ( ENABLE_GCOV )
         SET ( COVERAGE_MATLAB_LIBS -lgcov )
@@ -625,23 +658,22 @@ MACRO( ADD_MATLAB_MEX MEXFILE )
             LDFLAGS="${MEX_LDFLAGS}" ${MEX_LIBS} ${COVERAGE_MATLAB_LIBS} 
         )
     ENDIF()
-#MESSAGE(FATAL_ERROR "${MEX_COMMAND}" )
     ADD_CUSTOM_COMMAND( 
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.${MEX_EXTENSION}
         COMMAND ${MEX_COMMAND}
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/${TARGET}.${MEX_EXTENSION}" ${CMAKE_CURRENT_BINARY_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/${TARGET}.${MEX_EXTENSION}" "${TIMER_INSTALL_DIR}/matlab"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/${TARGET}.${MEX_EXTENSION}" "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/${TARGET}.${MEX_EXTENSION}" "${${PROJ}_INSTALL_DIR}/matlab"
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}
-        DEPENDS ${TIMER_LIBS} ${MATLAB_TARGET} ${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE}
+        DEPENDS ${${PROJ}_LIBS} ${MATLAB_TARGET} ${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE}
     )
     ADD_CUSTOM_TARGET( ${TARGET}
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.${MEX_EXTENSION}
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE}
     )
-    ADD_DEPENDENCIES( ${TARGET} ${TIMER_LIBS} ${MATLAB_TARGET} )
+    ADD_DEPENDENCIES( ${TARGET} ${${PROJ}_LIBS} ${MATLAB_TARGET} )
     ADD_DEPENDENCIES( mex ${TARGET} )
-    INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.${MEX_EXTENSION} DESTINATION ${TIMER_INSTALL_DIR}/mex )
-ENDMACRO()
+    INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.${MEX_EXTENSION} DESTINATION ${${PROJ}_INSTALL_DIR}/mex )
+ENDFUNCTION()
 
 
 # Add a matlab test
@@ -654,7 +686,7 @@ MACRO( ADD_MATLAB_TEST EXEFILE ${ARGN} )
     ELSE()
         SET( MATLAB_OPTIONS "-nojvm -nosplash -nodisplay" )
     ENDIF()
-    SET( MATLAB_COMMAND "addpath('${TIMER_BINARY_DIR}/matlab'); try, ${EXEFILE}, catch ME, ME, exit(1), end, disp('ALL TESTS PASSED'); exit(0)" )
+    SET( MATLAB_COMMAND "addpath('${${PROJ}_BINARY_DIR}/matlab'); try, ${EXEFILE}, catch ME, ME, exit(1), end, disp('ALL TESTS PASSED'); exit(0)" )
     SET( MATLAB_DEBUGGER_OPTIONS )
     IF ( MATLAB_DEBUGGER )
         SET( MATLAB_DEBUGGER_OPTIONS -D${MATLAB_DEBUGGER} )
@@ -706,11 +738,15 @@ MACRO( ADD_DISTCLEAN ${ARGN} )
         Testing
         include
         doc
+        docs
         latex_docs
         lib
         test
         matlab
         mex
+        tmp
+        bin
+        cmake
         ${ARGN}
     )
     ADD_CUSTOM_TARGET (distclean @echo cleaning for source distribution)
@@ -755,5 +791,16 @@ MACRO( ADD_MEXCLEAN )
         )
     ENDIF(UNIX)
 ENDMACRO()
+
+
+# Print the current repo version and create target to write to a file
+SET( WriteRepoVersionCmakeFile "${CMAKE_CURRENT_LIST_DIR}/WriteRepoVersion.cmake" )
+FUNCTION( WRITE_REPO_VERSION FILENAME )
+    SET( CMD ${CMAKE_COMMAND} -Dfilename="${FILENAME}" -Dsrc_dir="${${PROJ}_SOURCE_DIR}" 
+             -Dtmp_file="${CMAKE_CURRENT_BINARY_DIR}/tmp/version.h" -DPROJ=${PROJ} 
+             -P "${WriteRepoVersionCmakeFile}" )
+    EXECUTE_PROCESS( COMMAND ${CMD} )
+    ADD_CUSTOM_TARGET( write_repo_version  COMMENT "Write repo version"  COMMAND ${CMD} )
+ENDFUNCTION()
 
 
