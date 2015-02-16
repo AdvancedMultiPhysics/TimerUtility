@@ -100,8 +100,8 @@ MESSAGE("ProfilerApp Version = ${TIMER_VERSION}")
 
 # Configure external packages
 IF ( NOT ONLY_BUILD_DOCS )
-    CONFIGURE_MATLAB()  # MATLAB must be first
     CONFIGURE_MPI()     # MPI must be before other libraries
+    CONFIGURE_MATLAB()  # MATLAB must be second after MPI
     CONFIGURE_TIMER()
     CONFIGURE_LINE_COVERAGE()
     # Currently, windows doesn't link shared libraries
