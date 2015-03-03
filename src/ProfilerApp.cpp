@@ -392,7 +392,7 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
         std::vector<TYPE> data(count);
         TYPE *ptr = NULL;
         if ( !data.empty() ) { ptr = &data[0]; }
-        err = MPI_Recv( ptr, count, MPI_DOUBLE, source, tag, MPI_COMM_WORLD, &status );
+        err = MPI_Recv( (void*)ptr, count, MPI_DOUBLE, source, tag, MPI_COMM_WORLD, &status );
         ASSERT(err==MPI_SUCCESS);
         return data;
     #else
