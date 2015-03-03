@@ -223,10 +223,10 @@ void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max,
 {
     int64_t size_old = *N_allocated;
     int64_t size_new = std::max<size_t>(size_old,VEC_SIZE_MIN);
-    while ( size_new <= N_current )
+    while ( size_new <= (int64_t) N_current )
         size_new *= 2;
     // Stop allocating memory if we reached the limit
-    if ( size_new > N_max ) 
+    if ( size_new > (int64_t) N_max ) 
         size_new = N_max;
     if ( size_old != size_new ) {
         // Expand the vector
