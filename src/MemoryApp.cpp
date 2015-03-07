@@ -157,7 +157,7 @@ MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
     stats.system_memory = MemoryApp::d_physical_memory;
     stats.stack_used = 0;
     stats.stack_size = 0;
-    #if defined(__linux) || defined(__unix) || defined(__posix)
+    #if defined(_GNU_SOURCE)
         pthread_attr_t attr;
         void* stackaddr;
         size_t stacksize;

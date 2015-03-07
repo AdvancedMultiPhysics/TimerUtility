@@ -16,7 +16,7 @@ cmake                                                   \
         -D MPI_LIBRARIES="-lmpichcxx;-lmpich;-lopa;-lmpl;-lrt;-lpthread" \
     -D USE_MATLAB=0                                     \
         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
-    -D ENABLE_GCOV=1                                    \
+    -D ENABLE_GCOV=0                                    \
     ../../src/
 
 

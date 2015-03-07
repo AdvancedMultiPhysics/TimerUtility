@@ -463,7 +463,7 @@ static inline id_struct convert_timer_id( size_t key )
 ***********************************************************************/
 TraceResults::TraceResults( ):
     N_active(0), thread(0), rank(0), N_trace(0), 
-    min(1e40), max(0), tot(0), N(0), mem(NULL)
+    min(1e38), max(0), tot(0), N(0), mem(NULL)
 {
 }
 TraceResults::~TraceResults( )
@@ -1302,7 +1302,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         for (int ii=N_timers-1; ii>=0; ii--) {
             size_t i=id_order[ii];
             std::vector<int> N_thread(N_threads,0);
-            std::vector<float> min_thread(N_threads,1e40);
+            std::vector<float> min_thread(N_threads,1e38);
             std::vector<float> max_thread(N_threads,0);
             std::vector<double> tot_thread(N_threads,0);
             for (size_t j=0; j<results[i].trace.size(); j++) {
