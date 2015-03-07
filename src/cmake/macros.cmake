@@ -370,6 +370,7 @@ MACRO( SET_WARNINGS )
     # Add default compiler options
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -lpthread")
     SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -lpthread")
+    LIST(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES stdc++ )
   ELSEIF ( USING_CLANG )
     # Add default compiler options
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall")
