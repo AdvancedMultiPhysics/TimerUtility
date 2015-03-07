@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <vector>
+#include "ProfilerAtomicHelpers.h"
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
@@ -568,7 +569,7 @@ private:
     mutable size_t d_N_memory_steps; // The number of steps we have for the memory usage
     mutable size_t* d_time_memory;  // The times at which we know the memory usage (ns from creation)
     mutable size_t* d_size_memory;  // The memory usage at each time
-    mutable volatile int64_t d_bytes; // The current memory used by the profiler
+    mutable volatile TimerUtility::atomic::int64_atomic d_bytes; // The current memory used by the profiler
 };
 
 

@@ -1,4 +1,5 @@
 #include "MemoryApp.h"
+#include "ProfilerAtomicHelpers.h"
 #include <cmath>
 
 
@@ -24,35 +25,6 @@
     #include <unistd.h>
     #include <malloc.h>
     #include <sys/types.h>
-#else
-    #error Unknown OS
-#endif
-
-
-
-/***********************************************************************
-* Atomic operations                                                    *
-* atomic_add(X,Y) - Add Y to X  (X is a ptr)                           *
-* atomic_increment(X) - Increment X  (X is a ptr)                      *
-***********************************************************************/
-#if defined(USE_WINDOWS)
-    typedef __int64 int64_atomic;
-    #define atomic_add( X, Y ) \
-        InterlockedExchangeAdd64(X,Y)
-    #define atomic_increment(X) \
-        InterlockedIncrement64(X)
-#elif defined(USE_MAC)
-    typedef int64_t int64_atomic;
-    #define atomic_add( X, Y ) \
-        OSAtomicAdd64Barrier(Y,X)
-    #define atomic_increment(X) \
-        OSAtomicIncrement64Barrier(X)
-#elif defined(USE_LINUX)
-    typedef long int int64_atomic;
-    #define atomic_add( X, Y ) \
-        __sync_add_and_fetch(X,Y)
-    #define atomic_increment(X) \
-        __sync_add_and_fetch(X,1)
 #else
     #error Unknown OS
 #endif
@@ -90,10 +62,10 @@ static size_t getPhysicalMemory()
 /***********************************************************************
 * Initialize variables                                                 *
 ***********************************************************************/
-int64_atomic MemoryApp::d_bytes_allocated = 0;
-int64_atomic MemoryApp::d_bytes_deallocated = 0;
-int64_atomic MemoryApp::d_calls_new = 0;
-int64_atomic MemoryApp::d_calls_delete = 0;
+TimerUtility::atomic::int64_atomic MemoryApp::d_bytes_allocated = 0;
+TimerUtility::atomic::int64_atomic MemoryApp::d_bytes_deallocated = 0;
+TimerUtility::atomic::int64_atomic MemoryApp::d_calls_new = 0;
+TimerUtility::atomic::int64_atomic MemoryApp::d_calls_delete = 0;
 #if defined(USE_MAC) || defined(USE_LINUX)
     size_t MemoryApp::d_page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
 #else
@@ -124,36 +96,36 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
     {
         void* ret = malloc(size);
         if (!ret) throw std::bad_alloc();
-        size_t block_size = get_malloc_size(ret);
-        atomic_add(&MemoryApp::d_bytes_allocated,block_size);
-        atomic_increment(&MemoryApp::d_calls_new);
+        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(ret);
+        TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_allocated,block_size);
+        TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);
         return ret;
     }
     void* operator new[] (size_t size) throw(std::bad_alloc) 
     {
         void* ret = malloc(size);
         if (!ret) throw std::bad_alloc();
-        size_t block_size = get_malloc_size(ret);
-        atomic_add(&MemoryApp::d_bytes_allocated,block_size);
-        atomic_increment(&MemoryApp::d_calls_new);
+        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(ret);
+        TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_allocated,block_size);
+        TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);
         return ret;
     }
     void operator delete(void* data) throw()
     {
         if ( data != NULL ) {
-            size_t block_size = get_malloc_size(data);
+            const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
             free(data);
-            atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
-            atomic_increment(&MemoryApp::d_calls_delete);
+            TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
         }
     }
     void operator delete[] (void* data) throw()
     {
         if ( data != NULL ) {
-            size_t block_size = get_malloc_size(data);
+            const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
             free(data);
-            atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
-            atomic_increment(&MemoryApp::d_calls_delete);
+            TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
         }
     }
 #endif

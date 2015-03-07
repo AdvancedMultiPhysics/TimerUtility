@@ -1,5 +1,6 @@
 #include "ProfilerApp.h"
 #include "MemoryApp.h"
+#include "ProfilerAtomicHelpers.h"
 
 #include <stdio.h>
 #include <iostream>
@@ -155,21 +156,6 @@ template<class TYPE>
 inline const TYPE* getPtr( const std::vector<TYPE>& x ) { return x.empty() ? NULL:&x[0]; }
 
 
-// Functions to wrap new/delete to track the bytes used
-void atomic_add( int64_t volatile *x, int64_t y ) 
-{
-    #if defined(USE_WINDOWS)
-        InterlockedExchangeAdd64(x,y);
-    #elif defined(USE_MAC)
-        OSAtomicAdd64Barrier(y,x);
-    #elif defined(__GNUC__)
-        __sync_fetch_and_add(x,y);
-    #else
-        #error Unknown OS
-    #endif
-}
-
-
 // Declare quicksort
 template <class type_a, class type_b>
 static inline void quicksort2(int n, type_a *arr, type_b *brr);
@@ -219,7 +205,7 @@ static inline const char* strip_path( const char* filename_in )
 // Helper function to check (and if necessary resize) an array
 template<class type1, class type2> 
 void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max, 
-    type1** data1, type2** data2, int64_t volatile *bytes_used )
+    type1** data1, type2** data2, TimerUtility::atomic::int64_atomic volatile *bytes_used )
 {
     int64_t size_old = *N_allocated;
     int64_t size_new = std::max<size_t>(size_old,VEC_SIZE_MIN);
@@ -233,7 +219,8 @@ void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max,
         type1* data1_new = new type1[size_new];
         type2* data2_new = new type2[size_new];
         ASSERT(data1_new!=NULL&&data2_new!=NULL);
-        atomic_add(bytes_used,(size_new-size_old)*(sizeof(type1)+sizeof(type2)));
+        TimerUtility::atomic::int64_atomic size = (size_new-size_old)*(sizeof(type1)+sizeof(type2));
+        TimerUtility::atomic::atomic_add(bytes_used,size);
         memset(data1_new,0,size_new*sizeof(type1));
         memset(data2_new,0,size_new*sizeof(type2));
         if ( size_old != 0 ) {
@@ -877,7 +864,8 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
     }
     if ( trace == NULL ) {
         trace = new store_trace;
-        atomic_add(&d_bytes,sizeof(store_trace));
+        TimerUtility::atomic::int64_atomic size = sizeof(store_trace);
+        TimerUtility::atomic::atomic_add(&d_bytes,size);
         memcpy(trace->trace,active,TRACE_SIZE*sizeof(size_t));
         trace->id = trace_id;
         if ( timer->trace_head == NULL ) {
@@ -1177,7 +1165,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     if ( error )
         return data;
     // First unify the memory info from the different threads
-    int64_t bytes_changed = 0;
+    TimerUtility::atomic::int64_atomic bytes_changed = 0;
     std::vector<size_t> N_time;
     std::vector<size_t*> data_time;
     std::vector<size_t*> size_time;
@@ -1231,7 +1219,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     }
     d_max_trace_remaining = std::max((size_t)MAX_TRACE_MEMORY-d_N_memory_steps,(size_t)0);
     bytes_changed += (d_N_memory_steps-N_memory_steps_old)*(sizeof(double)+sizeof(size_t));
-    atomic_add(&d_bytes,bytes_changed);
+    TimerUtility::atomic::atomic_add(&d_bytes,bytes_changed);
     // Release the mutex
     RELEASE_LOCK(&lock);
     // Copy the results to the output vector
@@ -1902,7 +1890,8 @@ ProfilerApp::thread_info* ProfilerApp::get_thread_data( )
             thread_head[key]->next = NULL;
             thread_head[key]->thread_num = N_threads;
             N_threads++;
-            atomic_add(&d_bytes,sizeof(thread_info));
+            TimerUtility::atomic::int64_atomic size = sizeof(thread_info);
+            TimerUtility::atomic::atomic_add(&d_bytes,size);
         }
         // Release the lock
         RELEASE_LOCK(&lock);
@@ -1926,7 +1915,8 @@ ProfilerApp::thread_info* ProfilerApp::get_thread_data( )
                 new_data->thread_num = N_threads;
                 N_threads++;
                 head->next = new_data;
-                atomic_add(&d_bytes,sizeof(thread_info));
+                TimerUtility::atomic::int64_atomic size = sizeof(thread_info);
+                TimerUtility::atomic::atomic_add(&d_bytes,size);
             }
             // Release the lock
             RELEASE_LOCK(&lock);
@@ -1963,7 +1953,8 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
     if ( thread_data->head[key]==NULL ) {
         // The timer does not exist, create it
         store_timer *new_timer = new store_timer;
-        atomic_add(&d_bytes,sizeof(store_timer));
+        TimerUtility::atomic::int64_atomic size = sizeof(store_timer);
+        TimerUtility::atomic::atomic_add(&d_bytes,size);
         new_timer->id = id;
         new_timer->is_active = false;
         new_timer->trace_index = thread_data->N_timers;
@@ -1975,7 +1966,8 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
         // Check if there is another entry to check (and create one if necessary)
         if ( timer->next==NULL ) {
             store_timer *new_timer = new store_timer;
-            atomic_add(&d_bytes,sizeof(store_timer));
+            TimerUtility::atomic::int64_atomic size = sizeof(store_timer);
+            TimerUtility::atomic::atomic_add(&d_bytes,size);
             new_timer->id = id;
             new_timer->is_active = false;
             new_timer->trace_index = thread_data->N_timers;
@@ -2052,7 +2044,8 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data(
             // Create a new entry
             // Note: we must initialize the std::string within a lock for thread safety
             store_timer_data_info *info_tmp = new store_timer_data_info;
-            atomic_add(&d_bytes,sizeof(store_timer_data_info));
+            TimerUtility::atomic::int64_atomic size = sizeof(store_timer_data_info);
+            TimerUtility::atomic::atomic_add(&d_bytes,size);
             const char* filename2 = strip_path(filename);
             info_tmp->id = id;
             info_tmp->start_line = start;
