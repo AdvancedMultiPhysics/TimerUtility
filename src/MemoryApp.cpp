@@ -19,12 +19,14 @@
     #include <sys/types.h>
     #include <sys/sysctl.h>
     #include <unistd.h>
+    #include <pthread.h>
 #elif defined(__linux) || defined(__unix) || defined(__posix)
     // Using Linux
     #define USE_LINUX
     #include <unistd.h>
     #include <malloc.h>
     #include <sys/types.h>
+    #include <pthread.h>
 #else
     #error Unknown OS
 #endif

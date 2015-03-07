@@ -274,34 +274,34 @@ inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y );
     inline int32_atomic atomic_add( int32_atomic volatile *x, int32_atomic y ) {
         pthread_mutex_lock(atomic_pthread_lock);
         x += y;
-        int32_atomic z = x;
+        int32_atomic z = *x;
         pthread_mutex_unlock(atomic_pthread_lock);
         return z;
     }
     inline int64_atomic atomic_add( int64_atomic volatile *x, int64_atomic y ) {
         pthread_mutex_lock(atomic_pthread_lock);
         x += y;
-        int64_atomic z = x;
+        int64_atomic z = *x;
         pthread_mutex_unlock(atomic_pthread_lock);
         return z;
     }
     inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
         pthread_mutex_lock(atomic_pthread_lock);
-        *v = (*v==x) ? y:x
+        *v = (*v==x) ? y:x;
         int32_atomic z = *v;
         pthread_mutex_unlock(atomic_pthread_lock);
         return z;
     }
     inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
         pthread_mutex_lock(atomic_pthread_lock);
-        *v = (*v==x) ? y:x
+        *v = (*v==x) ? y:x;
         int64_atomic z = *v;
         pthread_mutex_unlock(atomic_pthread_lock);
         return z;
     }
     inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y ) {
         pthread_mutex_lock(atomic_pthread_lock);
-        *v = (*v==x) ? y:x
+        *v = (*v==x) ? y:x;
         void* z = *v;
         pthread_mutex_unlock(atomic_pthread_lock);
         return z;
