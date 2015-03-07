@@ -6,6 +6,7 @@
 
 # Set platform specific variables
 SITE_NAME( HOSTNAME )
+STRING(REGEX REPLACE "-ext." "" HOSTNAME "${HOSTNAME}")
 SET( CC                 $ENV{CC}                )
 SET( CXX                $ENV{CXX}               )
 SET( MPIEXEC            $ENV{MPIEXEC}           )
@@ -23,6 +24,7 @@ SET( MPI_LINK_FLAGS     $ENV{MPI_LINK_FLAGS}    )
 SET( MPI_LIBRARIES      $ENV{MPI_LIBRARIES}     )
 SET( MPIEXEC            $ENV{MPIEXEC}           )
 SET( BUILD_SERIAL       $ENV{BUILD_SERIAL}      )
+SET( SKIP_TESTS         $ENV{SKIP_TESTS}        )
 
 
 # Get the source directory based on the current directory
@@ -196,7 +198,10 @@ CTEST_CONFIGURE(
 
 # Run the configure, build and tests
 CTEST_BUILD()
-IF ( USE_VALGRIND_MATLAB )
+IF ( SKIP_TESTS )
+    # Do not run tests
+    SET( CTEST_COVERAGE_COMMAND )
+ELSEIF ( USE_VALGRIND_MATLAB )
     CTEST_TEST( INCLUDE MATLAB--test_hello_world  PARALLEL_LEVEL ${N_PROCS} )
 ELSEIF ( USE_VALGRIND )
     CTEST_MEMCHECK( EXCLUDE procs   PARALLEL_LEVEL ${N_PROCS} )
