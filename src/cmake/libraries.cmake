@@ -164,7 +164,12 @@ MACRO ( CONFIGURE_SYSTEM )
         # Linux specific system libraries
         SET( SYSTEM_LIBS -lz -lpthread -ldl )
         IF ( NOT USE_STATIC )
-            SET( SYSTEM_LDFLAGS ${SYSTEM_LDFLAGS} -rdynamic )   # Needed for backtrace to print function names
+            # Try to add rdynamic so we have names in backtrace
+            SET( CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_FLAGS} -rdynamic" )
+            CHECK_CXX_SOURCE_COMPILES( "int main() { return 0;}" rdynamic )
+            IF ( rdynamic )
+                SET( SYSTEM_LDFLAGS ${SYSTEM_LDFLAGS} -rdynamic )
+            ENDIF()
         ENDIF()
         IF ( USING_GCC )
             SET( SYSTEM_LIBS ${SYSTEM_LIBS} -lgfortran )
