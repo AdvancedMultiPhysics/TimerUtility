@@ -12,12 +12,10 @@
     #include <stdlib.h>
     #include <windows.h>
     #include <process.h>
-    #define COMPILE_WARNING(X)
 #elif defined(__APPLE__)
     // Using MAC
     #define USE_MAC
     #include <libkern/OSAtomic.h>
-    #define COMPILE_WARNING(X) #warning X
 #elif defined(__linux) || defined(__unix) || defined(__posix)
     // Using Linux
     #define USE_LINUX
@@ -26,7 +24,6 @@
         #define USE_PTHREAD_ATOMIC_LOCK
         #include "pthread.h"
     #endif
-    //#define COMPILE_WARNING(X) #warning
 #else
     #error Unknown OS
 #endif
