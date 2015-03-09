@@ -1,8 +1,17 @@
 #include "ProfilerAtomicHelpers.h"
 #include <stdexcept>
 
+#ifdef USE_PTHREAD_ATOMIC_LOCK
+    // Print a warning if we defaulted to use pthreads for atomic operations
+    // This can decrease the performance of atomic operations
+    // We print the message here so it is only printed once
+    #warning using pthreads for atomic increment/add, may affect performance
+#endif
+
+
 namespace TimerUtility {
 namespace atomic {
+
 #ifdef USE_PTHREAD_ATOMIC_LOCK
     pthread_mutex_t atomic_pthread_lock;
     static pthread_mutexattr_t threadpool_global_attr;
@@ -14,5 +23,6 @@ namespace atomic {
     }
     int atomic_pthread_lock_initialized = create_atomic_pthread_lock();
 #endif
+
 }
 }

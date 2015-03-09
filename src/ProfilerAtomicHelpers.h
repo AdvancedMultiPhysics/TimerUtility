@@ -27,9 +27,6 @@
 #else
     #error Unknown OS
 #endif
-#ifdef USE_PTHREAD_ATOMIC_LOCK
-    #warning using pthreads for atomic increment/add, may affect performance
-#endif
 
 
 namespace TimerUtility {
