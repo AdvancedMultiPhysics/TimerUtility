@@ -129,6 +129,13 @@ IF ( BUILD_SERIAL )
 ELSE()
     SET( CTEST_BUILD_COMMAND "${CMAKE_MAKE_PROGRAM} -i -j ${N_PROCS} install" )
 ENDIF()
+SET( CTEST_CUSTOM_WARNING_EXCEPTION 
+    "has no symbols"
+    "the table of contents is empty"
+    "warning: -jN forced in submake: disabling jobserver mode" 
+    "warning: jobserver unavailable" 
+    "This object file does not define any previously undefined public symbols"
+)
 
 
 # Set valgrind options
