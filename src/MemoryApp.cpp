@@ -136,16 +136,18 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
 /***********************************************************************
 * Class functions                                                      *
 ***********************************************************************/
-static size_t subtract_address_abs( const void* x1, const void* x2 ) 
-{
-    // Return the absolute difference between two addresses abs(x-y)
-    size_t y1 = reinterpret_cast<size_t>(x1);
-    size_t y2 = reinterpret_cast<size_t>(x2);
-    int64_t v1 = static_cast<int64_t>(y1);
-    int64_t v2 = static_cast<int64_t>(y2);
-    int64_t diff = v1>v2 ? (v1-v2):(v2-v1);
-    return static_cast<size_t>(diff);
-}
+#if defined(_GNU_SOURCE)
+    static size_t subtract_address_abs( const void* x1, const void* x2 ) 
+    {
+        // Return the absolute difference between two addresses abs(x-y)
+        size_t y1 = reinterpret_cast<size_t>(x1);
+        size_t y2 = reinterpret_cast<size_t>(x2);
+        int64_t v1 = static_cast<int64_t>(y1);
+        int64_t v2 = static_cast<int64_t>(y2);
+        int64_t diff = v1>v2 ? (v1-v2):(v2-v1);
+        return static_cast<size_t>(diff);
+    }
+#endif
 MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
 {
     MemoryStats stats;
