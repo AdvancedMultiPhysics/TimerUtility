@@ -136,7 +136,7 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
 /***********************************************************************
 * Class functions                                                      *
 ***********************************************************************/
-#if defined(_GNU_SOURCE)
+#if defined(_GNU_SOURCE) || defined(__GNUC__)
     static size_t subtract_address_abs( const void* x1, const void* x2 ) 
     {
         // Return the absolute difference between two addresses abs(x-y)
@@ -168,8 +168,7 @@ MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
         pthread_attr_destroy( &attr );
         stats.stack_used = stacksize - subtract_address_abs(stackaddr,&stackaddr);
         stats.stack_size = stacksize;
-    #endif
-    #if defined(__GNUC__)
+    #elif defined(__GNUC__)
         stats.stack_used = subtract_address_abs(d_base_frame,__builtin_frame_address(0));
     #endif
     return stats;
