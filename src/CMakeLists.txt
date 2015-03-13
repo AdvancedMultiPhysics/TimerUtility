@@ -104,10 +104,6 @@ IF ( NOT ONLY_BUILD_DOCS )
     CONFIGURE_MATLAB()  # MATLAB must be second after MPI
     CONFIGURE_TIMER()
     CONFIGURE_LINE_COVERAGE()
-    # Currently, windows doesn't link shared libraries
-    IF( ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
-        SET( LIB_TYPE STATIC )
-    ENDIF()
 ENDIF()
 
 

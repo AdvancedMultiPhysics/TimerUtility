@@ -198,7 +198,6 @@ ENDMACRO ()
 # Macro to configure matlab
 MACRO( CONFIGURE_MATLAB )
     CHECK_ENABLE_FLAG( USE_MATLAB 0 )
-    SET( LIB_TYPE STATIC )      # By default we want to build static libraries
     IF ( USE_MATLAB )
         SET( LIB_TYPE SHARED )  # If we are using MATLAB, we must build dynamic libraries for ProfilerApp to work properly
         IF ( MATLAB_DIRECTORY )
@@ -275,6 +274,12 @@ ENDMACRO()
 # Macro to configure TimerUtility-specific options
 MACRO( CONFIGURE_TIMER )
     SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH} "${TIMER_INSTALL_DIR}/lib" )
+    IF ( NOT LIB_TYPE )
+        SET( LIB_TYPE STATIC )      # By default we want to build static libraries
+    ENDIF()
+    IF( ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
+        SET( LIB_TYPE STATIC )      # Windows doesn't like shared libraries
+    ENDIF()
     # Set the maximum number of processors for the tests
     IF ( NOT TEST_MAX_PROCS )
         SET( TEST_MAX_PROCS 32 )
