@@ -1,3 +1,4 @@
+# Set some CMake properties    
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 CMAKE_POLICY(SET CMP0014 OLD)
 IF ( ${CMAKE_MAJOR_VERSION} EQUAL 3 )
@@ -6,14 +7,14 @@ ENDIF()
 
 
 MESSAGE( "===========================" )
-MESSAGE( "Configuring Timer Utility"    )
+MESSAGE( "Configuring Timer Utility"   )
 MESSAGE( "===========================" )
 
 
 # Prevent users from building in place
 IF ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}" )
     MESSAGE( FATAL_ERROR "Building code in place is a bad idea" )
-ENDIF ()
+ENDIF()
 
 
 # Set the project name
@@ -31,16 +32,19 @@ ENDIF()
 SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
 
 
-# Check if we are only compiling docs
+# Include macros
 SET( PROJ TIMER )
-INCLUDE( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake )
-INCLUDE( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake )
+INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake" )
+INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake" )
+
+
+# Check if we are only compiling docs
 CHECK_ENABLE_FLAG( ONLY_BUILD_DOCS 0 )
 
 
 # Set testing paramaters
 SET( DROP_METHOD "http" )
-SET( DROP_SITE "oblivion.engr.colostate.edu" )
+SET( DROP_SITE "" )
 SET( DROP_LOCATION "/CDash/submit.php?project=AMR-MHD" )
 SET( TRIGGER_SITE "" )
 SET( DROP_SITE_CDASH TRUE )
@@ -63,24 +67,24 @@ ENDIF()
 
 
 # Add some directories to include
-INCLUDE_DIRECTORIES( ${TIMER_INSTALL_DIR}/include )
+INCLUDE_DIRECTORIES( "${TIMER_INSTALL_DIR}/include" )
 
 
 # Set doxygen info
 CHECK_ENABLE_FLAG( USE_DOXYGEN 1 )
 CHECK_ENABLE_FLAG( USE_LATEX 1 )
-FILE( MAKE_DIRECTORY "${TIMER_INSTALL_DIR}/doc" )
+FILE( MAKE_DIRECTORY "${${PROJ}_INSTALL_DIR}/doc" )
 IF ( USE_DOXYGEN )
-    SET( DOXYFILE_IN ${TIMER_SOURCE_DIR}/doxygen/Doxyfile.in)
-    SET( DOXY_HEADER_FILE ${TIMER_SOURCE_DIR}/doxygen/html/header.html )
-    SET( DOXY_FOOTER_FILE ${TIMER_SOURCE_DIR}/doxygen/html/footer.html )
-    SET( DOXYFILE_OUTPUT_DIR ${TIMER_BUILD_DIR}/doc/ )
-    SET( DOXYFILE_SRC_HTML_DIR ${TIMER_SOURCE_DIR}/doxygen/html )
-    SET( DOXYFILE_SOURCE_DIR ${TIMER_SOURCE_DIR} )
+    SET( DOXYFILE_IN "${${PROJ}_SOURCE_DIR}/doxygen/Doxyfile.in" )
+    SET( DOXY_HEADER_FILE "${${PROJ}_SOURCE_DIR}/doxygen/html/header.html" )
+    SET( DOXY_FOOTER_FILE "${${PROJ}_SOURCE_DIR}/doxygen/html/footer.html" )
+    SET( DOXYFILE_OUTPUT_DIR "${${PROJ}_INSTALL_DIR}/doc" )
+    SET( DOXYFILE_SRC_HTML_DIR "${${PROJ}_SOURCE_DIR}/doxygen/html" )
+    SET( DOXYFILE_SOURCE_DIR "${${PROJ}_SOURCE_DIR}" )
     SET( REL_PACKAGE_HTML "" )
     SET( DOXYGEN_MACROS "" )
     MESSAGE("DOXYGEN_MACROS = ${DOXYGEN_MACROS}")
-    INCLUDE( ${TIMER_SOURCE_DIR}/cmake/UseDoxygen.cmake )
+    INCLUDE( "${${PROJ}_SOURCE_DIR}/cmake/UseDoxygen.cmake" )
     SET(DOXYFILE_LATEX "YES")
     IF ( DOXYGEN_FOUND )
         ADD_DEPENDENCIES( doxygen latex_docs )
@@ -92,10 +96,7 @@ ENDIF()
 
 
 # Get the mercurial revision
-EXECUTE_PROCESS(COMMAND hg id -i "${TIMER_SOURCE_DIR}/.." OUTPUT_VARIABLE TIMER_VERSION)
-STRING(REGEX REPLACE "(\r?\n)+$" "" TIMER_VERSION "${TIMER_VERSION}")
-FILE(WRITE  ${TIMER_INSTALL_DIR}/include/TimerUtilityVersion.h "#define TIMER_VERSION \"${TIMER_VERSION}\"\n" )
-MESSAGE("ProfilerApp Version = ${TIMER_VERSION}")
+WRITE_REPO_VERSION( "${${PROJ}_INSTALL_DIR}/include/TimerUtilityVersion.h" )
 
 
 # Configure external packages
@@ -104,6 +105,10 @@ IF ( NOT ONLY_BUILD_DOCS )
     CONFIGURE_MATLAB()  # MATLAB must be second after MPI
     CONFIGURE_TIMER()
     CONFIGURE_LINE_COVERAGE()
+    # Currently, windows doesn't link shared libraries
+    IF( ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
+        SET( LIB_TYPE STATIC )
+    ENDIF()
 ENDIF()
 
 
@@ -124,16 +129,20 @@ IF ( NOT ONLY_BUILD_DOCS )
     BEGIN_PACKAGE_CONFIG( timerutility )
     INSTALL_TIMER_TARGET( timerutility )
     ADD_SUBDIRECTORY( test )
-    ADD_SUBDIRECTORY( matlab )
+    IF ( USE_MATLAB )
+        ADD_SUBDIRECTORY( matlab )
+    ENDIF()
 ENDIF()
 IF ( USE_LATEX )
     ADD_SUBDIRECTORY(latex_docs)
 ENDIF()
 
 
-# Write a cmake file with the configure info
-#IF ( NOT ONLY_BUILD_DOCS )
-#    SAVE_CMAKE_FLAGS()
-#ENDIF()
+# Add the cppcheck tests
+SET( CPPCHECK_INCLUDE "" )
+SET( CPPCHECK_OPTIONS -q --enable=all --std=c99 "--suppressions-list=${CMAKE_CURRENT_SOURCE_DIR}/cppcheckSuppressionFile" )
+INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppcheck.cmake" )
+
+
 
 

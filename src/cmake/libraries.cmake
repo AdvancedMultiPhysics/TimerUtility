@@ -29,7 +29,7 @@ ENDFUNCTION()
 
 
 # Macro to find and configure the MPI libraries
-MACRO ( CONFIGURE_MPI )
+MACRO( CONFIGURE_MPI )
     # Determine if we want to use MPI
     CHECK_ENABLE_FLAG(USE_MPI 1 )
     IF ( USE_MPI )
@@ -123,20 +123,10 @@ ENDMACRO()
 
 
 # Macro to configure system-specific libraries and flags
-MACRO ( CONFIGURE_SYSTEM )
+MACRO( CONFIGURE_SYSTEM )
     # First check/set the compile mode
-    IF ( COMPILE_MODE )
-        MESSAGE(FATAL_ERROR "COMPILE_MODE is obsolete, please set CMAKE_BUILD_TYPE")
-    ENDIF()
-    VERIFY_VARIABLE( "CMAKE_BUILD_TYPE" )
-    IF ( COMPILE_MODE )
-        IF ( ${COMPILE_MODE} STREQUAL "debug" )
-            SET(CMAKE_BUILD_TYPE "Debug")
-        ELSEIF ( ${COMPILE_MODE} STREQUAL "optimized" )
-            SET(CMAKE_BUILD_TYPE "Release")
-        ELSE()
-            MESSAGE( FATAL_ERROR "COMPILE_MODE must be either debug or optimized" )
-        ENDIF()
+    IF( NOT CMAKE_BUILD_TYPE )
+        MESSAGE(FATAL_ERROR "CMAKE_BUILD_TYPE is not set")
     ENDIF()
     # Remove extra library links
     # Get the compiler
@@ -149,8 +139,9 @@ MACRO ( CONFIGURE_SYSTEM )
         SET( SYSTEM_PATHS "C:/Program Files (x86)/Microsoft SDKs/Windows/v7.0A/Lib/x64" 
                           "C:/Program Files (x86)/Microsoft Visual Studio 8/VC/PlatformSDK/Lib/AMD64" 
                           "C:/Program Files (x86)/Microsoft Visual Studio 12.0/Common7/Packages/Debugger/X64" )
-        FIND_LIBRARY ( PSAPI_LIB    NAMES Psapi    PATHS ${SYSTEM_PATHS}  NO_DEFAULT_PATH )
-        FIND_LIBRARY ( DBGHELP_LIB  NAMES DbgHelp  PATHS ${SYSTEM_PATHS}  NO_DEFAULT_PATH )
+        FIND_LIBRARY( PSAPI_LIB    NAMES Psapi    PATHS ${SYSTEM_PATHS}  NO_DEFAULT_PATH )
+        FIND_LIBRARY( DBGHELP_LIB  NAMES DbgHelp  PATHS ${SYSTEM_PATHS}  NO_DEFAULT_PATH )
+        FIND_LIBRARY( DBGHELP_LIB  NAMES DbgHelp )
         IF ( PSAPI_LIB ) 
             ADD_DEFINITIONS( -D PSAPI )
             SET( SYSTEM_LIBS ${PSAPI_LIB} )
@@ -158,6 +149,8 @@ MACRO ( CONFIGURE_SYSTEM )
         IF ( DBGHELP_LIB ) 
             ADD_DEFINITIONS( -D DBGHELP )
             SET( SYSTEM_LIBS ${DBGHELP_LIB} )
+        ELSE()
+            MESSAGE( WARNING "Did not find DbgHelp, stack trace will not be availible" )
         ENDIF()
         MESSAGE("System libs: ${SYSTEM_LIBS}")
     ELSEIF( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
@@ -198,6 +191,7 @@ ENDMACRO ()
 # Macro to configure matlab
 MACRO( CONFIGURE_MATLAB )
     CHECK_ENABLE_FLAG( USE_MATLAB 0 )
+    SET( LIB_TYPE STATIC )      # By default we want to build static libraries
     IF ( USE_MATLAB )
         SET( LIB_TYPE SHARED )  # If we are using MATLAB, we must build dynamic libraries for ProfilerApp to work properly
         IF ( MATLAB_DIRECTORY )
@@ -262,6 +256,10 @@ MACRO( CONFIGURE_MATLAB )
             ENDIF()
         ENDIF()
         SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH} "${MATLAB_EXTERN}" "${MATLAB_OS}" )
+        # Check if coverage is enables and issue a warning
+        IF ( ENABLE_GCOV )
+            MESSAGE(WARNING "Enabling coverage with MATLAB may not be supported")
+        ENDIF()
         MESSAGE( "Using MATLAB" )
         MESSAGE( "   MATLAB_DIRECTORY = ${MATLAB_DIRECTORY}" )
         MESSAGE( "   MEX_FLAGS = ${MEX_FLAGS}" )
@@ -273,13 +271,9 @@ ENDMACRO()
 
 # Macro to configure TimerUtility-specific options
 MACRO( CONFIGURE_TIMER )
+    SET( CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE )
+    SET( CMAKE_BUILD_WITH_INSTALL_RPATH TRUE )
     SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH} "${TIMER_INSTALL_DIR}/lib" )
-    IF ( NOT LIB_TYPE )
-        SET( LIB_TYPE STATIC )      # By default we want to build static libraries
-    ENDIF()
-    IF( ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
-        SET( LIB_TYPE STATIC )      # Windows doesn't like shared libraries
-    ENDIF()
     # Set the maximum number of processors for the tests
     IF ( NOT TEST_MAX_PROCS )
         SET( TEST_MAX_PROCS 32 )

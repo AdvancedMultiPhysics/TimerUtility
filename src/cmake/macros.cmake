@@ -61,7 +61,7 @@ MACRO( CONVERT_M4_FORTRAN IN LOCAL_PATH OUT_PATH )
         STRING(REGEX REPLACE ".F" ".o" OUT2 "${OUT}" )
         STRING(REGEX REPLACE ";" " " COMPILE_CMD "${CMAKE_Fortran_COMPILER} -c ${OUT} ${CMAKE_Fortran_FLAGS} -o ${OUT2}")
         STRING(REGEX REPLACE "\\\\" "" COMPILE_CMD "${COMPILE_CMD}")
-        MESSAGE("COMPILE_CMD =${COMPILE_CMD}")
+        MESSAGE("COMPILE_CMD = ${COMPILE_CMD}")
         SET( COMPILE_CMD ${COMPILE_CMD} )
         add_custom_command(
             OUTPUT ${OUT2}
@@ -112,7 +112,7 @@ ENDMACRO ()
 MACRO (FIND_FILES)
     # Find the C/C++ headers
     SET( T_HEADERS "" )
-    FILE( GLOB T_HEADERS "*.h" "*.hh" "*.hpp" "*.I" )
+    FILE( GLOB T_HEADERS "*.h" "*.H" "*.hh" "*.hpp" "*.I" )
     # Find the CUDA sources
     SET( T_CUDASOURCES "" )
     FILE( GLOB T_CUDASOURCES "*.cu" )
@@ -143,10 +143,10 @@ ENDMACRO()
 
 
 # Find the source files
-MACRO (FIND_FILES_PATH IN_PATH)
+MACRO( FIND_FILES_PATH IN_PATH )
     # Find the C/C++ headers
     SET( T_HEADERS "" )
-    FILE( GLOB T_HEADERS "${IN_PATH}/*.h" "${IN_PATH}/*.hh" "${IN_PATH}/*.hpp" "${IN_PATH}/*.I" )
+    FILE( GLOB T_HEADERS "${IN_PATH}/*.h" "${IN_PATH}/*.H" "${IN_PATH}/*.hh" "${IN_PATH}/*.hpp" "${IN_PATH}/*.I" )
     # Find the CUDA sources
     SET( T_CUDASOURCES "" )
     FILE( GLOB T_CUDASOURCES "${IN_PATH}/*.cu" )
@@ -158,7 +158,7 @@ MACRO (FIND_FILES_PATH IN_PATH)
     FILE( GLOB T_CXXSOURCES "${IN_PATH}/*.cc" "${IN_PATH}/*.cpp" "${IN_PATH}/*.cxx" "${IN_PATH}/*.C" )
     # Find the Fortran sources
     SET( T_FSOURCES "" )
-    FILE( GLOB T_FSOURCES "${IN_PATH}/*.f" "${IN_PATH}/*.f90" )
+    FILE( GLOB T_FSOURCES "${IN_PATH}/*.f" "${IN_PATH}/*.f90" "${IN_PATH}/*.F" "${IN_PATH}/*.F90" )
     # Find the m4 fortran source (and convert)
     SET( T_M4FSOURCES "" )
     FILE( GLOB T_M4FSOURCES "${IN_PATH}/*.m4" "${IN_PATH}/*.fm4" )
@@ -181,25 +181,36 @@ MACRO( ADD_PACKAGE_SUBDIRECTORY SUBDIR )
 ENDMACRO()
 
 
+# Add an external directory
+# Note: this will add the files to compile but will not copy the headers
+MACRO( ADD_EXTERNAL_DIRECTORY SUBDIR )
+    FIND_FILES_PATH( ${SUBDIR} )
+ENDMACRO()
+
+
 # Install a package
 MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
     # Find all files in the current directory
     FIND_FILES()
-    # Copy the header files to the include path
-    FILE( GLOB HFILES RELATIVE ${${PROJ}_SOURCE_DIR} ${HEADERS} )
+    # Create the copy target
     SET( COPY_TARGET copy-${PROJ}-include )
     IF( NOT TARGET ${COPY_TARGET} )
         ADD_CUSTOM_TARGET( ${COPY_TARGET} ALL )
         ADD_DEPENDENCIES( copy-${PROJ}-include ${COPY_TARGET} )
     ENDIF()
+    # Copy the header files to the include path
+    FILE( GLOB HFILES RELATIVE ${${PROJ}_SOURCE_DIR} ${HEADERS} )
     FOREACH( HFILE ${HFILES} )
         SET( SRC_FILE "${${PROJ}_SOURCE_DIR}/${HFILE}" )
         SET( DST_FILE "${${PROJ}_INSTALL_DIR}/include/${HFILE}" )
-        ADD_CUSTOM_COMMAND(TARGET ${COPY_TARGET} 
-            PRE_BUILD 
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SRC_FILE}" "${DST_FILE}"
-            DEPENDS "${SRC_FILE}"
-        )
+        # Only copy the headers if the exisit in the project source directory
+        IF ( EXISTS "${SRC_FILE}" )
+            ADD_CUSTOM_COMMAND(TARGET ${COPY_TARGET} 
+                PRE_BUILD 
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SRC_FILE}" "${DST_FILE}"
+                DEPENDS "${SRC_FILE}"
+            )
+        ENDIF()
     ENDFOREACH()
     # Add the library and install the package
     IF ( NOT ONLY_BUILD_DOCS AND ( SOURCES OR CUDASOURCES ) )
@@ -215,7 +226,6 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
     ELSE()
         ADD_CUSTOM_TARGET( ${PACKAGE} ALL )
     ENDIF()
-    INSTALL( FILES ${HEADERS} DESTINATION ${${PROJ}_INSTALL_DIR}/include )
     # Clear the sources
     SET( HEADERS "" )
     SET( CSOURCES "" )
@@ -267,29 +277,37 @@ MACRO( SET_COMPILER )
     IF ( CMAKE_C_COMPILER_WORKS OR CMAKE_C_COMPILER_WORKS )
         IF( CMAKE_COMPILE_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX )
             SET( USING_GCC TRUE )
+            ADD_DEFINITIONS( "-D USING_GCC" )
             MESSAGE("Using gcc")
         ELSEIF( MSVC OR MSVC_IDE OR MSVC60 OR MSVC70 OR MSVC71 OR MSVC80 OR CMAKE_COMPILER_2005 OR MSVC90 OR MSVC10 )
             IF( NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
                 MESSAGE( FATAL_ERROR "Using microsoft compilers on non-windows system?" )
             ENDIF()
-            SET( USING_MICROSOFT TRUE )
+            SET( USING_MSVC TRUE )
+            ADD_DEFINITIONS( "-D USING_MSVC" )
             MESSAGE("Using Microsoft")
         ELSEIF( (${CMAKE_C_COMPILER_ID} MATCHES "Intel") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Intel") ) 
             SET(USING_ICC TRUE)
+            ADD_DEFINITIONS( "-D USING_ICC" )
             MESSAGE("Using icc")
-        ELSEIF( ${CMAKE_C_COMPILER_ID} MATCHES "PGI")
+        ELSEIF( (${CMAKE_C_COMPILER_ID} MATCHES "PGI") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "PGI") )
             SET(USING_PGCC TRUE)
+            ADD_DEFINITIONS( "-D USING_PGCC" )
             MESSAGE("Using pgCC")
-        ELSEIF( (${CMAKE_C_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_C_COMPILER_ID} MATCHES "Cray") )
+        ELSEIF( (${CMAKE_C_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CRAY") OR
+                (${CMAKE_C_COMPILER_ID} MATCHES "Cray") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Cray") )
             SET(USING_CRAY TRUE)
+            ADD_DEFINITIONS( "-D USING_CRAY" )
             MESSAGE("Using Cray")
-        ELSEIF( (${CMAKE_C_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_C_COMPILER_ID} MATCHES "Clang") )
+        ELSEIF( (${CMAKE_C_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CLANG") OR
+                (${CMAKE_C_COMPILER_ID} MATCHES "Clang") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang") )
             SET(USING_CLANG TRUE)
+            ADD_DEFINITIONS( "-D USING_CLANG" )
             MESSAGE("Using Clang")
         ELSE()
             SET(USING_DEFAULT TRUE)
             MESSAGE("${CMAKE_C_COMPILER_ID}")
-            MESSAGE("Unknown C/C++ compiler, default flags will be used")
+            MESSAGE(WARNING "Unknown C/C++ compiler, default flags will be used")
         ENDIF()
     ENDIF()
     # SET the Fortran++ compiler
@@ -316,9 +334,9 @@ ENDMACRO()
 MACRO( SET_WARNINGS )
   IF ( USING_GCC )
     # Add gcc specific compiler options
-    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra") 
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-  ELSEIF ( USING_MICROSOFT )
+    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra -Wcast-align -Wlogical-op") 
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wcast-align -Wlogical-op")
+  ELSEIF ( USING_MSVC )
     # Add Microsoft specifc compiler options
     SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0" )
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0" )
@@ -359,9 +377,6 @@ MACRO( SET_WARNINGS )
     #   6843: A dummy argument with an explicit INTENT(OUT) declaration is not given an explicit value.
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
     SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall" )
-    # Disable warnings that I think are irrelavent (may need to be revisited)
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -wd383 -wd981" )
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -wd383 -wd981" )
   ELSEIF ( USING_CRAY )
     # Add default compiler options
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}")
@@ -369,8 +384,9 @@ MACRO( SET_WARNINGS )
   ELSEIF ( USING_PGCC )
     # Add default compiler options
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -lpthread")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -lpthread")
-    LIST(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES stdc++ )
+    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number")
+    # Suppress unreachable code warning, it causes non-useful warnings with some tests/templates
+    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185")
   ELSEIF ( USING_CLANG )
     # Add default compiler options
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall")
@@ -396,7 +412,7 @@ MACRO( SET_COMPILER_FLAGS )
     # Initilaize the compiler
     SET_COMPILER()
     # Set the default flags for each build type
-    IF ( USING_MICROSOFT )
+    IF ( USING_MSVC )
         SET(CMAKE_C_FLAGS_DEBUG       "-D_DEBUG /DEBUG /Od /EHsc /MDd /Zi /Z7" )
         SET(CMAKE_C_FLAGS_RELEASE     "/O2 /EHsc /MD"                      )
         SET(CMAKE_CXX_FLAGS_DEBUG     "-D_DEBUG /DEBUG /Od /EHsc /MDd /Zi /Z7" )
@@ -441,6 +457,7 @@ ENDMACRO()
 # Macro to copy data file at build time
 MACRO( COPY_DATA_FILE SRC_FILE DST_FILE )
     STRING(REGEX REPLACE "${${PROJ}_SOURCE_DIR}/" "" COPY_TARGET "copy-${PROJ}-${CMAKE_CURRENT_SOURCE_DIR}" )
+    STRING(REGEX REPLACE "-${${PROJ}_SOURCE_DIR}" "" COPY_TARGET "${COPY_TARGET}" )
     STRING(REGEX REPLACE "/" "-" COPY_TARGET ${COPY_TARGET} )
     IF ( NOT TARGET ${COPY_TARGET} )
         ADD_CUSTOM_TARGET( ${COPY_TARGET} ALL )
@@ -469,8 +486,8 @@ FUNCTION( COPY_TEST_FILE FILENAME ${ARGN} )
             SET( FILE_TO_COPY "${tmp}/${FILENAME}" )
         ENDIF()
     ENDFOREACH()
-    SET( DESTINATION_NAME "${CMAKE_CURRENT_BINARY_DIR}/${FILENAME}" )
     IF ( FILE_TO_COPY )
+        SET( DESTINATION_NAME "${CMAKE_CURRENT_BINARY_DIR}/${FILENAME}" )
         COPY_DATA_FILE( ${FILE_TO_COPY} ${DESTINATION_NAME} )
     ELSE()
         SET( MSG_STR "Cannot find file: ${FILENAME}, searched:\n" )
@@ -483,15 +500,31 @@ ENDFUNCTION()
 
 
 # Macro to copy a data file
-MACRO ( RENAME_TEST_DATA_FILE SRC DST )
-    SET( FILE_TO_COPY  ${CMAKE_CURRENT_SOURCE_DIR}/data/${SRC} )
-    SET( DESTINATION_NAME ${CMAKE_CURRENT_BINARY_DIR}/${DST} )
-    IF ( EXISTS ${FILE_TO_COPY} )
+FUNCTION( RENAME_TEST_FILE SRC_NAME DST_NAME ${ARGN} )
+    SET( SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}" )
+    SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/data" )
+    SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/inputs" )
+    FOREACH( tmp ${ARGN} )
+        SET( SEARCH_PATHS ${SEARCH_PATHS} "${tmp}" )
+        SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/${tmp}" )
+    ENDFOREACH()
+    SET( FILE_TO_COPY )
+    FOREACH( tmp ${SEARCH_PATHS} )
+        IF ( EXISTS "${tmp}/${SRC}" )
+            SET( FILE_TO_COPY "${tmp}/${SRC_NAME}" )
+        ENDIF()
+    ENDFOREACH()
+    IF ( FILE_TO_COPY )
+        SET( DESTINATION_NAME ${CMAKE_CURRENT_BINARY_DIR}/${DST_NAME} )
         COPY_DATA_FILE( ${FILE_TO_COPY} ${DESTINATION_NAME} )
     ELSE()
-        MESSAGE( WARNING "Cannot find file: ${FILE_TO_COPY}" )
+        SET( MSG_STR "Cannot find file: ${SRC_NAME}, searched:\n" )
+        FOREACH( tmp ${SEARCH_PATHS} )
+            SET( MSG_STR "${MSG_STR}   ${tmp}\n" )
+        ENDFOREACH()
+        MESSAGE( WARNING "test ${MSG_STR}" )
     ENDIF()
-ENDMACRO ()
+ENDFUNCTION()
 
 
 # Macro to copy a data file
@@ -705,27 +738,6 @@ MACRO( CHECK_ENABLE_FLAG FLAG DEFAULT )
 ENDMACRO()
 
 
-# Macro to check if a compiler flag is valid
-MACRO (CHECK_C_COMPILER_FLAG _FLAG _RESULT)
-    SET(SAFE_CMAKE_REQUIRED_DEFINITIONS "${CMAKE_REQUIRED_DEFINITIONS}")
-    SET(CMAKE_REQUIRED_DEFINITIONS "${_FLAG}")
-    CHECK_C_SOURCE_COMPILES("int main() { return 0;}" ${_RESULT}
-        # Some compilers do not fail with a bad flag
-        FAIL_REGEX "error: bad value (.*) for .* switch"       # GNU
-        FAIL_REGEX "argument unused during compilation"        # clang
-        FAIL_REGEX "is valid for .* but not for C"             # GNU
-        FAIL_REGEX "unrecognized .*option"                     # GNU
-        FAIL_REGEX "ignoring unknown option"                   # MSVC
-        FAIL_REGEX "[Uu]nknown option"                         # HP
-        FAIL_REGEX "[Ww]arning: [Oo]ption"                     # SunPro
-        FAIL_REGEX "command option .* is not recognized"       # XL
-        FAIL_REGEX "WARNING: unknown flag:"                    # Open64
-        FAIL_REGEX " #10159: "                                 # ICC
-    )
-    SET(CMAKE_REQUIRED_DEFINITIONS "${SAFE_CMAKE_REQUIRED_DEFINITIONS}")
-ENDMACRO(CHECK_C_COMPILER_FLAG)
-
-
 # Macro to add a latex file to the build
 MACRO (ADD_LATEX_DOCS FILE)
     GET_FILENAME_COMPONENT(LATEX_TARGET ${FILE} NAME_WE)
@@ -749,7 +761,7 @@ ENDMACRO()
 
 # Add a matlab mex file
 FUNCTION( ADD_MATLAB_MEX MEXFILE )
-    IF ( USING_MICROSOFT )
+    IF ( USING_MSVC )
         #SET(MEX_FLAGS ${MEX_FLAGS} "LINKFLAGS=\"/NODEFAULTLIB:MSVSRT.lib\"" )
         SET( MEX "\"${MATLAB_DIRECTORY}/sys/perl/win32/bin/perl.exe\" \"${MATLAB_DIRECTORY}/bin/mex.pl\"" )
         SET( MEX_LDFLAGS ${MEX_LDFLAGS} -L${CMAKE_CURRENT_BINARY_DIR}/.. -L${CMAKE_CURRENT_BINARY_DIR}/../Debug -L${CMAKE_CURRENT_BINARY_DIR} )
@@ -765,13 +777,13 @@ FUNCTION( ADD_MATLAB_MEX MEXFILE )
     SET( MEX_LDFLAGS ${MEX_LDFLAGS} -L${CMAKE_CURRENT_BINARY_DIR}/.. ${SYSTEM_LDFLAGS} )
     SET( MEX_LIBS    ${MEX_LIBS}    ${SYSTEM_LIBS}    )
     IF ( ENABLE_GCOV )
-        SET ( COVERAGE_MATLAB_LIBS -lgcov )
-        SET ( COMPFLAGS "CXXFLAGS='$$CXXFLAGS" "-fprofile-arcs" "-ftest-coverage'" )
+        SET ( COVERAGE_MATLAB_LIBS ${COVERAGE_LIBS} )
+        SET ( COMPFLAGS "CXXFLAGS='$$CXXFLAGS ${COVERAGE_FLAGS}'" )
     ENDIF ()
     STRING(REGEX REPLACE "[.]cpp" "" TARGET ${MEXFILE})
     STRING(REGEX REPLACE "[.]c"   "" TARGET ${TARGET})
     FILE(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}" )
-    IF ( USING_MICROSOFT )
+    IF ( USING_MSVC )
         SET( MEX_BAT_FILE "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/compile_mex.bat" )
         FILE( WRITE  "${MEX_BAT_FILE}" "${MEX} \"${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE}\" " )
         APPEND_LIST( "${MEX_BAT_FILE}" "${MEX_FLAGS}"   "\"" "\" " )
@@ -810,7 +822,7 @@ MACRO( ADD_MATLAB_TEST EXEFILE ${ARGN} )
     FIND_PROGRAM( MATLAB_EXE NAME matlab ) 
     CONFIGURE_FILE( ${EXEFILE}.m ${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE}.m )
     CREATE_TEST_NAME( MATLAB ${EXEFILE} ${ARGN} )
-    IF ( USING_MICROSOFT )
+    IF ( USING_MSVC )
         SET( MATLAB_OPTIONS "-nodisplay" "-nodesktop" "-wait" "-logfile" "log_${EXEFILE}" )
     ELSE()
         SET( MATLAB_OPTIONS "-nojvm -nosplash -nodisplay" )
@@ -821,7 +833,7 @@ MACRO( ADD_MATLAB_TEST EXEFILE ${ARGN} )
         SET( MATLAB_DEBUGGER_OPTIONS -D${MATLAB_DEBUGGER} )
         STRING(REPLACE "\"" "" MATLAB_DEBUGGER_OPTIONS "${MATLAB_DEBUGGER_OPTIONS}")
     ENDIF()
-    IF ( USING_MICROSOFT )
+    IF ( USING_MSVC )
         FILE( WRITE  "${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE}.bat" "@echo off\n")
         FILE( APPEND "${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE}.bat" "matlab ")
         APPEND_LIST( "${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE}.bat" "${MATLAB_OPTIONS}" "" " " )

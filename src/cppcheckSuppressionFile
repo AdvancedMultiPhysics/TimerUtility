@@ -1,0 +1,13 @@
+// Supression file for cppcheck
+
+// Suppress unmatched suppressions
+unmatchedSuppression
+
+// Suppress missing include message (we are not checking dependencies)
+missingInclude
+
+// Suppress unusedFunction messages (functions may be used by subsequent packages)
+unusedFunction
+
+
+

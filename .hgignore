@@ -18,6 +18,7 @@ build/*/latex_docs/*
 build/*/matlab/*
 build/*/mex/*
 build/*/test/*
+build/*/tmp/*
 build/*/CMakeFiles/*
 build/*/CMakeCache.txt
 build/*/CTestTestfile.cmake
