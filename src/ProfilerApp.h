@@ -408,14 +408,14 @@ private:
             memset(trace,0,TRACE_SIZE*sizeof(size_t));
         }
         // Destructor
-		~store_trace() {
+        ~store_trace() {
             delete [] start_time;
             delete [] end_time;
             start_time = NULL;
             end_time = NULL;
             delete next;
             next = NULL;
-		}
+        }
       private:
         store_trace( const store_trace& rhs );              // Private copy constructor
         store_trace& operator=( const store_trace& rhs );   // Private assignment operator
@@ -431,12 +431,12 @@ private:
         std::string path;                   // The path to the file (if availible)
         volatile store_timer_data_info *next; // Pointer to the next entry in the list
         // Constructor used to initialize key values
-		store_timer_data_info(): start_line(-1), stop_line(-1), id(0), next(NULL) {}
+        store_timer_data_info(): start_line(-1), stop_line(-1), id(0), next(NULL) {}
         // Destructor
-		~store_timer_data_info() {
+        ~store_timer_data_info() {
             delete next;
             next = NULL;
-		}
+        }
       private:
         store_timer_data_info( const store_timer_data_info& rhs );              // Private copy constructor
         store_timer_data_info& operator=( const store_timer_data_info& rhs );   // Private assignment operator
@@ -457,17 +457,17 @@ private:
         store_timer_data_info *timer_data;  // Pointer to the timer data
         TIME_TYPE start_time;               // Store when start was called for the given block
         // Constructor used to initialize key values
-		store_timer(): is_active(false), trace_index(0), N_calls(0), id(0), 
+        store_timer(): is_active(false), trace_index(0), N_calls(0), id(0), 
             min_time(0), max_time(0), total_time(0), trace_head(NULL),
             next(NULL), timer_data(NULL)
         {
             memset(trace,0,sizeof(trace));
-		}
+        }
         // Destructor 
-		~store_timer() {
+        ~store_timer() {
             delete trace_head;
             delete next;
-		}
+        }
       private:
         store_timer( const store_timer& rhs );              // Private copy constructor
         store_timer& operator=( const store_timer& rhs );   // Private assignment operator
@@ -486,11 +486,11 @@ private:
         size_t* time_memory;                // The times at which we know the memory usage (ns from start)
         size_t* size_memory;                // The memory usage at each time
         // Constructor used to initialize key values
-		thread_info() {
+        thread_info() {
             memset(this,0,sizeof(thread_info));
-		}
+        }
         // Destructor
-		~thread_info() {
+        ~thread_info() {
             delete next;
             next = NULL;
             for (int i=0; i<TIMER_HASH_SIZE; i++) {
@@ -499,7 +499,7 @@ private:
             }
             delete [] time_memory;
             delete [] size_memory;
-		}
+        }
       private:
         thread_info( const thread_info& rhs );              // Private copy constructor
         thread_info& operator=( const thread_info& rhs );   // Private assignment operator
