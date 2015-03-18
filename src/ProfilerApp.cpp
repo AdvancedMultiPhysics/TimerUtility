@@ -1004,6 +1004,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
     for (int i=0; i<N_threads2; i++) {
         if ( thread_data[i] == NULL ) {
             delete [] thread_data;
+            thread_data = NULL;
             RELEASE_LOCK(&lock);
             ERROR_MSG("Internal error (3)");
         }
@@ -1034,6 +1035,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
         }
         if ( timer_global==NULL ) {
             delete [] thread_data;
+            thread_data = NULL;
             RELEASE_LOCK(&lock);
             ERROR_MSG("Internal error");
         }
@@ -1340,11 +1342,12 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 std::string active;
                 for (size_t k=0; k<trace.N_active; k++)
                     active += trace.active()[k].string() + " ";
-                fprintf(timerFile,"<trace:id=%s,thread=%i,rank=%i,N=%lu,min=%e,max=%e,tot=%e,active=[ %s]>\n",
-                    trace.id.c_str(),trace.thread,trace.rank,trace.N,trace.min,trace.max,trace.tot,active.c_str());
+                fprintf(timerFile,"<trace:id=%s,thread=%i,rank=%u,N=%lu,min=%e,max=%e,tot=%e,active=[ %s]>\n",
+                    trace.id.c_str(),trace.thread,trace.rank,static_cast<unsigned long>(trace.N),
+                    trace.min,trace.max,trace.tot,active.c_str());
                 // Save the detailed trace results (this is a binary file)
                 if ( trace.N_trace > 0 ) { 
-                    fprintf(traceFile,"<id=%s,thread=%i,rank=%i,active=[ %s],N=%lu>\n",
+                    fprintf(traceFile,"<id=%s,thread=%i,rank=%u,active=[ %s],N=%lu>\n",
                         trace.id.c_str(),trace.thread,trace.rank,active.c_str(),
                         static_cast<unsigned long>(trace.N_trace));
                     fwrite(trace.start(),sizeof(double),trace.N_trace,traceFile);

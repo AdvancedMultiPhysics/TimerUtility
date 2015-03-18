@@ -464,7 +464,6 @@ private:
 		~store_timer() {
             delete trace_head;
             delete next;
-            memset(this,0,sizeof(store_timer));
 		}
       private:
         store_timer( const store_timer& rhs );              // Private copy constructor
@@ -497,7 +496,6 @@ private:
             }
             delete [] time_memory;
             delete [] size_memory;
-            memset(this,0,sizeof(thread_info));
 		}
       private:
         thread_info( const thread_info& rhs );              // Private copy constructor
