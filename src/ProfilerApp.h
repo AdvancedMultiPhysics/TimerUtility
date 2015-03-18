@@ -457,8 +457,11 @@ private:
         store_timer_data_info *timer_data;  // Pointer to the timer data
         TIME_TYPE start_time;               // Store when start was called for the given block
         // Constructor used to initialize key values
-		store_timer() {
-            memset(this,0,sizeof(store_timer));
+		store_timer(): is_active(false), trace_index(0), N_calls(0), id(0), 
+            min_time(0), max_time(0), total_time(0), trace_head(NULL),
+            next(NULL), timer_data(NULL)
+        {
+            memset(trace,0,sizeof(trace));
 		}
         // Destructor 
 		~store_timer() {
