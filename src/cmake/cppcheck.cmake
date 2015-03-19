@@ -1,5 +1,8 @@
 # Find cppcheck if availible
-FIND_PROGRAM( CPPCHECK NAMES cppcheck cppcheck.exe PATHS ${CPPCHECK_DIRECTORY} )
+FIND_PROGRAM( CPPCHECK 
+    NAMES cppcheck cppcheck.exe 
+    PATHS "${CPPCHECK_DIRECTORY}" "C:/Program Files/Cppcheck" "C:/Program Files (x86)/Cppcheck" 
+)
 IF ( CPPCHECK )
     MESSAGE("Using cppcheck")
 ELSE()
