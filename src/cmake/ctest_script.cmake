@@ -1,8 +1,14 @@
 # ctest script for building, running, and submitting the test results 
-# Usage:  ctest -s script,build
-#   build = debug / optimized / valgrind
+# Usage:  ctest -S script,build
+#   build = debug / optimized / weekly / valgrind / valgrind-matlab
 # Note: this test will use use the number of processors defined in the variable N_PROCS,
 #   the enviornmental variable N_PROCS, or the number of processors availible (if not specified)
+
+
+# Set the Project variables
+SET( PROJ TIMER )
+SET( PROJ_NAME Profiler )
+
 
 # Set platform specific variables
 SITE_NAME( HOSTNAME )
@@ -33,8 +39,8 @@ SET( BUILDNAME_POSTFIX "$ENV{BUILDNAME_POSTFIX}" )
 
 
 # Get the source directory based on the current directory
-IF ( NOT TIMER_SOURCE_DIR )
-    SET( TIMER_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." )
+IF ( NOT ${PROJ}_SOURCE_DIR )
+    SET( ${PROJ}_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." )
 ENDIF()
 IF ( NOT CMAKE_MAKE_PROGRAM )
     SET( CMAKE_MAKE_PROGRAM make )
@@ -42,24 +48,33 @@ ENDIF()
 
 
 # Check that we specified the build type to run
+SET( RUN_WEEKLY FALSE )
 IF( NOT CTEST_SCRIPT_ARG )
     MESSAGE(FATAL_ERROR "No build specified: ctest -S /path/to/script,build (debug/optimized/valgrind")
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "debug" )
-    SET( CTEST_BUILD_NAME "Profiler-debug" )
+    SET( CTEST_BUILD_NAME "${PROJ_NAME}-debug" )
     SET( CMAKE_BUILD_TYPE "Debug" )
     SET( CTEST_COVERAGE_COMMAND ${COVERAGE_COMMAND} )
     SET( ENABLE_GCOV "true" )
     SET( USE_VALGRIND FALSE )
     SET( USE_VALGRIND_MATLAB FALSE )
 ELSEIF( (${CTEST_SCRIPT_ARG} STREQUAL "optimized") OR (${CTEST_SCRIPT_ARG} STREQUAL "opt") )
-    SET( CTEST_BUILD_NAME "Profiler-opt" )
+    SET( CTEST_BUILD_NAME "${PROJ_NAME}-opt" )
     SET( CMAKE_BUILD_TYPE "Release" )
     SET( CTEST_COVERAGE_COMMAND )
     SET( ENABLE_GCOV "false" )
     SET( USE_VALGRIND FALSE )
     SET( USE_VALGRIND_MATLAB FALSE )
+ELSEIF( (${CTEST_SCRIPT_ARG} STREQUAL "weekly") )
+    SET( CTEST_BUILD_NAME "${PROJ_NAME}-Weekly" )
+    SET( CMAKE_BUILD_TYPE "Release" )
+    SET( CTEST_COVERAGE_COMMAND )
+    SET( ENABLE_GCOV "false" )
+    SET( USE_VALGRIND FALSE )
+    SET( USE_VALGRIND_MATLAB FALSE )
+    SET( RUN_WEEKLY TRUE )
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "valgrind" )
-    SET( CTEST_BUILD_NAME "Profiler-valgrind" )
+    SET( CTEST_BUILD_NAME "${PROJ_NAME}-valgrind" )
     SET( CMAKE_BUILD_TYPE "Debug" )
     SET( CTEST_COVERAGE_COMMAND )
     SET( ENABLE_GCOV "false" )
@@ -67,12 +82,16 @@ ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "valgrind" )
     SET( USE_VALGRIND_MATLAB FALSE )
     SET( USE_MATLAB 0 )
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "valgrind-matlab" )
-    SET( CTEST_BUILD_NAME "Profiler-valgrind-matlab" )
+    SET( CTEST_BUILD_NAME "${PROJ_NAME}-valgrind-matlab" )
     SET( CMAKE_BUILD_TYPE "Debug" )
     SET( CTEST_COVERAGE_COMMAND )
     SET( ENABLE_GCOV "false" )
     SET( USE_VALGRIND FALSE )
     SET( USE_VALGRIND_MATLAB TRUE )
+ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "doc" )
+    SET( CTEST_BUILD_NAME "${PROJ_NAME}-doc" )
+    SET( CMAKE_BUILD_TYPE "Release" )
+    SET( BUILD_ONLY_DOCS "true" )
 ELSE()
     MESSAGE(FATAL_ERROR "Invalid build (${CTEST_SCRIPT_ARG}): ctest -S /path/to/script,build (debug/opt/valgrind")
 ENDIF()
@@ -98,10 +117,10 @@ IF( NOT DEFINED N_PROCS )
     ENDIF()
     # Mac:
     IF(APPLE)
-        find_program(cmd_sys_pro "system_profiler")
+        find_program(cmd_sys_pro "sysctl")
         if(cmd_sys_pro)
-            execute_process(COMMAND ${cmd_sys_pro} OUTPUT_VARIABLE info)
-            STRING(REGEX REPLACE "^.*Total Number of Cores: ([0-9]+).*$" "\\1" N_PROCS "${info}")
+            execute_process(COMMAND ${cmd_sys_pro} hw.physicalcpu OUTPUT_VARIABLE info)
+            STRING(REGEX REPLACE "^.*hw.physicalcpu: ([0-9]+).*$" "\\1" N_PROCS "${info}")
         ENDIF()
     ENDIF()
     # Windows:
@@ -112,11 +131,10 @@ ENDIF()
 
 
 # Set basic variables
-SET( CTEST_PROJECT_NAME "TIMER" )
-SET( CTEST_SOURCE_DIRECTORY "${TIMER_SOURCE_DIR}" )
+SET( CTEST_PROJECT_NAME "${PROJ}" )
+SET( CTEST_SOURCE_DIRECTORY "${${PROJ}_SOURCE_DIR}" )
 SET( CTEST_BINARY_DIRECTORY "." )
 SET( CTEST_DASHBOARD "Nightly" )
-SET( CTEST_TEST_TIMEOUT 900 )
 SET( CTEST_CUSTOM_MAXIMUM_NUMBER_OF_ERRORS 500 )
 SET( CTEST_CUSTOM_MAXIMUM_NUMBER_OF_WARNINGS 500 )
 SET( CTEST_CUSTOM_MAXIMUM_PASSED_TEST_OUTPUT_SIZE 10000 )
@@ -138,9 +156,21 @@ SET( CTEST_CUSTOM_WARNING_EXCEPTION
 )
 
 
+# Set timeouts: 5 minutes for debug, 2 for opt, and 30 minutes for valgrind/weekly
+IF ( USE_VALGRIND )
+    SET( CTEST_TEST_TIMEOUT 1800 )
+ELSEIF ( RUN_WEEKLY )
+    SET( CTEST_TEST_TIMEOUT 1800 )
+ELSEIF( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
+    SET( CTEST_TEST_TIMEOUT 300 )
+ELSE()
+    SET( CTEST_TEST_TIMEOUT 120 )
+ENDIF()
+
+
 # Set valgrind options
-#SET (VALGRIND_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --track-fds=yes --num-callers=50 --show-reachable=yes --track-origins=yes --malloc-fill=0xff --free-fill=0xfe --suppressions=${TIMER_SOURCE_DIR}/src/ValgrindSuppresionFile" )
-SET( VALGRIND_COMMAND_OPTIONS  "--tool=memcheck --leak-check=yes --track-fds=yes --num-callers=50 --show-reachable=yes --suppressions=${TIMER_SOURCE_DIR}/src/ValgrindSuppresionFile" )
+#SET (VALGRIND_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --track-fds=yes --num-callers=50 --show-reachable=yes --track-origins=yes --malloc-fill=0xff --free-fill=0xfe --suppressions=${${PROJ}_SOURCE_DIR}/ValgrindSuppresionFile" )
+SET( VALGRIND_COMMAND_OPTIONS  "--tool=memcheck --leak-check=yes --track-fds=yes --num-callers=50 --show-reachable=yes --suppressions=${${PROJ}_SOURCE_DIR}/ValgrindSuppresionFile" )
 IF ( USE_VALGRIND )
     SET( MEMORYCHECK_COMMAND ${VALGRIND_COMMAND} )
     SET( MEMORYCHECKCOMMAND ${VALGRIND_COMMAND} )
@@ -206,7 +236,7 @@ MESSAGE("   ${CTEST_OPTIONS}")
 
 # Configure and run the tests
 SET( CTEST_SITE ${HOSTNAME} )
-CTEST_START("${CTEST_DASHBOARD}")
+CTEST_START( "${CTEST_DASHBOARD}" )
 CTEST_UPDATE()
 CTEST_CONFIGURE(
     BUILD   ${CTEST_BINARY_DIRECTORY}
@@ -214,15 +244,18 @@ CTEST_CONFIGURE(
     OPTIONS "${CTEST_OPTIONS}"
 )
 
+
 # Run the configure, build and tests
 CTEST_BUILD()
 IF ( SKIP_TESTS )
     # Do not run tests
     SET( CTEST_COVERAGE_COMMAND )
 ELSEIF ( USE_VALGRIND_MATLAB )
-    CTEST_TEST( INCLUDE MATLAB--test_hello_world  PARALLEL_LEVEL ${N_PROCS} )
+    CTEST_TEST( INCLUDE MATLAB  EXCLUDE WEEKLY  PARALLEL_LEVEL ${N_PROCS} )
 ELSEIF ( USE_VALGRIND )
-    CTEST_MEMCHECK( EXCLUDE procs   PARALLEL_LEVEL ${N_PROCS} )
+    CTEST_MEMCHECK( EXCLUDE "(procs|WEEKLY)"  PARALLEL_LEVEL ${N_PROCS} )
+ELSEIF ( RUN_WEEKLY )
+    CTEST_TEST( INCLUDE WEEKLY  PARALLEL_LEVEL ${N_PROCS} )
 ELSE()
     CTEST_TEST( EXCLUDE WEEKLY  PARALLEL_LEVEL ${N_PROCS} )
 ENDIF()
