@@ -40,3 +40,7 @@ build/*/Debug
 build/*/distclean.bat
 build/*/ipch
 build/*/timerutility.lib
+build/*/timerutility.dir
+build/*/TIMER.*
+
+
