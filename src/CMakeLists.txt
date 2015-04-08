@@ -21,6 +21,12 @@ ENDIF()
 PROJECT( TIMER )
 
 
+# Set the default C++ standard
+IF ( NOT CXX_STD )
+    SET( CXX_STD 98 )
+ENDIF()
+
+
 # Set some common paths
 SET( TIMER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
 SET( TIMER_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR} )

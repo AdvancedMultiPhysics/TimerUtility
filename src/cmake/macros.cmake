@@ -1,4 +1,7 @@
+INCLUDE(CheckCCompilerFlag)
 INCLUDE(CheckCSourceCompiles)
+INCLUDE(CheckCXXCompilerFlag)
+INCLUDE(CheckCXXSourceCompiles)
 IF ( NOT TEST_FAIL_REGULAR_EXPRESSION )
     SET( TEST_FAIL_REGULAR_EXPRESSION "(FAILED)|(leaked context IDs detected)|(handles are still allocated)" )
 ENDIF()
@@ -199,7 +202,7 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
         ADD_DEPENDENCIES( copy-${PROJ}-include ${COPY_TARGET} )
     ENDIF()
     # Copy the header files to the include path
-    FILE( GLOB HFILES RELATIVE ${${PROJ}_SOURCE_DIR} ${HEADERS} )
+    FILE( GLOB HFILES RELATIVE "${${PROJ}_SOURCE_DIR}" ${HEADERS} )
     FOREACH( HFILE ${HFILES} )
         SET( SRC_FILE "${${PROJ}_SOURCE_DIR}/${HFILE}" )
         SET( DST_FILE "${${PROJ}_INSTALL_DIR}/include/${HFILE}" )
@@ -272,7 +275,7 @@ ENDMACRO()
 
 
 # Macro to identify the compiler
-MACRO( SET_COMPILER )
+MACRO( IDENTIFY_COMPILER )
     # SET the C/C++ compiler
     IF ( CMAKE_C_COMPILER_WORKS OR CMAKE_C_COMPILER_WORKS )
         IF( CMAKE_COMPILE_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX )
@@ -342,39 +345,6 @@ MACRO( SET_WARNINGS )
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0" )
   ELSEIF ( USING_ICC )
     # Add Intel specifc compiler options
-    #    111: statement is unreachable
-    #         This occurs in LibMesh
-    #    177: variable "" was declared but never referenced
-    #    181: argument is incompatible with corresponding format string conversion
-    #    304: access control not specified ("public" by default)
-    #         This occurs in LibMesh
-    #    383: value copied to temporary, reference to temporary used
-    #         This is an irrelavent error
-    #    444: destructor for base class "" is not virtual
-    #         This can create memory leaks (and should be fixed)
-    #         Unfortunatelly many of these come from LibMesh
-    #    522: function "xxx" redeclared "inline" after being called
-    #         We should fix this, but there are a lot of these
-    #    593: variable "xxx" was set but never used
-    #    654: overloaded virtual function "" is only partially overridden in class " "
-    #    869: parameter "xxx" was never referenced
-    #         I believe this is bad practice and should be fixed, but it may require a broader discussion (it is built into the design of Operator)
-    #    981: operands are evaluated in unspecified order
-    #         This can occur when an implicit conversion take place in a function call 
-    #   1011: missing return statement at end of non-void function
-    #         This is bad practice
-    #   1418: external function definition with no prior declaration
-    #         This can happen if we don't include a header file (and maybe if there is an internal function?)
-    #         Unfortunatelly many of these come from trilinos
-    #   1419: external declaration in primary source file
-    #   1572: floating-point equality and inequality comparisons are unreliable
-    #         LibMesh warnings
-    #   1599: declaration hides parameter 
-    #         LibMesh warnings
-    #   2259: non-pointer conversion from "int" to "unsigned char" may lose significant bits
-    #         This is bad practice, use an explict coversion instead
-    #         Unfortunatelly many of these come from LibMesh
-    #   6843: A dummy argument with an explicit INTENT(OUT) declaration is not given an explicit value.
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
     SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall" )
   ELSEIF ( USING_CRAY )
@@ -396,7 +366,7 @@ MACRO( SET_WARNINGS )
     SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}")
     SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS}")
   ENDIF()
-ENDMACRO ()
+ENDMACRO()
 
 
 # Macro to add user compile flags
@@ -407,10 +377,48 @@ MACRO( ADD_USER_FLAGS )
 ENDMACRO()
 
 
-# Macro to set the flags for debug mode
+# Macro to add user c++ std 
+MACRO( ADD_CXX_STD )
+    IF ( NOT CXX_STD )
+        MESSAGE( FATAL_ERROR "The desired c++ standard must be specified: CXX_STD=(98,11,14,NONE)")
+    ENDIF()
+    IF ( ${CXX_STD} STREQUAL "NONE" )
+        # Do nothing
+        return()
+    ELSEIF ( (NOT ${CXX_STD} STREQUAL "98") AND (NOT ${CXX_STD} STREQUAL "11") AND (NOT ${CXX_STD} STREQUAL "14") )
+        MESSAGE( FATAL_ERROR "Unknown c++ standard (98,11,14,NONE)" )
+    ENDIF()
+    # Add the flags
+    SET( CMAKE_CXX_STANDARD ${CXX_STD} )
+    MESSAGE( "C++ standard: ${CXX_STD}" )
+    IF ( USING_GCC )
+        # GNU: -std=
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+    ELSEIF ( USING_MSVC )
+        # Microsoft: 
+    ELSEIF ( USING_ICC )
+        # ICC: -std=
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+    ELSEIF ( USING_CRAY )
+        # Cray: -std=
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+    ELSEIF ( USING_PGCC )
+        # PGI: -std=
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+    ELSEIF ( USING_CLANG )
+        # ICC: -std=
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+    ELSEIF ( USING_DEFAULT )
+        # Default: -std=
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+    ENDIF()
+ENDMACRO()
+
+
+# Macro to set the compile/link flags
 MACRO( SET_COMPILER_FLAGS )
     # Initilaize the compiler
-    SET_COMPILER()
+    IDENTIFY_COMPILER()
     # Set the default flags for each build type
     IF ( USING_MSVC )
         SET(CMAKE_C_FLAGS_DEBUG       "-D_DEBUG /DEBUG /Od /EHsc /MDd /Zi /Z7" )
@@ -426,10 +434,6 @@ MACRO( SET_COMPILER_FLAGS )
         SET(CMAKE_CXX_FLAGS_RELEASE   "-O2"             )
         SET(CMAKE_Fortran_FLAGS_DEBUG "-g -O0"          )
         SET(CMAKE_Fortran_FLAGS_RELEASE "-O2"           )
-    ENDIF()
-    IF ( NOT DISABLE_GXX_DEBUG )
-        SET(CMAKE_C_FLAGS_DEBUG   " ${CMAKE_C_FLAGS_DEBUG}   -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
-        SET(CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
     ENDIF()
     # Set the compiler flags to use
     IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL "DEBUG")
@@ -447,10 +451,35 @@ MACRO( SET_COMPILER_FLAGS )
     ELSE()
         MESSAGE(FATAL_ERROR "Unknown value for CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
     ENDIF()
+    # Set the behavior of GLIBCXX flags
+    CHECK_ENABLE_FLAG( ENABLE_GXX_DEBUG 0 )
+    IF ( ENABLE_GXX_DEBUG ) 
+        # Enable GLIBCXX_DEBUG flags
+        SET( CMAKE_C_FLAGS_DEBUG   " ${CMAKE_C_FLAGS_DEBUG}   -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
+        SET( CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
+        SET( DISABLE_GXX_DEBUG OFF )
+    ELSEIF ( DISABLE_GXX_DEBUG ) 
+        # Disable GLIBCXX_DEBUG flags
+        SET( DISABLE_GXX_DEBUG OFF )
+    ELSE()
+        # Default
+        SET( DISABLE_GXX_DEBUG ON )
+    ENDIF()
     # Add the user flags
     ADD_USER_FLAGS()
+    # Add the c++ standard flags
+    ADD_CXX_STD()
     # Set the warnings to use
     SET_WARNINGS()
+    # Test the compile flags
+    CHECK_C_COMPILER_FLAG( "${CMAKE_C_FLAGS}" CHECK_C_FLAGS )
+    CHECK_CXX_COMPILER_FLAG( "${CMAKE_CXX_FLAGS}" CHECK_CXX_FLAGS )
+    IF ( NOT ${CHECK_C_FLAGS} )
+        MESSAGE(FATAL_ERROR "Invalid C flags detected")
+    ENDIF()
+    IF ( NOT ${CHECK_CXX_FLAGS} )
+        MESSAGE(FATAL_ERROR "Invalid CXX flags detected")
+    ENDIF()
 ENDMACRO()
 
 
@@ -567,14 +596,25 @@ MACRO( ADD_PROJ_EXE_DEP EXE )
     IF ( USE_MPI OR USE_EXT_MPI OR HAVE_MPI )
         TARGET_LINK_LIBRARIES( ${EXE} ${MPI_LINK_FLAGS} ${MPI_LIBRARIES} )
     ENDIF()
-    TARGET_LINK_LIBRARIES( ${EXE} ${BLAS_LAPACK_LIBS} )
+    TARGET_LINK_LIBRARIES( ${EXE} ${LAPACK_LIBS} ${BLAS_LIBS} ${BLAS_LAPACK_LIBS} )
     TARGET_LINK_LIBRARIES( ${EXE} ${COVERAGE_LIBS} ${LDLIBS} ${LDLIBS_EXTRA} )
     TARGET_LINK_LIBRARIES( ${EXE} ${SYSTEM_LIBS} ${SYSTEM_LDFLAGS} )
 ENDMACRO()
 
 
+# Check if we want to keep the test
+FUNCTION( KEEP_TEST RESULT )
+    SET( ${RESULT} 1 PARENT_SCOPE )
+ENDFUNCTION()
+
+
 # Add a provisional test
 FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE )
+    # Check if we actually want to add the test
+    KEEP_TEST( RESULT )
+    IF ( NOT RESULT )
+        RETURN()
+    ENDIF()
     # Check if test has already been added
     SET( tmp )
     IF ( TARGET ${EXEFILE} )
@@ -616,8 +656,12 @@ ENDFUNCTION()
 
 # Macro to create the test name
 MACRO( CREATE_TEST_NAME TEST ${ARGN} )
-    SET( TESTNAME "${TEST}" )
-    FOREACH( tmp ${ARGN} )
+    IF ( PACKAGE )
+        SET( TESTNAME "${PACKAGE}::${TEST}" )
+    ELSE()
+        SET( TESTNAME "${TEST}" )
+    ENDIF()
+    FOREACH( tmp ${ARGN})
         SET( TESTNAME "${TESTNAME}--${tmp}")
     endforeach()
     # STRING(REGEX REPLACE "--" "-" TESTNAME ${TESTNAME} )
@@ -638,6 +682,12 @@ ENDFUNCTION()
 
 # Add a executable as a test
 FUNCTION( ADD_${PROJ}_TEST EXEFILE ${ARGN} )
+    # Check if we actually want to add the test
+    KEEP_TEST( RESULT )
+    IF ( NOT RESULT )
+        RETURN()
+    ENDIF()
+    # Add the provisional test
     ADD_PROJ_PROVISIONAL_TEST ( ${EXEFILE} )
     CREATE_TEST_NAME( ${EXEFILE} ${ARGN} )
     GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
@@ -654,12 +704,18 @@ ENDFUNCTION()
 
 # Add a executable as a weekly test
 FUNCTION( ADD_${PROJ}_WEEKLY_TEST EXEFILE PROCS ${ARGN} )
+    # Check if we actually want to add the test
+    KEEP_TEST( RESULT )
+    IF ( NOT RESULT )
+        RETURN()
+    ENDIF()
+    # Add the provisional test
     ADD_PROJ_PROVISIONAL_TEST ( ${EXEFILE} )
     GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
     STRING(REGEX REPLACE "\\$\\(Configuration\\)" "${CONFIGURATION}" EXE "${EXE}" )
     IF( ${PROCS} STREQUAL "1" )
         CREATE_TEST_NAME( "${EXEFILE}_WEEKLY" ${ARGN} )
-    ELSEIF( USE_MPI AND NOT (${PROCS} GREATER ${TEST_MAX_PROCS}) )
+    ELSEIF( (USE_MPI OR USE_EXT_MPI) AND NOT (${PROCS} GREATER ${TEST_MAX_PROCS}) )
         CREATE_TEST_NAME( "${EXEFILE}_${PROCS}procs_WEEKLY" ${ARGN} )
     ENDIF()
     IF ( ${PROCS} GREATER ${TEST_MAX_PROCS} )
@@ -673,7 +729,7 @@ FUNCTION( ADD_${PROJ}_WEEKLY_TEST EXEFILE PROCS ${ARGN} )
         ENDIF()
         SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS 1 )
         ADD_RESOURCE_LOCK( ${TESTNAME} ${EXEFILE} ${ARGN} )
-    ELSEIF( USE_MPI AND NOT (${PROCS} GREATER ${TEST_MAX_PROCS}) )
+    ELSEIF( (USE_MPI OR USE_EXT_MPI) AND NOT (${PROCS} GREATER ${TEST_MAX_PROCS}) )
         CREATE_TEST_NAME( "${EXEFILE}_${PROCS}procs_WEEKLY" ${ARGN} )
         ADD_TEST( ${TESTNAME} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${EXE} ${ARGN} )
         SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${PROCS} )
@@ -684,11 +740,17 @@ ENDFUNCTION()
 
 # Add a executable as a parallel test
 FUNCTION( ADD_${PROJ}_TEST_PARALLEL EXEFILE PROCS ${ARGN} )
+    # Check if we actually want to add the test
+    KEEP_TEST( RESULT )
+    IF ( NOT RESULT )
+        RETURN()
+    ENDIF()
+    # Add the provisional test
     ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
     GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
     STRING(REGEX REPLACE "\\$\\(Configuration\\)" "${CONFIGURATION}" EXE "${EXE}" )
     CREATE_TEST_NAME( "${EXEFILE}_${PROCS}procs" ${ARGN} )
-    IF ( NOT USE_MPI )
+    IF ( NOT ( USE_MPI OR USE_EXT_MPI ) )
         MESSAGE("Disabling test ${TESTNAME} (configured without MPI)")
     ELSEIF ( ${PROCS} GREATER ${TEST_MAX_PROCS} )
         MESSAGE("Disabling test ${TESTNAME} (exceeds maximum number of processors ${TEST_MAX_PROCS})")
@@ -714,11 +776,68 @@ MACRO( ADD_${PROJ}_TEST_THREAD_MPI EXEFILE PROCS THREADS ${ARGN} )
         ADD_TEST ( ${TESTNAME} ${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE} ${ARGN} )
         SET_TESTS_PROPERTIES ( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
         ADD_RESOURCE_LOCK( ${TESTNAME} ${EXEFILE} ${ARGN} )
-    ELSEIF ( USE_MPI )
+    ELSEIF ( USE_MPI OR USE_EXT_MPI )
         ADD_TEST( ${TESTNAME} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${EXE} ${ARGN} )
         SET_TESTS_PROPERTIES ( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
         ADD_RESOURCE_LOCK( ${TESTNAME} ${EXEFILE} ${ARGN} )
     ENDIF()
+ENDMACRO()
+
+
+# Add a executable as an example
+FUNCTION( ADD_${PROJ}_EXAMPLE EXEFILE PROCS ${ARGN} )
+    # Add the file to the example doxygen file
+    SET( VALUE 0 )
+    FOREACH(_variableName ${EXAMPLE_LIST})
+        IF ( "${_variableName}" STREQUAL "${EXEFILE}" )
+            SET( VALUE 1 )
+        ENDIF()
+    ENDFOREACH()
+    IF ( NOT ${VALUE} )
+        FILE(APPEND ${EXAMPLE_INSTALL_DIR}/examples.h "* \\ref ${EXEFILE} \"${EXEFILE}\"\n" )
+        SET( EXAMPLE_LIST ${EXAMPLE_LIST} ${EXEFILE} CACHE INTERNAL "example_list" FORCE )
+    ENDIF()
+    # Check if we actually want to add the test
+    IF ( ONLY_BUILD_DOCS )
+        RETURN()
+    ENDIF()
+    # Add the provisional test
+    ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
+    GET_TARGET_PROPERTY(EXE ${EXEFILE} LOCATION)
+    STRING(REGEX REPLACE "\\$\\(Configuration\\)" "${CONFIGURATION}" EXE "${EXE}" )
+    ADD_DEPENDENCIES( build-examples ${EXEFILE} )
+    GET_TARGET_PROPERTY(EXE2 ${EXEFILE} LOCATION)
+    ADD_CUSTOM_COMMAND( TARGET ${EXEFILE} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${EXE2} "${EXAMPLE_INSTALL_DIR}/${EXEFILE}"
+    )
+    IF( ${PROCS} STREQUAL "1" AND (NOT USE_MPI_FOR_SERIAL_TESTS) )
+        CREATE_TEST_NAME( "example--${EXEFILE}" ${ARGN} )
+        ADD_TEST( ${TESTNAME} ${EXE} ${ARGN} )
+    ELSEIF ( USE_EXT_MPI AND NOT (${PROCS} GREATER ${TEST_MAX_PROCS}) )
+        CREATE_TEST_NAME( "example--${EXEFILE}_${PROCS}procs" ${ARGN} )
+        ADD_TEST( ${TESTNAME} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${EXE} ${ARGN} )
+    ENDIF()
+    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${PROCS} )
+    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES RESOURCE_LOCK ${EXEFILE} )
+ENDFUNCTION()
+
+
+# Begin configure for the examples for a package
+MACRO( BEGIN_EXAMPLE_CONFIG PACKAGE )
+    # Set example install dir
+    SET( EXAMPLE_INSTALL_DIR ${AMP_INSTALL_DIR}/examples/${PACKAGE} )
+    # Create list of examples
+    SET( EXAMPLE_LIST "dummy" CACHE INTERNAL "example_list" FORCE )
+    # Create doxygen input file for examples
+    SET( DOXYFILE_EXTRA_SOURCES ${DOXYFILE_EXTRA_SOURCES} ${EXAMPLE_INSTALL_DIR} CACHE INTERNAL "doxyfile_extra_sources") 
+    FILE(WRITE  ${EXAMPLE_INSTALL_DIR}/examples.h "// Include file for doxygen providing the examples for ${PACKAGE}\n")
+    FILE(APPEND ${EXAMPLE_INSTALL_DIR}/examples.h "/*! \\page Examples_${PACKAGE}\n" )
+ENDMACRO()
+
+# Install the examples
+MACRO( INSTALL_${PROJ}_EXAMPLE PACKAGE )
+    FILE(APPEND ${EXAMPLE_INSTALL_DIR}/examples.h "*/\n" )
+    SET( EXAMPLE_INSTALL_DIR "" )
 ENDMACRO()
 
 
@@ -739,7 +858,7 @@ ENDMACRO()
 
 
 # Macro to add a latex file to the build
-MACRO (ADD_LATEX_DOCS FILE)
+MACRO( ADD_LATEX_DOCS FILE )
     GET_FILENAME_COMPONENT(LATEX_TARGET ${FILE} NAME_WE)
     ADD_CUSTOM_TARGET( 
         ${LATEX_TARGET}_pdf 

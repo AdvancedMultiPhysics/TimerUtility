@@ -130,7 +130,7 @@ MACRO( CONFIGURE_SYSTEM )
     ENDIF()
     # Remove extra library links
     # Get the compiler
-    SET_COMPILER ()
+    IDENTIFY_COMPILER()
     CHECK_ENABLE_FLAG( USE_STATIC 0 )
     # Add system dependent flags
     MESSAGE("System is: ${CMAKE_SYSTEM_NAME}")
