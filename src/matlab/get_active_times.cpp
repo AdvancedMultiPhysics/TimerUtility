@@ -84,7 +84,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         const float *start = reinterpret_cast<const float*>(mxGetData(prhs[1]));
         const float *stop  = reinterpret_cast<const float*>(mxGetData(prhs[2]));
         float *t = new float[Nt];
-        for (int i=0; i<Nt; i++)
+        for (size_t i=0; i<Nt; i++)
             t[i] = static_cast<float>(t_in[i]);
         search<float>( Nt, t, Ns, start, stop, data );
         delete [] t;

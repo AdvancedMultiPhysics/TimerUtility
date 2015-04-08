@@ -3,7 +3,7 @@
 
 
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void mexFunction(int, mxArray *[], int, const mxArray *[])
 {
     // Create a minor memory leak for valgrind to catch
     char *tmp = new char[517];
