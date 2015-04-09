@@ -156,8 +156,8 @@ private:
         #elif __cplusplus_std==11 || __cplusplus_std==14
             #define __throw_new 
             #define __throw_delete noexcept 
-            #define __nothrow_new 
-            #define __nothrow_delete 
+            #define __nothrow_new noexcept
+            #define __nothrow_delete noexcept
         #else
             #error Unknown value for __cplusplus_std
         #endif
