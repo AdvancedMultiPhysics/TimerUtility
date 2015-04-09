@@ -2,6 +2,11 @@
 #include <iostream>
 
 
+#define NULL_USE(variable) do {                         \
+    if(0) {char *temp = (char *)&variable; temp++;}     \
+}while(0)
+
+
 int main(int, char*[])
 {
     int N_errors = 0;
@@ -19,9 +24,11 @@ int main(int, char*[])
     #else
         double *tmp = new double();
         MemoryApp::MemoryStats m2 = MemoryApp::getMemoryStats();
+        NULL_USE(tmp);
         delete tmp;
         MemoryApp::MemoryStats m3 = MemoryApp::getMemoryStats();
         tmp = new double[1000];
+        NULL_USE(tmp);
         MemoryApp::MemoryStats m4 = MemoryApp::getMemoryStats();
         delete [] tmp;
         MemoryApp::MemoryStats m5 = MemoryApp::getMemoryStats();
