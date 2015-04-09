@@ -40,6 +40,20 @@
 #endif
 
 
+#ifndef __cplusplus_std
+    #ifndef __cplusplus
+        #error Detecting C++ version requires __cplusplus
+    #elif __cplusplus==1 || __cplusplus==199711L
+        #define __cplusplus_std 98
+    #elif __cplusplus==201103L
+        #define __cplusplus_std 11
+    #elif __cplusplus==201402L
+        #define __cplusplus_std 14
+    #else
+        #error Unknown value for __cplusplus
+    #endif
+#endif
+
 
 
 /** \class MemoryApp
@@ -132,11 +146,17 @@ private:
     static size_t d_physical_memory;
     static void* d_base_frame;
 
-    // Friends
-    friend void* operator new(size_t size) throw(std::bad_alloc);
-    friend void* operator new[] (size_t size) throw(std::bad_alloc);
-    friend void operator delete(void* data) throw();
-    friend void operator delete[] (void* data) throw();
+    // Overload new/delete are friends
+    #ifndef DISABLE_NEW_OVERLOAD
+        friend void* operator new(size_t size);
+        friend void* operator new[] (size_t size);
+        friend void operator delete(void* data);
+        friend void operator delete[] (void* data);
+        friend void* operator new(size_t size, const std::nothrow_t&);
+        friend void* operator new[] (size_t size, const std::nothrow_t&);
+        friend void operator delete(void* data, const std::nothrow_t&);
+        friend void operator delete[] (void* data, const std::nothrow_t&);
+    #endif
 };
 
 

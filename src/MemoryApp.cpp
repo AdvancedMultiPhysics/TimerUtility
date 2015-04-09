@@ -94,7 +94,20 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
     #error Unknown OS
 #endif
 #ifndef DISABLE_NEW_OVERLOAD
-    void* operator new(size_t size) throw(std::bad_alloc) 
+    #if __cplusplus_std==98
+        #define throw_new throw(std::bad_alloc) 
+        #define nothrow_new
+        #define throw_delete throw() 
+        #define nothrow_delete throw()
+    #elif __cplusplus_std==11 || __cplusplus_std==14
+        #define throw_new 
+        #define throw_delete noexcept 
+        #define nothrow_new 
+        #define nothrow_delete 
+    #else
+        #error Unknown value for __cplusplus_std
+    #endif
+    void* operator new(size_t size) throw_new
     {
         void* ret = malloc(size);
         if (!ret) throw std::bad_alloc();
@@ -103,7 +116,7 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
         TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);
         return ret;
     }
-    void* operator new[] (size_t size) throw(std::bad_alloc) 
+    void* operator new[] (size_t size) throw_new
     {
         void* ret = malloc(size);
         if (!ret) throw std::bad_alloc();
@@ -112,7 +125,25 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
         TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);
         return ret;
     }
-    void operator delete(void* data) throw()
+    void* operator new(size_t size, const std::nothrow_t&) nothrow_new
+    {
+        void* ret = malloc(size);
+        if (!ret) return NULL;;
+        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(ret);
+        TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_allocated,block_size);
+        TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);
+        return ret;
+    }
+    void* operator new[] (size_t size, const std::nothrow_t&) nothrow_new
+    {
+        void* ret = malloc(size);
+        if (!ret) return NULL;;
+        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(ret);
+        TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_allocated,block_size);
+        TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);
+        return ret;
+    }
+    void operator delete(void* data) throw_delete
     {
         if ( data != NULL ) {
             const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
@@ -121,7 +152,25 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
             TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
         }
     }
-    void operator delete[] (void* data) throw()
+    void operator delete[] (void* data) throw_delete
+    {
+        if ( data != NULL ) {
+            const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
+            free(data);
+            TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
+        }
+    }
+    void operator delete(void* data, const std::nothrow_t&) nothrow_new
+    {
+        if ( data != NULL ) {
+            const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
+            free(data);
+            TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
+        }
+    }
+    void operator delete[] (void* data, const std::nothrow_t&) nothrow_new
     {
         if ( data != NULL ) {
             const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
