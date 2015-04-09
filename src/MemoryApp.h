@@ -148,14 +148,27 @@ private:
 
     // Overload new/delete are friends
     #ifndef DISABLE_NEW_OVERLOAD
-        friend void* operator new(size_t size);
-        friend void* operator new[] (size_t size);
-        friend void operator delete(void* data);
-        friend void operator delete[] (void* data);
-        friend void* operator new(size_t size, const std::nothrow_t&);
-        friend void* operator new[] (size_t size, const std::nothrow_t&);
-        friend void operator delete(void* data, const std::nothrow_t&);
-        friend void operator delete[] (void* data, const std::nothrow_t&);
+        #if __cplusplus_std==98
+            #define __throw_new throw(std::bad_alloc) 
+            #define __nothrow_new
+            #define __throw_delete throw() 
+            #define __nothrow_delete throw()
+        #elif __cplusplus_std==11 || __cplusplus_std==14
+            #define __throw_new 
+            #define __throw_delete noexcept 
+            #define __nothrow_new 
+            #define __nothrow_delete 
+        #else
+            #error Unknown value for __cplusplus_std
+        #endif
+        friend void* operator new(size_t size) __throw_new;
+        friend void* operator new[] (size_t size) __throw_new;
+        friend void operator delete(void* data) __throw_delete;
+        friend void operator delete[] (void* data) __throw_delete;
+        friend void* operator new(size_t size, const std::nothrow_t&) __nothrow_new;
+        friend void* operator new[] (size_t size, const std::nothrow_t&) __nothrow_new;
+        friend void operator delete(void* data, const std::nothrow_t&) __nothrow_delete;
+        friend void operator delete[] (void* data, const std::nothrow_t&) __nothrow_delete;
     #endif
 };
 
