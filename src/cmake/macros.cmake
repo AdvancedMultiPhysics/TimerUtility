@@ -397,8 +397,8 @@ MACRO( ADD_CXX_STD )
             SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++98")
         ELSEIF ( ${CXX_STD} STREQUAL "11" )
             SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-        ELSEIF ( ${CXX_STD} STREQUAL "11" )
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=g++14")
+        ELSEIF ( ${CXX_STD} STREQUAL "14" )
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
         ENDIF()
     ELSEIF ( USING_MSVC )
         # Microsoft: 
@@ -412,8 +412,12 @@ MACRO( ADD_CXX_STD )
         # PGI: -std=
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
     ELSEIF ( USING_CLANG )
-        # ICC: -std=
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+        # Clang: -std=
+        IF ( ( ${CXX_STD} STREQUAL "98") OR ( ${CXX_STD} STREQUAL "98" ) )
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+        ELSEIF ( ${CXX_STD} STREQUAL "14" )
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+        ENDIF()
     ELSEIF ( USING_DEFAULT )
         # Default: -std=
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
