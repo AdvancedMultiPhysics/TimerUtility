@@ -39,6 +39,12 @@ SET( SKIP_TESTS         $ENV{SKIP_TESTS}        )
 SET( BUILDNAME_POSTFIX "$ENV{BUILDNAME_POSTFIX}" )
 
 
+# Add the C++ version to the project name
+IF ( CXX_STD )
+    SET( PROJ_NAME "${PROJ_NAME}-C++${CXX_STD}" )
+ENDIF()
+
+
 # Get the source directory based on the current directory
 IF ( NOT ${PROJ}_SOURCE_DIR )
     SET( ${PROJ}_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." )
