@@ -150,7 +150,7 @@ private:
     #ifndef DISABLE_NEW_OVERLOAD
         #if __cplusplus_std==98
             #define __throw_new throw(std::bad_alloc) 
-            #define __nothrow_new
+            #define __nothrow_new throw() 
             #define __throw_delete throw() 
             #define __nothrow_delete throw()
         #elif __cplusplus_std==11 || __cplusplus_std==14
