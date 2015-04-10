@@ -490,10 +490,7 @@ MACRO( SET_COMPILER_FLAGS )
     CHECK_CXX_COMPILER_FLAG( "${CMAKE_CXX_FLAGS}" CHECK_CXX_FLAGS )
     IF ( ( NOT CHECK_C_FLAGS ) OR ( NOT CHECK_CXX_FLAGS ) )
         IF ( USING_CRAY )
-            # Cray always fails these checks
-            MESSAGE(WARNING "Cray compilers do not pass C flag check")
-        ELSE()
-            MESSAGE(FATAL_ERROR "Invalid C/CXX flags detected:\n"
+            MESSAGE(WARNING "Invalid C/CXX flags detected:\n"
                 "C flags: ${CMAKE_C_FLAGS}\n" "CXX flags: ${CMAKE_CXX_FLAGS}\n" )
         ENDIF()
     ENDIF()
