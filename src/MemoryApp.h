@@ -45,9 +45,9 @@
         #error Detecting C++ version requires __cplusplus
     #elif __cplusplus==1 || __cplusplus==199711L
         #define __cplusplus_std 98
-    #elif __cplusplus==201103L
+    #elif __cplusplus <= 201103L
         #define __cplusplus_std 11
-    #elif __cplusplus==201402L
+    #elif __cplusplus <= 201402L
         #define __cplusplus_std 14
     #else
         #error Unknown value for __cplusplus
