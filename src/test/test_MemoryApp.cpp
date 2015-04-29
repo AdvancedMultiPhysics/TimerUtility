@@ -1,9 +1,30 @@
 #include "MemoryApp.h"
 #include <iostream>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
 
 
 #define NULL_USE(variable) do {                         \
     if(0) {char *temp = (char *)&variable; temp++;}     \
+}while(0)
+
+
+inline void check_ptr( double *tmp ) 
+{
+    std::cout << tmp << std::endl;
+    tmp[0] = rand();
+    if ( tmp[0]==0 )
+        std::cout << "Error in test" << std::endl;
+}
+
+#define ASSERT(EXP) do {                                \
+    if ( !(EXP) ) {                                     \
+        std::stringstream tboxos;                       \
+        tboxos << "Failed assertion: " << #EXP << std::ends; \
+        delete [] tmp;                                  \
+        throw std::logic_error(tboxos.str());           \
+    }                                                   \
 }while(0)
 
 
@@ -23,14 +44,14 @@ int main(int, char*[])
         std::cout << "Skipping new/delete tests (disabled)" << std::endl;
     #else
         double *tmp = new double();
+        check_ptr(tmp);
         MemoryApp::MemoryStats m2 = MemoryApp::getMemoryStats();
-        NULL_USE(tmp);
         delete tmp;
         MemoryApp::MemoryStats m3 = MemoryApp::getMemoryStats();
         tmp = new double[1000];
-        NULL_USE(tmp);
+        check_ptr(tmp);
         MemoryApp::MemoryStats m4 = MemoryApp::getMemoryStats();
-        delete [] tmp;
+        delete tmp;
         MemoryApp::MemoryStats m5 = MemoryApp::getMemoryStats();
         if ( m2.bytes_new<m1.bytes_new+8 || m2.N_new!=1 ) {
             std::cout << "Failed new test\n";
