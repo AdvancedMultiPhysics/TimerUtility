@@ -115,7 +115,7 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
     void* operator new(size_t size, const std::nothrow_t&) __nothrow_new
     {
         void* ret = malloc(size);
-        if (!ret) return NULL;;
+        if (!ret) return NULL;
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(ret);
         TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_allocated,block_size);
         TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);
@@ -124,7 +124,7 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
     void* operator new[] (size_t size, const std::nothrow_t&) __nothrow_new
     {
         void* ret = malloc(size);
-        if (!ret) return NULL;;
+        if (!ret) return NULL;
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(ret);
         TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_allocated,block_size);
         TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_new);

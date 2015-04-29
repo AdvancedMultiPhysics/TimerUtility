@@ -550,15 +550,23 @@ size_t TraceResults::size( bool store_trace ) const
         bytes += 2*N_trace*sizeof(double);
     return bytes;
 }
-void TraceResults::pack( void* data_out ) const
+void TraceResults::pack( void* data_out, bool store_trace ) const
 {
+    TraceResults *this2 = const_cast<TraceResults*>(this);
     char *data = reinterpret_cast<char*>(data_out);
+    int N_trace2 = N_trace;
+    if ( !store_trace ) { this2->N_trace = 0; }
     memcpy(data,this,sizeof(TraceResults));
-    if ( N_trace > 0 ) {
-        size_t pos = sizeof(TraceResults);
-        memcpy(&data[pos],start(),N_active);
+    this2->N_trace = N_trace2;
+    size_t pos = sizeof(TraceResults);
+    if ( N_active > 0 ) {
+        memcpy(&data[pos],active(),N_active*sizeof(id_struct));
+        pos += N_active*sizeof(id_struct);
+    }
+    if ( N_trace>0 && store_trace ) {
+        memcpy(&data[pos],start(),N_trace*sizeof(double));
         pos += N_trace*sizeof(double);
-        memcpy(&data[pos],stop(),N_active);
+        memcpy(&data[pos],stop(),N_trace*sizeof(double));
     }
 }
 void TraceResults::unpack( const void* data_in )
@@ -568,12 +576,33 @@ void TraceResults::unpack( const void* data_in )
     memcpy(this,data,sizeof(TraceResults));
     mem = NULL;
     allocate();
-    if ( N_trace > 0 ) {
-        size_t pos = sizeof(TraceResults);
-        memcpy(start(),&data[pos],N_active);
-        pos += N_trace*sizeof(double);
-        memcpy(stop(),&data[pos],N_active);
+    size_t pos = sizeof(TraceResults);
+    if ( N_active > 0 ) {
+        memcpy(active(),&data[pos],N_active*sizeof(id_struct));
+        pos += N_active*sizeof(id_struct);
     }
+    if ( N_trace > 0 ) {
+        memcpy(start(),&data[pos],N_trace*sizeof(double));
+        pos += N_trace*sizeof(double);
+        memcpy(stop(),&data[pos],N_trace*sizeof(double));
+    }
+}
+bool TraceResults::operator==(const TraceResults& rhs) const
+{
+    bool equal = id==rhs.id;
+    equal = equal && N_active==rhs.N_active;
+    equal = equal && thread==rhs.thread;
+    equal = equal && rank==rhs.rank;
+    equal = equal && N_trace==rhs.N_trace;
+    equal = equal && min==rhs.min;
+    equal = equal && max==rhs.max;
+    equal = equal && tot==rhs.tot;
+    equal = equal && N==rhs.N;
+    const id_struct* a1 = active();
+    const id_struct* a2 = rhs.active();
+    for (size_t i=0; i<N_active; i++)
+        equal = equal && a1[i]==a2[i];
+    return equal;
 }
 
 
@@ -592,7 +621,7 @@ size_t TimerResults::size( bool store_trace ) const
         bytes += trace[i].size(store_trace);
     return bytes;
 }
-void TimerResults::pack( void* data_out ) const
+void TimerResults::pack( void* data_out, bool store_trace ) const
 {
     char *data = reinterpret_cast<char*>(data_out);
     memcpy(data,&id,sizeof(id));
@@ -612,7 +641,7 @@ void TimerResults::pack( void* data_out ) const
     memcpy(&data[pos],path.c_str(),tmp[2]);
     pos += path.size();
     for (size_t i=0; i<trace.size(); i++) {
-        trace[i].pack(&data[pos]);
+        trace[i].pack(&data[pos],store_trace);
         pos += trace[i].size();
     }
 }
@@ -637,10 +666,25 @@ void TimerResults::unpack( const void* data_in )
         pos += trace[i].size();
     }
 }
+bool TimerResults::operator==(const TimerResults& rhs) const
+{
+    bool equal = id==rhs.id;
+    equal = equal && message==rhs.message;
+    equal = equal && file==rhs.file;
+    equal = equal && path==rhs.path;
+    equal = equal && start==rhs.start;
+    equal = equal && stop==rhs.stop;
+    equal = equal && trace==rhs.trace;
+    if ( !equal )
+        return false;
+    for (size_t i=0; i<trace.size(); i++)
+        equal = equal && trace[i]==rhs.trace[i];
+    return equal;
+}
 
 
 /***********************************************************************
-* TimerResults                                                         *
+* MemoryResults                                                        *
 ***********************************************************************/
 size_t MemoryResults::size( ) const
 {
@@ -676,6 +720,80 @@ void MemoryResults::unpack( const void* data_in )
         pos += time.size()*sizeof(double);
         memcpy(&bytes[0],&data[pos],tmp[1]*sizeof(size_t));
     }
+}
+bool MemoryResults::operator==(const MemoryResults& rhs) const
+{
+    bool equal = rank==rhs.rank;
+    equal = equal && time.size()==rhs.time.size();
+    equal = equal && bytes.size()==rhs.bytes.size();
+    if ( !equal )
+        return false;
+    for (size_t i=0; i<time.size(); i++)
+        equal = equal && time[i]==rhs.time[i];
+    for (size_t i=0; i<bytes.size(); i++)
+        equal = equal && bytes[i]==rhs.bytes[i];
+    return equal;
+}
+
+
+/***********************************************************************
+* TimerMemoryResults                                                   *
+***********************************************************************/
+size_t TimerMemoryResults::size() const
+{
+    size_t bytes = 4*sizeof(int);
+    for (size_t i=0; i<timers.size(); i++)
+        bytes += timers[i].size();
+    for (size_t i=0; i<memory.size(); i++)
+        bytes += memory[i].size();
+    return bytes;
+}
+void TimerMemoryResults::pack( void* data_out ) const
+{
+    char *data = reinterpret_cast<char*>(data_out);
+    int *tmp = reinterpret_cast<int*>(data);
+    tmp[0] = N_procs;
+    tmp[1] = timers.size();
+    tmp[2] = memory.size();
+    size_t bytes = 4*sizeof(int);
+    for (size_t i=0; i<timers.size(); i++) {
+        timers[i].pack(&data[bytes]);
+        bytes += timers[i].size();
+    }
+    for (size_t i=0; i<memory.size(); i++) {
+        memory[i].pack(&data[bytes]);
+        bytes += memory[i].size();
+    }
+}
+void TimerMemoryResults::unpack( const void* data_in )
+{
+    const char *data = reinterpret_cast<const char*>(data_in);
+    const int *tmp = reinterpret_cast<const int*>(data);
+    N_procs = tmp[0];
+    timers.resize(tmp[1]);
+    memory.resize(tmp[2]);
+    size_t bytes = 4*sizeof(int);
+    for (size_t i=0; i<timers.size(); i++) {
+        timers[i].unpack(&data[bytes]);
+        bytes += timers[i].size();
+    }
+    for (size_t i=0; i<memory.size(); i++) {
+        memory[i].unpack(&data[bytes]);
+        bytes += memory[i].size();
+    }
+}
+bool TimerMemoryResults::operator==(const TimerMemoryResults& rhs) const
+{
+    bool equal = N_procs==rhs.N_procs;
+    equal = equal && timers.size()==rhs.timers.size();
+    equal = equal && memory.size()==rhs.memory.size();
+    if ( !equal )
+        return false;
+    for (size_t i=0; i<timers.size(); i++)
+        equal = equal && timers[i]==rhs.timers[i];
+    for (size_t i=0; i<memory.size(); i++)
+        equal = equal && memory[i]==rhs.memory[i];
+    return equal;
 }
 
 
@@ -1473,43 +1591,54 @@ static std::vector<id_struct> get_active_ids( const char* active_list )
     }
     return ids;
 }
-TimerMemoryResults ProfilerApp::load( const std::string& filename, int rank )
+int ProfilerApp::loadFiles( const std::string& filename, int index, TimerMemoryResults& data )
+{
+    int N_procs = 0;
+    std::string date;
+    bool trace_data, memory_data;
+    char timer[200], trace[200], memory[200];
+    sprintf(timer,"%s.%i.timer",filename.c_str(),index);
+    sprintf(trace,"%s.%i.trace",filename.c_str(),index);
+    sprintf(memory,"%s.%i.memory",filename.c_str(),index);
+    load_timer(timer,data.timers,N_procs,date,trace_data,memory_data);
+    if ( trace_data )
+        load_trace(trace,data.timers);
+    if ( memory_data )
+        load_memory(memory,data.memory);
+    return N_procs;
+}
+template<class TYPE> inline void keepRank( std::vector<TYPE>& data, int rank )
+{
+    size_t i2 = 0;
+    for (size_t i1=0; i1<data.size(); i1++) {
+        if ( (int)data[i1].rank==rank ) {
+            data[i2] = data[i1];
+            i2++;
+        }
+    }
+    data.resize(i2);
+}
+TimerMemoryResults ProfilerApp::load( const std::string& filename, int rank, bool global )
 {
     TimerMemoryResults data;
     data.timers.clear();
     data.memory.clear();
-    int N_procs;
-    std::string date;
-    bool trace_data, memory_data;
-    char timer[200], trace[200], memory[200];
-    if ( rank==-1 ) {
-        sprintf(timer,"%s.1.timer",filename.c_str());
-        sprintf(trace,"%s.1.trace",filename.c_str());
-        sprintf(memory,"%s.1.memory",filename.c_str());
-        load_timer(timer,data.timers,N_procs,date,trace_data,memory_data);
-        if ( trace_data )
-            load_trace(trace,data.timers);
-        if ( memory_data )
-            load_memory(memory,data.memory);
-        for (int i=1; i<N_procs; i++) {
-            sprintf(timer,"%s.%i.timer",filename.c_str(),i+1);
-            sprintf(trace,"%s.%i.trace",filename.c_str(),i+1);
-            sprintf(memory,"%s.%i.memory",filename.c_str(),i+1);
-            load_timer(timer,data.timers,N_procs,date,trace_data,memory_data);
-            if ( trace_data )
-                load_trace(trace,data.timers);
-            if ( memory_data )
-                load_memory(memory,data.memory);
+    int N_procs = 0;
+    if ( global ) {
+        N_procs = loadFiles(filename,0,data);
+        if ( rank != -1 ) {
+            for (size_t j=0; j<data.timers.size(); j++)
+                keepRank( data.timers[j].trace, rank );
+            keepRank( data.memory, rank );
         }
     } else {
-        sprintf(timer,"%s.%i.timer",filename.c_str(),rank+1);
-        sprintf(trace,"%s.%i.trace",filename.c_str(),rank+1);
-        sprintf(memory,"%s.%i.memory",filename.c_str(),rank+1);
-        load_timer(timer,data.timers,N_procs,date,trace_data,memory_data);
-        if ( trace_data )
-            load_trace(trace,data.timers);
-        if ( memory_data )
-            load_memory(memory,data.memory);
+        if ( rank==-1 ) {
+            N_procs = loadFiles(filename,1,data);
+            for (int i=1; i<N_procs; i++)
+                loadFiles(filename,i+1,data);
+        } else {
+            N_procs = loadFiles(filename,rank+1,data);
+        }
     }
     data.N_procs = N_procs;
     return data;

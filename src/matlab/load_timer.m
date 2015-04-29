@@ -435,10 +435,11 @@ function load_Callback(hObject, eventdata, handles) %#ok<INUSL,DEFNU>
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 if isfield(handles,'pathname')
-    [FileName,PathName] = uigetfile('*.1.timer','Select the timer file',handles.pathname);
+    initial_dir = handles.pathname;
 else
-    [FileName,PathName] = uigetfile('*.1.timer','Select the timer file');
+    initial_dir = pwd;
 end
+[FileName,PathName] = uigetfile({'*.0.timer;*.1.timer','Timer Files'},'Select the timer file',initial_dir);
 if FileName == 0
     return;
 end
@@ -447,7 +448,6 @@ if ~strcmp(FileName(max(n-5,1):n),'.timer')
     fprintf(1,'Not a valid filename\n');
     return;
 end
-FileName = strrep(FileName,'.1.timer','');
 % Load all of the timer data
 h = handles.figure1;
 fields = fieldnames(getappdata(h));

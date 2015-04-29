@@ -107,8 +107,10 @@ struct TraceResults {
     TraceResults& operator=(const TraceResults&); //! Assignment operator
     void allocate();                    //!<  Allocate the data
     size_t size(bool store_trace=true) const; //!< The number of bytes needed to pack the trace
-    void pack( void* data ) const;      //!<  Pack the data to a buffer
+    void pack( void* data, bool store_trace=true ) const;  //!<  Pack the data to a buffer
     void unpack( const void* data );    //!<  Unpack the data from a buffer
+    bool operator==(const TraceResults& rhs) const;  //! Comparison operator
+    inline bool operator!=(const TraceResults& rhs) const { return !(this->operator==(rhs)); }
 private:
     void *mem;
 };
@@ -127,8 +129,10 @@ struct TimerResults {
     int stop;                           //!<  Timer stop line (-1: never defined)
     std::vector<TraceResults> trace;    //!< Trace data
     size_t size(bool store_trace=true) const; //!< The number of bytes needed to pack the trace
-    void pack( void* data ) const;      //!<  Pack the data to a buffer
+    void pack( void* data, bool store_trace=true ) const;  //!<  Pack the data to a buffer
     void unpack( const void* data );    //!<  Unpack the data from a buffer
+    bool operator==(const TimerResults& rhs) const;  //! Comparison operator
+    inline bool operator!=(const TimerResults& rhs) const { return !(this->operator==(rhs)); }
 };
 
 
@@ -143,6 +147,8 @@ struct MemoryResults{
     size_t size() const;                //!< The number of bytes needed to pack the trace
     void pack( void* data ) const;      //!<  Pack the data to a buffer
     void unpack( const void* data );    //!<  Unpack the data from a buffer
+    bool operator==(const MemoryResults& rhs) const;  //! Comparison operator
+    inline bool operator!=(const MemoryResults& rhs) const { return !(this->operator==(rhs)); }
 };
 
 
@@ -154,6 +160,11 @@ struct TimerMemoryResults {
     int N_procs;
     std::vector<TimerResults> timers;
     std::vector<MemoryResults> memory;
+    size_t size() const;                //!< The number of bytes needed to pack the trace
+    void pack( void* data ) const;      //!<  Pack the data to a buffer
+    void unpack( const void* data );    //!<  Unpack the data from a buffer
+    bool operator==(const TimerMemoryResults& rhs) const;  //! Comparison operator
+    inline bool operator!=(const TimerMemoryResults& rhs) const { return !(this->operator==(rhs)); }
 };
 
 
@@ -297,7 +308,7 @@ public:
      *                      Note: .x.timer will be automatically appended to the filename
      * @param rank          Rank to load (-1: all ranks)
      */
-    static TimerMemoryResults load( const std::string& filename, int rank=-1 );
+    static TimerMemoryResults load( const std::string& filename, int rank=-1, bool global=false );
 
     /*!
      * \brief  Function to synchronize the timers
@@ -534,14 +545,11 @@ private:
     // Function to get the current memory usage
     static inline size_t get_memory_usage();
 
-    // Function to load a single timer file (appending the data to the vector)
+    // Functions to load files
+    static int loadFiles( const std::string& filename, int index, TimerMemoryResults& data );
     static void load_timer( const std::string& filename, std::vector<TimerResults>& timers, 
         int& N_procs, std::string& date, bool& load_trace, bool& load_memory );
-
-    // Function to load a single trace file (appending the data to the vector)
     static void load_trace( const std::string& filename, std::vector<TimerResults>& timers );
-
-    // Function to load a single memory file
     static void load_memory( const std::string& filename, std::vector<MemoryResults>& memory );
 
     // Functions to send all timers/memory to rank 0

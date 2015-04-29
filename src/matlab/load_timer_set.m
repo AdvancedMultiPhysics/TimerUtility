@@ -15,7 +15,13 @@ if isempty(which('get_memory_time'))
 end
 
 % Load the given file
-[N_procs,timer,memory] = load_timer_file(file);
+if ~isempty(strfind(file,'.0.timer'))
+    glob = 1;
+else
+    glob = 0;
+end
+file = regexprep(file,'...timer','');
+[N_procs,timer,memory] = load_timer_file(file,glob);
 
 % Compress the data if necessary and create the struct
 s = whos('timer');

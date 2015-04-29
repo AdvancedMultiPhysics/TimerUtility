@@ -4,7 +4,7 @@
 #include "ProfilerApp.h"
 
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void mexFunction(int nlhs, mxArray *[], int nrhs, const mxArray *prhs[])
 {
 
     const char* msg = "Error, Incorrect number of inputs or outputs.\n"

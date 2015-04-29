@@ -34,11 +34,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 
     //  Check that there are the proper number of arguments on each side */
-    if ( nrhs!=1 || nlhs!=3 )
+    if ( nrhs!=2 || nlhs!=3 )
         mexErrMsgTxt("Error, Incorrect number of inputs or outputs.\n"
             "Function to load the results of a timer file.\n"
             "Usage:\n"
-            "  [N_procs,timers,memory] = load_timer_file(file);\n");
+            "   [N_procs,timers,memory] = load_timer_file(file,global);\n");
 
     // Load file
     if (mxGetM(prhs[0])!=1)
@@ -47,8 +47,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     std::string filename(input_buf);
     mxFree(input_buf);
 
+    // Load global
+    bool global = mxGetScalar(prhs[1])!=0;
+
     // Load the data from the timer files
-    TimerMemoryResults data = ProfilerApp::load( filename );
+    TimerMemoryResults data = ProfilerApp::load( filename, -1, global );
     if ( data.timers.empty() )
         mexErrMsgTxt("No timers in file");
 

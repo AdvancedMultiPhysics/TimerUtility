@@ -490,8 +490,8 @@ MACRO( SET_COMPILER_FLAGS )
     CHECK_CXX_COMPILER_FLAG( "${CMAKE_CXX_FLAGS}" CHECK_CXX_FLAGS )
     IF ( ( NOT CHECK_C_FLAGS ) OR ( NOT CHECK_CXX_FLAGS ) )
         IF ( USING_CRAY )
-            MESSAGE(WARNING "Invalid C/CXX flags detected:\n"
-                "C flags: ${CMAKE_C_FLAGS}\n" "CXX flags: ${CMAKE_CXX_FLAGS}\n" )
+            MESSAGE(WARNING "Invalid C/CXX flags detected:"
+                "C flags: ${CMAKE_C_FLAGS}" "CXX flags: ${CMAKE_CXX_FLAGS}" )
         ENDIF()
     ENDIF()
 ENDMACRO()

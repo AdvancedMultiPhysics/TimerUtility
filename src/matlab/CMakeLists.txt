@@ -14,7 +14,7 @@ CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerApp.h"       "${TIMER_IN
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerApp.cpp"     "${TIMER_INSTALL_DIR}/gui/ProfilerApp.cpp"      COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerAppMacros.h" "${TIMER_INSTALL_DIR}/gui/ProfilerAppMacros.h"  COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../MemoryApp.h"         "${TIMER_INSTALL_DIR}/gui/MemoryApp.h"          COPYONLY )
-CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../MemoryApp.cpp"       "${TIMER_INSTALL_DIR}/gui/MemoryApp.cpp"        COPYONLY )
+CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerAtomicHelpers.h" "${TIMER_INSTALL_DIR}/gui/ProfilerAtomicHelpers.h" COPYONLY )
 
 
 IF ( USE_MATLAB )

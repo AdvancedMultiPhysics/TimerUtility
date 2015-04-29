@@ -66,9 +66,11 @@ int run_tests( bool enable_trace, std::string save_name )
     const int N_it = 100;
     const int N_timers = 1000;
     int N_errors = 0;
+    int N_proc = 0;
     int rank = 0;
     #ifdef USE_MPI
         MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+        MPI_Comm_size(MPI_COMM_WORLD,&N_proc);
     #endif
 
     // Check that "MAIN" is active and "NULL" is not
@@ -214,55 +216,55 @@ int run_tests( bool enable_trace, std::string save_name )
     }
 
     // Compare the sets of timers
-    bool error = false;
     if ( data1.size()!=data2.size() || bytes1[0]==0 || bytes1[0]!=bytes2[0] || bytes1[1]!=bytes2[1] ) {
-        error = true;
-    } else {
-        for (size_t i=0; i<data1[i].trace.size(); i++) {
-            if ( data1[i].id!=data2[i].id || data1[i].trace.size()!=data2[i].trace.size() ) {
-                error = true;
-            } else {
-                for (size_t j=0; j<data1[i].trace.size(); j++) {
-                    if ( data1[i].trace[j].id!=data2[i].trace[j].id )
-                        error = true;
-                }
-            }
-        }
-    }
-    if ( error ) {
         std::cout << "Timers do not match " << data1.size() << " " << data2.size() << 
             " " << bytes1[0] << " " << bytes2[0] << " " << bytes1[1] << " " << bytes2[1] << " " << std::endl;
         N_errors++;
+    } else {
+        bool error = false;
+        for (size_t i=0; i<data1[i].trace.size(); i++)
+            error = error && data1[i].trace==data2[i].trace;
+        if ( error ) {
+            std::cout << "Timers do not match (1)" << std::endl;
+            N_errors++;
+        }
     }
 
     // Compare the memory results
-    error = false;
     if ( memory1.time.size()!=memory2.time.size() ) {
-        error = true;
+        std::cout << "Memory trace does not match\n";
+        N_errors++;
     } else {
+        bool error = false;
         for (size_t i=0; i<memory1.time.size(); i++) {
             if ( memory1.time[i]!=memory2.time[i] || memory1.bytes[i]!=memory2.bytes[i] )
                 error = true;
         }
-        // Test packing/unpacking a buffer
-        MemoryResults memory3;
-        size_t bytes = memory1.size();
+        if ( error ) {
+            std::cout << "Memory trace does not match\n";
+            N_errors++;
+        }
+    }
+    
+    // Test packing/unpacking TimerMemoryResults
+    {
+        TimerMemoryResults x, y;
+        x.N_procs = N_proc;
+        x.timers = data1;
+        x.memory = std::vector<MemoryResults>(1,memory1);
+        size_t bytes = x.size();
         char *data = new char[bytes];
-        memory1.pack(data);
-        memory3.unpack(data);
-        if ( memory1.time.size()==memory3.time.size() ) {
-            for (size_t i=0; i<memory1.time.size(); i++) {
-                if ( memory1.time[i]!=memory3.time[i] || memory1.bytes[i]!=memory3.bytes[i] )
-                    error = true;
-            }
-        } else {
-            error = true;
+        x.pack(data);
+        y.unpack(data);
+        if ( x!=x ) {
+            std::cout << "TimerMemoryResults do not match self\n";
+            N_errors++;
+        }
+        if ( x!=y ) {
+            std::cout << "TimerMemoryResults do not match after pack/unpack\n";
+            N_errors++;
         }
         delete [] data;
-    }
-    if ( error ) {
-        std::cout << "Memory trace does not match\n";
-        N_errors++;
     }
 
     PROFILE_SAVE(save_name);
