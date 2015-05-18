@@ -20,7 +20,7 @@ if ~isempty(strfind(file,'.0.timer'))
 else
     glob = 0;
 end
-file = regexprep(file,'...timer','');
+file = regexprep(file,'...timer$','');
 [N_procs,timer,memory] = load_timer_file(file,glob);
 
 % Compress the data if necessary and create the struct

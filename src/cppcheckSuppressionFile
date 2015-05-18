@@ -9,5 +9,8 @@ missingInclude
 // Suppress unusedFunction messages (functions may be used by subsequent packages)
 unusedFunction
 
+// Supress same expression messages
+duplicateExpression:*/src/test/test_ProfilerApp.cpp
+
 
 

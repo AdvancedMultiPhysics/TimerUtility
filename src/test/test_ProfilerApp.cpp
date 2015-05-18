@@ -23,6 +23,22 @@
 #endif
 
 
+inline int getRank() {
+    int rank = 0;
+    #ifdef USE_MPI
+        MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    #endif
+    return rank;
+}
+inline int getSize() {
+    int size = 0;
+    #ifdef USE_MPI
+        MPI_Comm_size(MPI_COMM_WORLD,&size);
+    #endif
+    return size;
+}
+
+
 bool call_recursive_scope( int N, int i=0 ) 
 {
     char name[10];
@@ -66,12 +82,8 @@ int run_tests( bool enable_trace, std::string save_name )
     const int N_it = 100;
     const int N_timers = 1000;
     int N_errors = 0;
-    int N_proc = 0;
-    int rank = 0;
-    #ifdef USE_MPI
-        MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-        MPI_Comm_size(MPI_COMM_WORLD,&N_proc);
-    #endif
+    const int rank = getRank();
+    const int N_proc = getSize();
 
     // Check that "MAIN" is active and "NULL" is not
     bool test1 = global_profiler.active("MAIN",__FILE__);
