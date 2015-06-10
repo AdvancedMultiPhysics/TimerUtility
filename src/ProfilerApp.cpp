@@ -58,7 +58,7 @@ extern "C" {
     #include <execinfo.h>
     #include <dlfcn.h>
     #include <malloc.h>
-    #define get_frequency( f ) do { f.tv_sec=0; f.tv_usec=0 } while(0)
+    #define get_frequency( f ) do { f.tv_sec=0; f.tv_usec=0; } while(0)
     #define get_time( t ) gettimeofday(&t,NULL)
     #define get_diff(start,end,f) 1e-6*static_cast<double>( \
         0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
