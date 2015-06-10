@@ -803,7 +803,7 @@ bool TimerMemoryResults::operator==(const TimerMemoryResults& rhs) const
 ProfilerApp::ProfilerApp()
 {
     get_time(d_construct_time);
-    get_time(d_frequency);
+    get_frequency(d_frequency);
     if ( 8*sizeof(size_t) != ARCH_SIZE )
         ERROR_MSG("Incorrectly identified architecture?\n");
     if ( sizeof(id_struct)!=8 )

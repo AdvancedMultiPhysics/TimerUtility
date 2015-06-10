@@ -15,7 +15,7 @@
     #define get_time(x) QueryPerformanceCounter(x)
     #define get_diff(start,end,f) (((double)(end.QuadPart-start.QuadPart))/((double)f.QuadPart))
     #define get_frequency(f) QueryPerformanceFrequency(f)
-    inline unsigned int sleep(unsigned int seconds) { Sleep(1000*seconds); }
+    inline unsigned int sleep(unsigned int seconds) { Sleep(1000*seconds); return 0; }
 #elif defined(USE_LINUX) || defined(USE_MAC)
     #include <unistd.h>
     #define TIME_TYPE timeval
