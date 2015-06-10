@@ -3,17 +3,21 @@
 #include "test_Helpers.h"
 #include <string>
 #include <vector>
+#include <math.h>
 
 #ifdef USE_MPI
     #include <mpi.h>
 #endif
 
 #ifdef USE_WINDOWS
+    #include <windows.h>
     #define TIME_TYPE LARGE_INTEGER
     #define get_time(x) QueryPerformanceCounter(x)
     #define get_diff(start,end,f) (((double)(end.QuadPart-start.QuadPart))/((double)f.QuadPart))
     #define get_frequency(f) QueryPerformanceFrequency(f)
+    inline unsigned int sleep(unsigned int seconds) { Sleep(1000*seconds); }
 #elif defined(USE_LINUX) || defined(USE_MAC)
+    #include <unistd.h>
     #define TIME_TYPE timeval
     #define get_time(x) gettimeofday(x,NULL);
     #define get_diff(start,end,f) (((double)end.tv_sec-start.tv_sec)+1e-6*((double)end.tv_usec-start.tv_usec))
@@ -92,6 +96,11 @@ int run_tests( bool enable_trace, std::string save_name )
         std::cout << "Correct timers are not active\n";
         N_errors++;
     }
+
+    // Sleep for 1 second
+    PROFILE_START("sleep");
+    sleep(1);
+    PROFILE_STOP("sleep");
 
     // Test the scoped timer
     bool pass = call_recursive_scope( 5 );
@@ -224,6 +233,22 @@ int run_tests( bool enable_trace, std::string save_name )
         }
     } else {
         std::cout << "MAIN was not found in trace results\n";
+        N_errors++;
+    }
+
+    // Find and check sleep
+    trace = NULL;
+    for (size_t i=0; i<data1.size(); i++) {
+        if ( data1[i].message=="sleep" ) {
+            trace = &data1[i].trace[0];
+            if ( fabs(data1[i].trace[0].tot-1.0) > 0.1 ) {
+                std::cout << "Error profiling sleep: " << data1[i].trace[0].tot << std::endl;
+                N_errors++;
+            }
+        }
+    }
+    if ( trace == NULL ) {
+        std::cout << "sleep was not found in trace results\n";
         N_errors++;
     }
 
