@@ -74,7 +74,7 @@ TimerUtility::atomic::int64_atomic MemoryApp::d_calls_delete = 0;
     size_t MemoryApp::d_page_size = 0;
 #endif
 size_t MemoryApp::d_physical_memory = getPhysicalMemory();
-#if __GNUC__
+#if USING_GCC
     void* MemoryApp::d_base_frame = __builtin_frame_address(0);
 #else
     void* MemoryApp::d_base_frame = 0;
@@ -172,7 +172,7 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
 /***********************************************************************
 * Class functions                                                      *
 ***********************************************************************/
-#if defined(_GNU_SOURCE) || defined(__GNUC__)
+#if defined(_GNU_SOURCE) || defined(USING_GCC)
     static size_t subtract_address_abs( const void* x1, const void* x2 ) 
     {
         // Return the absolute difference between two addresses abs(x-y)
@@ -204,7 +204,7 @@ MemoryApp::MemoryStats MemoryApp::getMemoryStats( )
         pthread_attr_destroy( &attr );
         stats.stack_used = stacksize - subtract_address_abs(stackaddr,&stackaddr);
         stats.stack_size = stacksize;
-    #elif defined(__GNUC__)
+    #elif defined(USING_GCC)
         stats.stack_used = subtract_address_abs(d_base_frame,__builtin_frame_address(0));
     #endif
     return stats;
