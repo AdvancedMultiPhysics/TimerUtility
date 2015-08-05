@@ -124,6 +124,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         mxSetFieldByNumber(plhs[1],i,3,mxCreateString(timer.path.c_str()));
         mxSetFieldByNumber(plhs[1],i,4,mxCreateDoubleScalar(timer.start));
         mxSetFieldByNumber(plhs[1],i,5,mxCreateDoubleScalar(timer.stop));
+        if ( timer.trace.empty() ) {
+            mxSetFieldByNumber(plhs[1],i,6,mxCreateStructMatrix(0,1,0,NULL));
+            continue;
+        }
         // Get a list of all trace ids
         std::map<std::vector<int>,int> active_map;
         for (size_t j=0; j<timer.trace.size(); j++) {
