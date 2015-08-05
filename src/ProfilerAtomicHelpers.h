@@ -140,19 +140,6 @@ inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_ato
  */
 inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y );
 
-/**
- * \brief Compare the given value and swap
- * \details Compare the existing value and swap if it matches. 
- *    This function returns the previous value.
- *    To return a bool indicating if the swap was performed,
- *    use "bool t = atomic_compare_and_swap(v,x,y)==x".
- * \param[in] v     The pointer to the value to check and swap
- * \param[in] x     The value to compare
- * \param[in] y     The value to swap iff *v==x
- */
-inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y );
-
-
 
 // Define increment/decrement/add operators for int32, int64
 #if defined(USE_WINDOWS)
@@ -180,9 +167,6 @@ inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y );
     inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
         return InterlockedCompareExchange64(v,x,y);
     }
-    inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y ) {
-        return InterlockedCompareExchangePointer(v,x,y);
-    }
 #elif defined(USE_MAC)
     inline int32_atomic atomic_increment( int32_atomic volatile *x ) {
         return OSAtomicIncrement32Barrier(x);
@@ -208,9 +192,6 @@ inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y );
     inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
         return OSAtomicCompareAndSwap64Barrier(x,y,v) ? y:x;
     }
-    inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y ) {
-        return OSAtomicCompareAndSwapPtrBarrier(x,y,v) ? y:x;
-    }
 #elif defined(__GNUC__)
     int32_atomic atomic_increment( int32_atomic volatile *x ) {
         return __sync_add_and_fetch(x,1);
@@ -234,9 +215,6 @@ inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y );
         return __sync_val_compare_and_swap(v,x,y);
     }
     inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
-        return __sync_val_compare_and_swap(v,x,y);
-    }
-    inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y ) {
         return __sync_val_compare_and_swap(v,x,y);
     }
 #elif defined(USE_PTHREAD_ATOMIC_LOCK)
@@ -290,13 +268,6 @@ inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y );
         pthread_mutex_lock(&atomic_pthread_lock);
         *v = (*v==x) ? y:x;
         int64_atomic z = *v;
-        pthread_mutex_unlock(&atomic_pthread_lock);
-        return z;
-    }
-    inline void* atomic_compare_and_swap( void* volatile *v, void* x, void* y ) {
-        pthread_mutex_lock(&atomic_pthread_lock);
-        *v = (*v==x) ? y:x;
-        void* z = *v;
         pthread_mutex_unlock(&atomic_pthread_lock);
         return z;
     }
