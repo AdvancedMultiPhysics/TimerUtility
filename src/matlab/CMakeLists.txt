@@ -10,31 +10,32 @@ CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/load_timer_file.cpp"    "${TIMER_IN
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/load_timer_set.m"       "${TIMER_INSTALL_DIR}/gui/load_timer_set.m"     COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/get_memory_time.cpp"    "${TIMER_INSTALL_DIR}/gui/get_memory_time.cpp"  COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/get_active_times.cpp"   "${TIMER_INSTALL_DIR}/gui/get_active_times.cpp" COPYONLY )
+CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/matlab_helpers.h"       "${TIMER_INSTALL_DIR}/gui/matlab_helpers.h"     COPYONLY )
+CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/TraceClass.m"           "${TIMER_INSTALL_DIR}/gui/TraceClass.m"         COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerApp.h"       "${TIMER_INSTALL_DIR}/gui/ProfilerApp.h"        COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerApp.cpp"     "${TIMER_INSTALL_DIR}/gui/ProfilerApp.cpp"      COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerAppMacros.h" "${TIMER_INSTALL_DIR}/gui/ProfilerAppMacros.h"  COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../MemoryApp.h"         "${TIMER_INSTALL_DIR}/gui/MemoryApp.h"          COPYONLY )
+CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../MemoryApp.cpp"       "${TIMER_INSTALL_DIR}/gui/MemoryApp.cpp"        COPYONLY )
 CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerAtomicHelpers.h" "${TIMER_INSTALL_DIR}/gui/ProfilerAtomicHelpers.h" COPYONLY )
+
+# Create a matlab file to create class arrays
+SET( CreateClassArray "${TIMER_INSTALL_DIR}/gui/mxCreateClassArrayHelper.m" )
+file(WRITE  ${CreateClassArray} "function x = mxCreateClassArrayHelper(cmd)\n" )
+file(APPEND ${CreateClassArray} "% Helper file for mxCreateClassArray\n" )
+file(APPEND ${CreateClassArray} "% cmd - Command to run, should be in format:\n" )
+file(APPEND ${CreateClassArray} "%    x = something;\n" )
+file(APPEND ${CreateClassArray} "eval(cmd);\n" )
+file(APPEND ${CreateClassArray} "end\n" )
 
 
 IF ( USE_MATLAB )
-    # Create a matlab library target
-    # Copy header files from the matlab directory
-    FILE( GLOB HFILES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.h" )
-    FOREACH (HFILE ${HFILES})
-        CONFIGURE_FILE( "${CMAKE_CURRENT_SOURCE_DIR}/${HFILE}" "${ATOMIC_INSTALL_DIR}/include/matlab/${HFILE}" COPYONLY )
-    ENDFOREACH ()
-    INSTALL ( FILES ${HEADERS} DESTINATION "${TIMER_INSTALL_DIR}/include/matlab" )
-
-
     # Add the mex target
     ADD_CUSTOM_TARGET ( mex ALL DEPENDS timerutility )
     ADD_MEXCLEAN()
 
-
     # Add simple MATLAB MEX test
     ADD_MATLAB_MEX( hello_world.cpp )
-
 
     # Add the MATLAB MEX files
     ADD_MATLAB_MEX( load_timer_file.cpp )

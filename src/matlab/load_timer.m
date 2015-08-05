@@ -191,19 +191,15 @@ if subfunctions==1
 end
 % Update the timers to remove the time from sub-timers if necessary
 for i = 1:length(timers)
-    timers(i).trace(1).tot2 = timers(i).trace(1).tot;
     timers(i).N = timers(i).trace(1).N;
     timers(i).min = timers(i).trace(1).min;
     timers(i).max = timers(i).trace(1).max;
     timers(i).tot = timers(i).trace(1).tot;
-    timers(i).tot2 = timers(i).trace(1).tot2;
     for j = 2:length(timers(i).trace)
-        timers(i).trace(j).tot2 = timers(i).trace(j).tot;
         timers(i).N = timers(i).N + timers(i).trace(j).N;
         timers(i).min = min( timers(i).min, timers(i).trace(j).min );
         timers(i).max = max( timers(i).max, timers(i).trace(j).max );
         timers(i).tot = timers(i).tot + timers(i).trace(j).tot;
-        timers(i).tot2 = timers(i).tot2 + timers(i).trace(j).tot2;
     end
 end
 if get(handles.inclusive_exclusive,'Value')==1
@@ -257,7 +253,6 @@ for i = 1:length(timers)
     k = timers(i).N>0;
     N = sum(timers(i).N,1);
     tot_t = sum(timers(i).tot,1);
-    tot_t2 = sum(timers(i).tot2,1);
     max_t = max(timers(i).max,[],1);
     thread = false(size(timers(i).N));
     thread(k) = true;
@@ -269,7 +264,6 @@ for i = 1:length(timers)
     timers(i).min = min_t;
     timers(i).max = max_t;
     timers(i).tot = tot_t;
-    timers(i).tot2 = tot_t2;
     timers(i).thread = thread;
 end
 % Create the timers to display in the table
@@ -282,7 +276,6 @@ for i = 1:length(timers)
         timers(i).min = mean(timers(i).min);
         timers(i).max = mean(timers(i).max);
         timers(i).tot = mean(timers(i).tot);
-        timers(i).tot2 = mean(timers(i).tot2);
         timers(i).thread = find(any(timers(i).thread,2));
     elseif get(handles.select_proc,'Value')==2
         % We want to take the minimum value for each processor
@@ -290,7 +283,6 @@ for i = 1:length(timers)
         timers(i).min = min(timers(i).min);
         timers(i).max = min(timers(i).max);
         timers(i).tot = min(timers(i).tot);
-        timers(i).tot2 = min(timers(i).tot2);
         timers(i).thread = find(any(timers(i).thread,2));
     elseif get(handles.select_proc,'Value')==3
         % We want to take the maximum value for each processor
@@ -298,7 +290,6 @@ for i = 1:length(timers)
         timers(i).min = max(timers(i).min);
         timers(i).max = max(timers(i).max);
         timers(i).tot = max(timers(i).tot);
-        timers(i).tot2 = max(timers(i).tot2);
         timers(i).thread = find(any(timers(i).thread,2));
     else
         % We have selected a specific processor
@@ -307,7 +298,6 @@ for i = 1:length(timers)
         timers(i).min = timers(i).min(p);
         timers(i).max = timers(i).max(p);
         timers(i).tot = timers(i).tot(p);
-        timers(i).tot2 = timers(i).tot2(p);
         timers(i).thread = find(any(timers(i).thread,2));
     end
 end
@@ -323,7 +313,7 @@ else
 end
 table_data = cell(length(timers),10);
 percent_time = zeros(length(timers),1);
-[tot_time,index] = max([timers.tot2]);
+[tot_time,index] = max([timers.tot]);
 for i = 1:length(timers)
     table_data{i,1} = timers(i).message;
     table_data{i,2} = timers(i).file;

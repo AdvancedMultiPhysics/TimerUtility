@@ -4,6 +4,7 @@ INCLUDE (macros)
 ADD_TIMER_TEST( test_MemoryApp )
 ADD_TIMER_TEST_1_2_4( test_ProfilerApp )
 ADD_TIMER_TEST( test_ProfilerApp_C )
+ADD_TIMER_TEST( test_Load set1.1.timer )
 
 
 # Regression test for ProfilerApp to ensure we can continue to load the data from older versions
