@@ -133,9 +133,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         for (size_t j=0; j<timer.trace.size(); j++) {
             ASSERT(timer.trace[j].id==timer.id);
             std::vector<int> active = getActive(id_map,timer.trace[j]);
-            if ( active_map.find(active)==active_map.end() )
-                active_map.insert(std::pair<std::vector<int>,int>(active,active_map.size()));
+            active_map.insert(std::pair<std::vector<int>,int>(active,active_map.size()));
         }
+        std::map<std::vector<int>,int>::iterator it=active_map.begin();
+        for (size_t j=0; j<active_map.size(); ++j, ++it)
+            it->second = j;
         // Allocate N, min, max, tot, start, stop
         std::vector<mxArray*> N(active_map.size()), min(active_map.size()), max(active_map.size()),
             tot(active_map.size()), start(active_map.size()), stop(active_map.size());
@@ -165,7 +167,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         // Create the TraceClass
         mxArray *trace_ptr = mxCreateClassMatrix(active_map.size(),1,"TraceClass");
         mxSetFieldByNumber(plhs[1],i,6,trace_ptr);
-        std::map<std::vector<int>,int>::const_iterator it=active_map.begin();
+        it=active_map.begin();
         for (size_t j=0; j<active_map.size(); ++j, ++it) {
             mxSetProperty(trace_ptr,j,"id",mxCreateDoubleScalar(id_map[timer.id]+1));
             mxSetProperty(trace_ptr,j,"N",N[j]);

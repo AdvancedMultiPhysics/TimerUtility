@@ -126,22 +126,9 @@ varargout{1} = handles.output;
 function timers = get_timers(handles)
 % This function load the data for the function hierarchy selected
 % Get the call hierarchy
-id_list = [];
+id_list = unique(handles.call);
 if isempty(handles.call)
     set(handles.function_text,'String','All Functions');
-else
-    for i = 1:size(handles.call,1)
-        j = find( strcmp(handles.id_data.message,handles.call{i,1}) & ...
-            strcmp(handles.id_data.filename,handles.call{i,2}) );
-        if isempty(j)
-            id_list = -1;
-            break;
-        elseif length(j)>1
-            error('Internal error');
-        end
-        id_list = [id_list,handles.id_data.ids(j)]; %#ok<AGROW>
-    end
-    id_list = unique(id_list);
 end
 % Get the relavent timers
 timers = getappdata(handles.figure1,'timer');
@@ -305,9 +292,11 @@ end
 if isempty(handles.call)
     set(handles.function_text,'String','All Functions');
 else
-    text = handles.call{1,1};
-    for i = 2:length(handles.call(:,1))
-        text = sprintf('%s  ->  %s',text,handles.call{i,1});
+    j = find(handles.id_data.ids==handles.call(1),1);
+    text = handles.id_data.message{j};
+    for i = 2:length(handles.call)
+        j = find(handles.id_data.ids==handles.call(i),1);
+        text = sprintf('%s  ->  %s',text,handles.id_data.message{j});
     end
     set(handles.function_text,'String',text);
 end
@@ -547,11 +536,12 @@ elseif indices(1,2) == 2
     if isempty(call{1,1})
         return;
     end
-    n = size(handles.call,1);
-    if n==0
-        handles.call = call;
-    elseif ~strcmp(call{1},handles.call{n,1}) || ~strcmp(call{2},handles.call{n,2})
-        handles.call = [handles.call; call];
+    id = handles.id_data.ids( strcmp(handles.id_data.message,call{1}) & ...
+         strcmp(handles.id_data.filename,call{2}) );
+    if isempty(handles.call)
+        handles.call = id;
+    elseif isempty(find(id==handles.call,1))
+        handles.call = [handles.call id];
     end
     set(handles.subfunctions,'Visible','on');
     set(handles.back,'Visible','on');
@@ -615,9 +605,9 @@ function back_Callback(hObject, eventdata, handles) %#ok<DEFNU,INUSL>
 % hObject    handle to back (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-n = size(handles.call,1);
+n = length(handles.call);
 if n>0
-    handles.call = handles.call(1:n-1,:);
+    handles.call = handles.call(1:n-1);
 end
 guidata(hObject, handles);
 display_data(hObject,handles)
