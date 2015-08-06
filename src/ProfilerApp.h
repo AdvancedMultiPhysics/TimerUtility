@@ -163,6 +163,7 @@ struct TimerMemoryResults {
     size_t size() const;                //!< The number of bytes needed to pack the trace
     void pack( void* data ) const;      //!<  Pack the data to a buffer
     void unpack( const void* data );    //!<  Unpack the data from a buffer
+    TimerMemoryResults(): N_procs(0) {}
     bool operator==(const TimerMemoryResults& rhs) const;  //! Comparison operator
     inline bool operator!=(const TimerMemoryResults& rhs) const { return !(this->operator==(rhs)); }
 };
