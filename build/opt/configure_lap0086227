@@ -7,6 +7,7 @@ cmake                                                   \
         -D CFLAGS="-fPIC"                               \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
         -D CXXFLAGS="-fPIC"                             \
+        -D CXX_STD=11                                   \
     -D USE_MPI=1                                        \
         -D MPI_COMPILER=1                               \
         -D MPIEXEC=/packages/mpich-3.1/opt/bin/mpiexec  \
@@ -14,8 +15,9 @@ cmake                                                   \
         -D MPI_INCLUDE=/packages/mpich-3.1/opt/include  \
         -D MPI_LINK_FLAGS="-L/packages/mpich-3.1/opt/lib;-Wl,-rpath,/packages/mpich-3.1/opt/lib" \
         -D MPI_LIBRARIES="-lmpichcxx;-lmpich;-lopa;-lmpl;-lrt;-lpthread" \
-    -D USE_MATLAB=1                                     \
+    -D USE_MATLAB=0                                     \
         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
+    -D QWT_URL=/packages/archives/qwt-6.1.2.tar.bz2     \
     ../../src/
 
 

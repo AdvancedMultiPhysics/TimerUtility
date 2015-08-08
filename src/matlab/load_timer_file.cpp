@@ -117,7 +117,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     plhs[1] = mxCreateStructMatrix( data.timers.size(), 1, 7, timer_names );
     for (size_t i=0; i<data.timers.size(); i++) {
         const TimerResults& timer = data.timers[i];
-        const std::string timer_id = timer.id.string();
         mxSetFieldByNumber(plhs[1],i,0,mxCreateDoubleScalar(id_map[timer.id]+1));
         mxSetFieldByNumber(plhs[1],i,1,mxCreateString(timer.message.c_str()));
         mxSetFieldByNumber(plhs[1],i,2,mxCreateString(timer.file.c_str()));

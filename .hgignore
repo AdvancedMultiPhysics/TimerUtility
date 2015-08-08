@@ -42,5 +42,6 @@ build/*/ipch
 build/*/timerutility.lib
 build/*/timerutility.dir
 build/*/TIMER.*
+build/*/QWT/*
 
 

@@ -63,7 +63,7 @@ ADD_CUSTOM_TARGET( doc )
 ADD_CUSTOM_TARGET( latex_docs )
 ADD_CUSTOM_TARGET( build-test )
 ADD_CUSTOM_TARGET( check COMMAND  make test  )
-ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui )
+ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT )
 
 
 # Check the compile mode and compile flags

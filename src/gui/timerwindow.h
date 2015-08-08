@@ -5,10 +5,14 @@
 #include <QTableWidget>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QToolButton>
+#include <QTimer>
 
 #include <memory>
 
 #include "ProfilerApp.h"
+#include "LoadBalance.h"
+#include "GuiTimerStructures.h"
 
 
 
@@ -34,9 +38,15 @@ private slots:
     void open();
     void reset();
     void about();
-    void documentWasModified();
+    void savePerformance();
     void cellSelected(int nRow, int nCol);
-    void backButton();
+    void backButtonPressed();
+    void exclusiveFun();
+    void subfunctionFun();
+    void selectProcessor( int );
+
+    void resizeEvent( QResizeEvent *e );
+    void resizeDone();
 
 private:
     void createActions();
@@ -48,12 +58,19 @@ private:
     void loadFile(const QString &fileName);
     void setCurrentFile(const QString &fileName);
     void updateDisplay();
-    std::vector<std::shared_ptr<TimerSummary>> getTimers();
+    std::vector<std::shared_ptr<TimerSummary>> getTimers() const;
     QString strippedName(const QString &fullFileName);
 
     QTableWidget *timerTable;
     QLineEdit *callLineText;
-    QPushButton *back_button;
+    QPushButton *backButton;
+    QToolButton *processorButton;
+    QPushButton *exclusiveButton;
+    QPushButton *subfunctionButton;
+    QAction *processorToolbar;
+    QAction *exclusiveToolbar;
+    QAction *subfunctionToolbar;
+    LoadBalance *loadBalance;
 
     QMenu *fileMenu;
     QMenu *editMenu;
@@ -64,18 +81,24 @@ private:
     QAction *openAct;
     QAction *resetAct;
     QAction *exitAct;
-    QAction *cutAct;
-    QAction *copyAct;
-    QAction *pasteAct;
     QAction *aboutAct;
+    QAction *savePerformanceTimers;
+    QAction *exclusiveAct;
+    QAction *subfunctionsAct;
+
+    QTimer resizeTimer;
 
 private:
     std::string lastPath;
-    TimerMemoryResults data;
-    std::vector<std::shared_ptr<TimerSummary>> current_timers;
+    TimerMemoryResults d_data;
+    std::vector<TimerSummary> d_dataTimer;
+    std::vector<std::shared_ptr<TraceSummary>> d_dataTrace;
     std::vector<id_struct> callList;
     int N_procs;
     int N_threads;
+    int selected_rank;
+    bool inclusiveTime;
+    bool includeSubfunctions;
 };
 
 #endif
