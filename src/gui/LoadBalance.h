@@ -4,6 +4,7 @@
 #include <qwt_plot.h>
 #include <qstringlist.h>
 #include <qwt_plot_barchart.h>
+#include <qwt_plot_curve.h>
 
 
 class LoadBalance: public QwtPlot
@@ -22,8 +23,10 @@ private:
     void populate();
 
     QwtPlotBarChart *barChart;
+ 	QwtPlotCurve *curvePlot[2];
     int N_procs;
-    std::vector<float> data;
+    QVector<double> rank;
+    QVector<double> time;
 
 private:
     LoadBalance() {}

@@ -182,6 +182,9 @@ TimerWindow::TimerWindow():
     widget_callLine->setLayout(layout_callLine);
 
     QVBoxLayout *layout = new QVBoxLayout;
+    layout->setMargin(0);
+    layout->setContentsMargins(QMargins(0,0,0,0));
+    layout->setSpacing(0);
     layout->addWidget(widget_callLine);
     layout->addWidget(timerTable);
     layout->addWidget(loadBalance);

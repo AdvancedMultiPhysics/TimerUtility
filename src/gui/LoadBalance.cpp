@@ -8,6 +8,7 @@
 #include <qwt_plot_layout.h>
 #include <qwt_legend.h>
 #include <qwt_scale_draw.h>
+#include <qwt_scale_engine.h>
 
 
 template<class TYPE>
@@ -20,16 +21,25 @@ inline QVector<double> toQVector( const std::vector<TYPE>& x )
 }
 
 
+inline QwtText qwtText( const QString& string, const QFont& font )
+{
+    QwtText text(string);
+    text.setFont(font);
+    return text;
+}
+
+
 LoadBalance::LoadBalance( QWidget *parent ):
     QwtPlot(parent), barChart(NULL)
 {
+    setTitle(qwtText("Load Balance",QFont("Times",12,QFont::Bold)));
     setAutoFillBackground( true );
     setPalette( QColor( "Linen" ) );
 
     QwtPlotCanvas *canvas = new QwtPlotCanvas();
-    canvas->setLineWidth(2);
+    canvas->setLineWidth(0);
     canvas->setFrameStyle( QFrame::Box | QFrame::Sunken );
-    canvas->setBorderRadius(10);
+    canvas->setBorderRadius(0);
 
     QPalette canvasPalette( QColor(230,255,255) );
     canvasPalette.setColor( QPalette::Foreground, QColor(230,255,255) );
@@ -37,61 +47,97 @@ LoadBalance::LoadBalance( QWidget *parent ):
 
     setCanvas( canvas );
 
-    // Create the plot
-    barChart = new QwtPlotBarChart("Load Balance");
+    // Create the barChart
+    barChart = new QwtPlotBarChart("");
     barChart->setLegendMode( QwtPlotBarChart::LegendBarTitles );
     barChart->setLegendIconSize( QSize(0,0) );
     barChart->setLayoutPolicy( QwtPlotBarChart::AutoAdjustSamples );
     barChart->setLayoutHint( 4.0 ); // minimum width for a single bar
     barChart->setSpacing( 10 ); // spacing between bars
-    barChart->setBaseline(1.0);
+    barChart->setBaseline(0);
     QwtColumnSymbol *symbol = new QwtColumnSymbol( QwtColumnSymbol::Box );
     symbol->setLineWidth( 2 );
     symbol->setFrameStyle( QwtColumnSymbol::Raised );
-    symbol->setPalette( QColor( 0, 50, 0 ) );
+    symbol->setPalette( QColor(0,50,0) );
     barChart->setSymbol( symbol );
+
+    // Create the line plots
+ 	curvePlot[0] = new QwtPlotCurve("");
+ 	curvePlot[1] = new QwtPlotCurve("");
+    curvePlot[0]->setLegendIconSize( QSize(0,0) );
+    curvePlot[1]->setLegendIconSize( QSize(0,0) );
+
+    // Plot some initial data to initialize the plot
+    plot( std::vector<float>(10,1.0) );
+    plot( std::vector<float>(1000,1.0) );
 }
 
 
-void LoadBalance::plot( const std::vector<float>& time )
+void LoadBalance::plot( const std::vector<float>& time_ )
 {
     PROFILE_START("plot");
-    N_procs = static_cast<int>(time.size());
-    if ( time==data ) {
+    N_procs = static_cast<int>(time_.size());
+    QVector<double> new_time = toQVector(time_);
+    if ( new_time==time ) {
         replot();
         PROFILE_STOP2("plot");
         return;
     }
-    data = time;
+
+    // Copy the data and compute the mean
+    std::swap(time,new_time);
+    rank.resize(N_procs);
+    for (int i=0; i<N_procs; i++)
+        rank[i] = i;
+    double mean = 0;
+    for (int i=0; i<N_procs; i++)
+        mean += time[i];
+    mean /= N_procs;
 
     // Add the data
+    double range[2];
     if ( time.size() < 100 ) {
-        barChart->setSpacing( 10 ); // spacing between bars
+        if ( time.size() < 40 ) {
+            barChart->setSpacing( 10 ); // spacing between bars
+        } else {
+            barChart->setSpacing( 0 ); // spacing between bars
+        }
+        barChart->setSamples( time );
+        barChart->attach( this );
+        barChart->setVisible(1);
+        curvePlot[0]->attach( NULL );
+        curvePlot[1]->setPen(QColor(204,0,0),3,Qt::DotLine);
+        range[0] = -0.5;
+        range[1] = N_procs-0.5;
     } else {
-        barChart->setSpacing( 0 ); // spacing between bars
+        barChart->attach( NULL );
+        curvePlot[0]->setSamples( rank,  time  );
+        curvePlot[0]->attach( this );
+        curvePlot[0]->setVisible(1);
+        curvePlot[0]->setPen(QColor(0,50,0),3,Qt::SolidLine);
+        curvePlot[1]->setPen(QColor(204,0,0),2,Qt::DotLine);
+        range[0] = 0;
+        range[1] = N_procs-1;
     }
-    barChart->setSamples( toQVector(time) );
-    barChart->attach( this );
-
+    QVector<double> rank2(2), mean2(2);
+    rank2[0]=range[0];  rank2[1]=range[1];
+    mean2[0]=mean;      mean2[1]=mean;
+    curvePlot[1]->setSamples( rank2, mean2 );
+    curvePlot[1]->attach( this );
+    curvePlot[1]->setVisible(1);
     insertLegend( new QwtLegend() );
 
-    float max_time = 0;
-    for (size_t i=0; i<time.size(); i++)
-        max_time = std::max(max_time,time[i]);
-    /*QStringList rank_list;
-    for (int i=0; i<N_procs; i++) {
-        char tmp[10];
-        sprintf(tmp,"%i",i+1);
-        rank_list << tmp;
-    }*/
-
     // Set the axis
+    double max_time = 0;
+    for (int i=0; i<time.size(); i++)
+        max_time = std::max(max_time,time[i]);
     int xaxis = QwtPlot::xBottom;
     int yaxis = QwtPlot::yLeft;
-    setAxisScale(xaxis,-1,N_procs+1);
-    setAxisScale(yaxis,0,max_time);
-    setAxisTitle(xaxis,"Rank");
-    setAxisTitle(yaxis,"Time (s)");
+    setAxisScale(xaxis,range[0],range[1]);
+    setAxisScale(yaxis,0,1.1*max_time);
+    setAxisTitle(xaxis,qwtText("Rank",QFont("Times",10,QFont::Bold)));
+    setAxisTitle(yaxis,qwtText("Time (s)",QFont("Times",10,QFont::Bold)));
+    updateAxes();
 
     replot();
     PROFILE_STOP("plot");
