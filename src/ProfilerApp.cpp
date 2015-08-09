@@ -1571,7 +1571,7 @@ static inline void get_field( const char* line, const char* name, char* data )
         data[i2-i1] = 0;
     }
 }
-static inline void getFieldArray( char *line, std::vector<std::pair<char*,char*>>& data )
+static inline void getFieldArray( char *line, std::vector<std::pair<char*,char*> >& data )
 {
     // This function parses a line of the form <field=value,field=value>
     ASSERT(*line=='<');
@@ -1704,7 +1704,7 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
     memory_data = false;
     date = std::string();
     size_t pos = 0;
-    std::vector<std::pair<char*,char*>> fields;
+    std::vector<std::pair<char*,char*> > fields;
     std::vector<id_struct> active;
     while ( pos<file_length ) {
         char *line = &buffer[pos];
@@ -1838,6 +1838,7 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
     FILE *fid = fopen(filename.c_str(),"rb");
     if (fid==NULL)
         ERROR_MSG("Error opening file: "+filename);
+    std::vector<id_struct> active;
     while ( 1 ) {
         // Read the header
         char line[512], field[128];
@@ -1865,7 +1866,7 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
         unsigned int rank = static_cast<unsigned int>(atoi(field));
         get_field(line,"active=",field);
         ASSERT(field[0]!=0);
-        std::vector<id_struct> active = get_active_ids(field);
+        get_active_ids(field,active);
         get_field(line,"N=",field);
         ASSERT(field[0]!=0);
         unsigned long int N = strtoul(field,NULL,10);
@@ -1876,12 +1877,10 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
                  timer.trace[i].rank != rank ||
                  timer.trace[i].N_active != active.size() )
                 continue;
-            bool active_match = true;
-            for (size_t j=0; j<active.size(); j++) {
-                if ( active[j] != timer.trace[i].active()[j] )
-                    active_match = false;
-            }
-            if ( !active_match )
+            bool match = true;
+            for (size_t j=0; j<active.size(); j++)
+                match = match && active[j]==timer.trace[i].active()[j];
+            if ( !match )
                 continue;
             index = static_cast<int>(i);
         }

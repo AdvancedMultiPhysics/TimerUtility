@@ -32,4 +32,15 @@ for i = 1:length(data.timer)
 end
 data.timer(index) = [];
 
+% Check for trace data
+data.trace_data = false;
+for i = 1:length(data.timer)
+    for j = 1:length(data.timer(i).trace)
+        if ( max(max(cellfun(@(x) length(x),data.timer(i).trace(j).start))) )
+            data.trace_data = true;
+            break;
+        end
+    end
+end
+
 

@@ -11,6 +11,7 @@
 #include <sstream>
 
 #include "timerwindow.h"
+#include "tracewindow.h"
 #include "TableValue.h"
 #include "ProfilerApp.h"
 
@@ -161,7 +162,7 @@ TimerWindow::TimerWindow():
     callLineText = new QLineEdit(QString(""));
     callLineText->setFrame(false);
     callLineText->setReadOnly(true);
-    QString bgColorName = palette().color(QPalette::Normal, QPalette::Window).name();
+    QString bgColorName = palette().color(QPalette::Normal,QPalette::Window).name();
     QString strStyleSheet = QString("QLineEdit {background-color: ").append(bgColorName).append("}");
     callLineText->setStyleSheet(strStyleSheet);
 
@@ -217,6 +218,7 @@ void TimerWindow::close()
     d_data = TimerMemoryResults();
     d_dataTimer.clear();
     d_dataTrace.clear();
+    traceWindow.reset();
     QWidget::setWindowTitle(QString("load_timer"));
     reset();
 }
@@ -234,6 +236,7 @@ void TimerWindow::reset()
     callList.clear();
     inclusiveTime = true;
     includeSubfunctions = true;
+    traceToolbar->setVisible(false);
     updateDisplay();
 }
 
@@ -302,98 +305,112 @@ void TimerWindow::loadFile(const QString &fileName)
             PROFILE_START("ProfilerApp::load");
             d_data = ProfilerApp::load( filename, -1, global );
             PROFILE_STOP("ProfilerApp::load");
-            N_procs = d_data.N_procs;
-            N_threads = 0;
-            selected_rank = -1;
-            for (size_t i=0; i<d_data.timers.size(); i++) {
-                for (size_t j=0; j<d_data.timers[i].trace.size(); j++)
-                    N_threads = std::max<int>(N_threads,d_data.timers[i].trace[j].thread+1);
-            }
-            // Get the global summary data
-            d_dataTimer.clear();
-            d_dataTimer.resize(d_data.timers.size());
-            d_dataTrace.clear();
-            d_dataTrace.reserve(1000);
-            for (size_t i=0; i<d_data.timers.size(); i++) {
-                TimerSummary& timer = d_dataTimer[i];
-                timer.id = d_data.timers[i].id;
-                timer.message = d_data.timers[i].message;
-                timer.file = d_data.timers[i].file;
-                timer.start = d_data.timers[i].start;
-                timer.stop = d_data.timers[i].stop;
-                timer.threads.clear();
-                timer.N.resize(N_procs,0);
-                timer.min.resize(N_procs,1e30);
-                timer.max.resize(N_procs,0);
-                timer.tot.resize(N_procs,0);
-                timer.trace.clear();
-                for (size_t j=0; j<d_data.timers[i].trace.size(); j++) {
-                    int index = -1;
-                    std::vector<id_struct> active = getActive(d_data.timers[i].trace[j]);
-                    for (size_t k=0; k<timer.trace.size(); k++) {
-                        if ( timer.trace[k]->active == active ) {
-                            index = static_cast<int>(k);
-                            break;
-                        }
-                    }
-                    if ( index == -1 ) {
-                        index = static_cast<int>(timer.trace.size());
-                        size_t k = d_dataTrace.size();
-                        d_dataTrace.push_back( std::shared_ptr<TraceSummary>(new TraceSummary()) );
-                        d_dataTrace[k]->id = d_data.timers[i].trace[j].id;
-                        d_dataTrace[k]->active = active;
-                        d_dataTrace[k]->N.resize(N_procs,0);
-                        d_dataTrace[k]->min.resize(N_procs,1e30);
-                        d_dataTrace[k]->max.resize(N_procs,0);
-                        d_dataTrace[k]->tot.resize(N_procs,0);
-                        timer.trace.push_back(d_dataTrace[k].get());
-                    }
-                    TraceSummary *trace = const_cast<TraceSummary*>(timer.trace[index]);
-                    int rank = d_data.timers[i].trace[j].rank;
-                    trace->threads.insert(d_data.timers[i].trace[j].thread);
-                    trace->N[rank] += d_data.timers[i].trace[j].N;
-                    trace->min[rank] = std::min(trace->min[rank],d_data.timers[i].trace[j].min);
-                    trace->max[rank] = std::max(trace->max[rank],d_data.timers[i].trace[j].max);
-                    trace->tot[rank] += d_data.timers[i].trace[j].tot;
-                }
-                std::set<int> ids;
-                for (size_t j=0; j<timer.trace.size(); j++) {
-                    const TraceSummary *trace = timer.trace[j];
-                    for (int k=0; k<N_procs; k++) {
-                        timer.N[k] += trace->N[k];
-                        timer.min[k] = std::min(timer.min[k],trace->min[k]);
-                        timer.max[k] = std::max(timer.max[k],trace->max[k]);
-                        timer.tot[k] += trace->tot[k];
-                    }
-                    ids.insert(trace->threads.begin(),trace->threads.end());
-                }
-                timer.threads = std::vector<int>(ids.begin(),ids.end());
-            }
-            // Update the display
-            printf("%s loaded successfully\n",filename.c_str());
-            if ( N_procs > 1 ) {
-                QMenu *menu = new QMenu();
-                QSignalMapper* signalMapper = new QSignalMapper(this);
-                ADD_MENU_ACTION(menu,"Average",-1);
-                ADD_MENU_ACTION(menu,"Minimum",-2);
-                ADD_MENU_ACTION(menu,"Maximum",-3);
-                for (int i=0; i<N_procs; i++)
-                    ADD_MENU_ACTION(menu,stringf("Rank %i",i).c_str(),i);
-                connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(selectProcessor(int)));
-                processorButton->setText("Average");
-                processorButton->setMenu(menu);
-            }
-            updateDisplay();
         } catch ( std::exception& e ) {
             std::string msg = e.what();
             QMessageBox::information( this, 
                 tr("Error loading file"), 
                 tr(msg.c_str()) );
+            PROFILE_STOP2("ProfilerApp::load");
+            PROFILE_STOP2("loadFile");
+            return;
         } catch (...) {
             QMessageBox::information( this, 
                 tr("Error loading file"), 
                 tr("Caught unknown exception") );
+            PROFILE_STOP2("ProfilerApp::load");
+            PROFILE_STOP2("loadFile");
+            return;
         }
+        // Get the number of processors/threads
+        N_procs = d_data.N_procs;
+        N_threads = 0;
+        selected_rank = -1;
+        for (size_t i=0; i<d_data.timers.size(); i++) {
+            for (size_t j=0; j<d_data.timers[i].trace.size(); j++)
+                N_threads = std::max<int>(N_threads,d_data.timers[i].trace[j].thread+1);
+        }
+        // Get the global summary data
+        d_dataTimer.clear();
+        d_dataTimer.resize(d_data.timers.size());
+        d_dataTrace.clear();
+        d_dataTrace.reserve(1000);
+        for (size_t i=0; i<d_data.timers.size(); i++) {
+            TimerSummary& timer = d_dataTimer[i];
+            timer.id = d_data.timers[i].id;
+            timer.message = d_data.timers[i].message;
+            timer.file = d_data.timers[i].file;
+            timer.start = d_data.timers[i].start;
+            timer.stop = d_data.timers[i].stop;
+            timer.threads.clear();
+            timer.N.resize(N_procs,0);
+            timer.min.resize(N_procs,1e30);
+            timer.max.resize(N_procs,0);
+            timer.tot.resize(N_procs,0);
+            timer.trace.clear();
+            for (size_t j=0; j<d_data.timers[i].trace.size(); j++) {
+                int index = -1;
+                std::vector<id_struct> active = getActive(d_data.timers[i].trace[j]);
+                for (size_t k=0; k<timer.trace.size(); k++) {
+                    if ( timer.trace[k]->active == active ) {
+                        index = static_cast<int>(k);
+                        break;
+                    }
+                }
+                if ( index == -1 ) {
+                    index = static_cast<int>(timer.trace.size());
+                    size_t k = d_dataTrace.size();
+                    d_dataTrace.push_back( std::shared_ptr<TraceSummary>(new TraceSummary()) );
+                    d_dataTrace[k]->id = d_data.timers[i].trace[j].id;
+                    d_dataTrace[k]->active = active;
+                    d_dataTrace[k]->N.resize(N_procs,0);
+                    d_dataTrace[k]->min.resize(N_procs,1e30);
+                    d_dataTrace[k]->max.resize(N_procs,0);
+                    d_dataTrace[k]->tot.resize(N_procs,0);
+                    timer.trace.push_back(d_dataTrace[k].get());
+                }
+                TraceSummary *trace = const_cast<TraceSummary*>(timer.trace[index]);
+                int rank = d_data.timers[i].trace[j].rank;
+                trace->threads.insert(d_data.timers[i].trace[j].thread);
+                trace->N[rank] += d_data.timers[i].trace[j].N;
+                trace->min[rank] = std::min(trace->min[rank],d_data.timers[i].trace[j].min);
+                trace->max[rank] = std::max(trace->max[rank],d_data.timers[i].trace[j].max);
+                trace->tot[rank] += d_data.timers[i].trace[j].tot;
+            }
+            std::set<int> ids;
+            for (size_t j=0; j<timer.trace.size(); j++) {
+                const TraceSummary *trace = timer.trace[j];
+                for (int k=0; k<N_procs; k++) {
+                    timer.N[k] += trace->N[k];
+                    timer.min[k] = std::min(timer.min[k],trace->min[k]);
+                    timer.max[k] = std::max(timer.max[k],trace->max[k]);
+                    timer.tot[k] += trace->tot[k];
+                }
+                ids.insert(trace->threads.begin(),trace->threads.end());
+            }
+            timer.threads = std::vector<int>(ids.begin(),ids.end());
+        }
+        // Check if we want to display trace data
+        bool traceData = false;
+        for (size_t i=0; i<d_data.timers.size(); i++) {
+            for (size_t j=0; j<d_data.timers[i].trace.size(); j++)
+                traceData = traceData || d_data.timers[i].trace[j].N_trace>0;
+        }
+        traceToolbar->setVisible(traceData);
+        // Update the display
+        printf("%s loaded successfully\n",filename.c_str());
+        if ( N_procs > 1 ) {
+            QMenu *menu = new QMenu();
+            QSignalMapper* signalMapper = new QSignalMapper(this);
+            ADD_MENU_ACTION(menu,"Average",-1);
+            ADD_MENU_ACTION(menu,"Minimum",-2);
+            ADD_MENU_ACTION(menu,"Maximum",-3);
+            for (int i=0; i<N_procs; i++)
+                ADD_MENU_ACTION(menu,stringf("Rank %i",i).c_str(),i);
+            connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(selectProcessor(int)));
+            processorButton->setText("Average");
+            processorButton->setMenu(menu);
+        }
+        updateDisplay();
     }
     PROFILE_STOP("loadFile");
 }
@@ -839,6 +856,11 @@ void TimerWindow::createToolBars()
     subfunctionButton = new QPushButton("Hide Subfunctions");
     connect(subfunctionButton, SIGNAL(released()), this, SLOT(subfunctionFun()));
     subfunctionToolbar = fileToolBar->addWidget(subfunctionButton);
+    // Hide subfunctions
+    traceButton = new QPushButton("Plot Trace Data");
+    connect(traceButton, SIGNAL(released()), this, SLOT(traceFun()));
+    traceToolbar = fileToolBar->addWidget(traceButton);
+
 
     //editToolBar = addToolBar(tr("Edit"));
     //editToolBar->addAction(cutAct);
@@ -880,4 +902,19 @@ void TimerWindow::resizeDone()
 {
     loadBalance->setFixedHeight(centralWidget()->height()/4);
 }
+
+
+/***********************************************************************
+* Create the trace window                                              *
+***********************************************************************/
+void TimerWindow::traceFun()
+{
+    traceWindow.reset(new TraceWindow(this));
+#if defined(Q_OS_SYMBIAN)
+    traceWindow->showMaximized();
+#else
+    traceWindow->show();
+#endif
+}
+
 

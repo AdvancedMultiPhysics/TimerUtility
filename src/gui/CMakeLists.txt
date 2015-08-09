@@ -34,8 +34,8 @@ ELSE()
     #ENDFOREACH()
     #, ${Qt5Widgets_LIBRARIES}, ${Qt5Declarative_INCLUDE_DIRS}, ${Qt5Declarative_LIBRARIES}
     
-    SET(QtApp_SRCS load_timer.cpp timerwindow.cpp LoadBalance.cpp )
-    SET(QtApp_MOCS timerwindow.h LoadBalance.h )
+    SET(QtApp_SRCS load_timer.cpp timerwindow.cpp tracewindow.cpp LoadBalance.cpp )
+    SET(QtApp_MOCS timerwindow.h tracewindow.h LoadBalance.h )
     SET(QtApp_RCCS application.qrc)
     # generate rules for building source files from the resources
     QT4_ADD_RESOURCES(QtApp_RCC_SRCS ${QtApp_RCCS})

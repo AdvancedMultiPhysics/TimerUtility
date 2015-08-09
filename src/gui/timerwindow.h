@@ -20,6 +20,7 @@ class QAction;
 class QMenu;
 class QTableView;
 class TimerSummary;
+class TraceWindow;
 
 
 class TimerWindow : public QMainWindow
@@ -43,6 +44,7 @@ private slots:
     void backButtonPressed();
     void exclusiveFun();
     void subfunctionFun();
+    void traceFun();
     void selectProcessor( int );
 
     void resizeEvent( QResizeEvent *e );
@@ -67,9 +69,11 @@ private:
     QToolButton *processorButton;
     QPushButton *exclusiveButton;
     QPushButton *subfunctionButton;
+    QPushButton *traceButton;
     QAction *processorToolbar;
     QAction *exclusiveToolbar;
     QAction *subfunctionToolbar;
+    QAction *traceToolbar;
     LoadBalance *loadBalance;
 
     QMenu *fileMenu;
@@ -88,7 +92,7 @@ private:
 
     QTimer resizeTimer;
 
-private:
+protected:
     std::string lastPath;
     TimerMemoryResults d_data;
     std::vector<TimerSummary> d_dataTimer;
@@ -99,6 +103,9 @@ private:
     int selected_rank;
     bool inclusiveTime;
     bool includeSubfunctions;
+    std::shared_ptr<TraceWindow> traceWindow;
+
+friend class TraceWindow;
 };
 
 #endif
