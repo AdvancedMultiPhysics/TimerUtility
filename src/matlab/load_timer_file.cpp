@@ -192,7 +192,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         size_t N = data.memory[i].time.size();
         mxSetFieldByNumber(plhs[2],i,0,mxCreateDoubleScalar(data.memory[i].rank));
         mxSetFieldByNumber(plhs[2],i,1,saveSingleMatrix(1,N,getPtr(data.memory[i].time)));
-        mxSetFieldByNumber(plhs[2],i,1,saveSingleMatrix(1,N,getPtr(data.memory[i].bytes)));
+        mxSetFieldByNumber(plhs[2],i,2,saveSingleMatrix(1,N,getPtr(data.memory[i].bytes)));
     }
     
     // Clear data

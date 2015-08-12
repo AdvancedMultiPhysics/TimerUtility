@@ -314,8 +314,8 @@ if isappdata(handles.parent_figure,'memory')
         memory(k).size(j1) = tmp.size(i1);              %#ok<AGROW>
         memory(k).size(j2) = tmp.size(i2);              %#ok<AGROW>
         clear('tmp')
-        memory(k).time = double(memory(k).time);           %#ok<AGROW>
-        memory(k).size = memory_data(p).scale*double(memory(k).size); %#ok<AGROW>
+        memory(k).time = double(memory(k).time);        %#ok<AGROW>
+        memory(k).size = double(memory(k).size);        %#ok<AGROW>
     end
 end
 clear('data','tmp');

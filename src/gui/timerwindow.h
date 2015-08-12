@@ -60,7 +60,6 @@ private:
     void loadFile(const QString &fileName);
     void setCurrentFile(const QString &fileName);
     void updateDisplay();
-    std::vector<std::shared_ptr<TimerSummary>> getTimers() const;
     QString strippedName(const QString &fullFileName);
 
     QTableWidget *timerTable;
@@ -93,6 +92,8 @@ private:
     QTimer resizeTimer;
 
 protected:
+    std::vector<std::shared_ptr<TimerSummary>> getTimers() const;
+
     std::string lastPath;
     TimerMemoryResults d_data;
     std::vector<TimerSummary> d_dataTimer;

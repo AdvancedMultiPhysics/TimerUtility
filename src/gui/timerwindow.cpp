@@ -102,7 +102,7 @@ template<class TYPE> TYPE max( const std::vector<TYPE>& x )
 }
 
 
-// Compute the min of a vector
+// Compute the sum of a vector
 template<class TYPE> TYPE sum( const std::vector<TYPE>& x )
 {
     TYPE y = 0;
@@ -211,6 +211,7 @@ TimerWindow::TimerWindow():
 void TimerWindow::closeEvent(QCloseEvent *event)
 {
     writeSettings();
+    close();
     event->accept();
 }
 void TimerWindow::close()
@@ -407,7 +408,7 @@ void TimerWindow::loadFile(const QString &fileName)
             for (int i=0; i<N_procs; i++)
                 ADD_MENU_ACTION(menu,stringf("Rank %i",i).c_str(),i);
             connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(selectProcessor(int)));
-            processorButton->setText("Average");
+            selectProcessor(-1);
             processorButton->setMenu(menu);
         }
         updateDisplay();
@@ -742,6 +743,15 @@ void TimerWindow::backButtonPressed( )
 void TimerWindow::selectProcessor( int rank )
 {
     selected_rank = rank;
+    if ( rank==-1 ) {
+        processorButton->setText("Average");
+    } else if ( rank==-2 ) {
+        processorButton->setText("Minimum");
+    } else if ( rank==-3 ) {
+        processorButton->setText("Maximum");
+    } else {
+        processorButton->setText(stringf("Rank %i",rank).c_str());
+    }
     updateDisplay();
 }
 
@@ -891,7 +901,7 @@ void TimerWindow::writeSettings()
 
 
 /***********************************************************************
-* Reszie functions                                                     *
+* Resize functions                                                     *
 ***********************************************************************/
 void TimerWindow::resizeEvent( QResizeEvent *e )
 {

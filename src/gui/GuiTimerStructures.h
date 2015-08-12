@@ -2,6 +2,7 @@
 #define GuiTimerStructures_H
 
 #include "ProfilerApp.h"
+#include "Array.h"
 
 #include <vector>
 #include <set>
@@ -39,49 +40,17 @@ struct TimerSummary {
 };
 
 
-
-// Simple matrix class
-template<class TYPE>
-class Matrix {
-public:
-    typedef std::shared_ptr<Matrix<TYPE>> shared_ptr;
-    int N;
-    int M;
-    TYPE *data;
-    Matrix(): N(0), M(0), data(NULL) {}
-    Matrix(int N_, int M_): N(N_), M(M_), data(new TYPE[N_*M_]) { fill(0); }
-    ~Matrix() { delete [] data; }
-    TYPE& operator()(int i, int j) { return data[i+j*N]; }
-    void fill( TYPE x ) { 
-        for (int i=0; i<N*M; i++)
-            data[i] = x;
-    }
-    TYPE min() const { 
-        TYPE x = data[0];
-        for (int i=0; i<N*M; i++)
-            x = std::min(x,data[i]);
-        return x;
-    }
-    TYPE max() const { 
-        TYPE x = data[0];
-        for (int i=0; i<N*M; i++)
-            x = std::max(x,data[i]);
-        return x;
-    }
-    TYPE sum() const { 
-        TYPE x = 0;
-        for (int i=0; i<N*M; i++)
-            x += data[i];
-        return x;
-    }
-    double mean() const { 
-        TYPE x = sum();
-        return static_cast<double>(x)/(N*M);
-    }
-protected:
-    Matrix(const Matrix&);            // Private copy constructor
-    Matrix& operator=(const Matrix&); // Private assignment operator
+// Structure to hold a timeline for a timer
+struct TimerTimeline {
+    id_struct id;                       //!<  Timer ID
+    std::string message;                //!<  Timer message
+    std::string file;                   //!<  Timer file
+    double tot;                         //!<  Total time spent in timer (all threads/ranks)
+    BoolArray active;                   //!<  Active image
+    TimerTimeline() {}
+    ~TimerTimeline() {}
 };
+
 
 
 #endif

@@ -9,6 +9,7 @@
 #include <qwt_legend.h>
 #include <qwt_scale_draw.h>
 #include <qwt_scale_engine.h>
+#include <qwt_scale_widget.h>
 
 
 template<class TYPE>
@@ -35,16 +36,23 @@ LoadBalance::LoadBalance( QWidget *parent ):
     setTitle(qwtText("Load Balance",QFont("Times",12,QFont::Bold)));
     setAutoFillBackground( true );
     setPalette( QColor( "Linen" ) );
+    setContentsMargins(0,0,0,0);
+    for(int axis : {QwtPlot::xBottom,QwtPlot::xTop,QwtPlot::yLeft,QwtPlot::yRight}) {
+        axisWidget(axis)->setMinBorderDist(0,0);
+        axisWidget(axis)->setBorderDist(0,0);
+        axisWidget(axis)->setMargin(0);
+        axisWidget(axis)->setSpacing(0);
+        plotLayout()->setCanvasMargin(axis,0);
+    }
 
     QwtPlotCanvas *canvas = new QwtPlotCanvas();
     canvas->setLineWidth(0);
     canvas->setFrameStyle( QFrame::Box | QFrame::Sunken );
     canvas->setBorderRadius(0);
-
     QPalette canvasPalette( QColor(230,255,255) );
     canvasPalette.setColor( QPalette::Foreground, QColor(230,255,255) );
     canvas->setPalette( canvasPalette );
-
+    canvas->setContentsMargins(0,0,0,0);
     setCanvas( canvas );
 
     // Create the barChart
@@ -127,17 +135,23 @@ void LoadBalance::plot( const std::vector<float>& time_ )
     curvePlot[1]->setVisible(1);
     insertLegend( new QwtLegend() );
 
+    // Create the rank ticks
+    QwtScaleDiv xtick(range[0],range[1]);
+    if ( rank.size() < 16 ) {
+        xtick = QwtScaleDiv(range[0],range[1],QList<double>(),QList<double>(),rank.toList());
+    }
+
     // Set the axis
     double max_time = 0;
     for (int i=0; i<time.size(); i++)
         max_time = std::max(max_time,time[i]);
     int xaxis = QwtPlot::xBottom;
     int yaxis = QwtPlot::yLeft;
-    setAxisScale(xaxis,range[0],range[1]);
+    setAxisScaleDiv(xaxis,xtick);
     setAxisScale(yaxis,0,1.1*max_time);
     setAxisTitle(xaxis,qwtText("Rank",QFont("Times",10,QFont::Bold)));
     setAxisTitle(yaxis,qwtText("Time (s)",QFont("Times",10,QFont::Bold)));
-    updateAxes();
+    setAxisScale(QwtPlot::xTop,0,0);
 
     replot();
     PROFILE_STOP("plot");
