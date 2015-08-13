@@ -14,6 +14,84 @@
 #include "TableValue.h"
 
 
+// Class to draw a line for the current time
+class CurrentTimeLineClass : public QWidget
+{
+public:
+    CurrentTimeLineClass(QWidget* parent, TraceWindow *traceWindow, 
+        const std::array<double,2>& t_global, int id, double t0 ):
+        QWidget(parent), d_parent(parent), d_traceWindow(traceWindow),
+        d_t_global(t_global), d_t(t0), d_t0(t0), d_id(id), start(0), last(0), active(false)
+    {
+        setMouseTracking(true);
+        setTime(t0);
+    }
+    void setTime( double t ) {
+        d_t = t;
+        d_t0 = t;
+        move(t);
+    }
+    void paintEvent(QPaintEvent *) {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        int x, y, w, h;
+        rect().getRect(&x,&y,&w,&h);
+        p.fillRect(QRect(x+3,y+3,w-6,h-6),QBrush(QColor(255,255,255)));
+    }
+    void mousePressEvent(QMouseEvent *event)
+    {
+        if (event->button() == Qt::LeftButton) {
+            start = event->globalPos().x();
+            last = start;
+            active = true;
+        }
+    }
+    void mouseMoveEvent(QMouseEvent *event)
+    {
+        int pos = event->globalPos().x();
+        if ( !active || abs(last-pos) < 4 )
+            return;
+        last = pos;
+        double w = d_parent->rect().width();
+        double t = d_t0 + (pos-start)*(d_t_global[1]-d_t_global[0])/w;
+        t = std::max(t,d_t_global[0]);
+        t = std::min(t,d_t_global[1]);
+        move(t);
+    }
+    void mouseReleaseEvent(QMouseEvent * event)
+    {
+        if (event->button() == Qt::LeftButton) {
+            int pos = event->globalPos().x();
+            double w = d_parent->rect().width();
+            double t = d_t0 + (pos-start)*(d_t_global[1]-d_t_global[0])/w;
+            t = std::max(t,d_t_global[0]);
+            t = std::min(t,d_t_global[1]);
+            active = false;
+            start=last=0;
+            setTime(t);
+            d_traceWindow->moveTimelineWindow(d_id,t);
+        }
+    }
+private:
+    QWidget *d_parent;
+    TraceWindow *d_traceWindow;
+    const std::array<double,2> d_t_global;
+    double d_t, d_t0;
+    int d_id;
+    int start, last;
+    bool active;
+    // Move to the given position, but do not update the time
+    void move( double t ) {
+        int x, y, w, h;
+        d_parent->rect().getRect(&x,&y,&w,&h);
+        int x2 = x + w*(t-d_t_global[0])/(d_t_global[1]-d_t_global[0]);
+        setGeometry(QRect(x2-4,y,8,h));
+        this->update();
+    }
+
+};
+
+
 // Convert a double value (0:1) to uint rbg for QImage
 // This uses the jet colormap (reverse order) with negitive values set as black
 inline uint getRGB( double value )
@@ -80,6 +158,7 @@ template<class TYPE> TYPE sum( const std::vector<TYPE>& x )
 TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     timerGrid(NULL), memory(NULL),
     parent(parent_), N_procs(parent_->N_procs), N_threads(parent_->N_threads),
+    t_global(getGlobalTime(parent_->d_data.timers)), t_current{0,0},
     resolution(1024), selected_rank(-1), selected_thread(-1)
 {
     PROFILE_START("TraceWindow");
@@ -129,27 +208,13 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     // Create the toolbars
     createToolBars();
 
-    // Initialize the global minimum/maximum time
-    t_global[0] = 1e100;
-    t_global[1] = -1e100;
-    const std::vector<TimerResults>& timers = parent->d_data.timers;
-    for (size_t i=0; i<timers.size(); i++) {
-        for (size_t j=0; j<timers[i].trace.size(); j++) {
-            const int N_trace = timers[i].trace[j].N_trace;
-            const double* start = timers[i].trace[j].start();
-            const double* stop  = timers[i].trace[j].stop();
-            t_global[0] = std::min(t_global[0],start[0]);
-            t_global[1] = std::max(t_global[1],stop[N_trace-1]);
-        }
-    }
-    t_current[0] = t_global[0];
-    t_current[1] = t_global[1];
-
     // Create resize event
     resizeTimer.setSingleShot( true );
     connect( &resizeTimer, SIGNAL(timeout()), SLOT(resizeDone()) );
 
     // Plot the data
+    timelineBoundaries[0].reset(new CurrentTimeLineClass(timeline,this,t_global,0,t_global[0]));
+    timelineBoundaries[1].reset(new CurrentTimeLineClass(timeline,this,t_global,1,t_global[1]));
     reset();
 
     PROFILE_STOP("TraceWindow");
@@ -170,8 +235,7 @@ void TraceWindow::reset()
 {
     PROFILE_START("reset");
     // Reset t_min and t_max
-    t_current[0] = t_global[0];
-    t_current[1] = t_global[1];
+    t_current = t_global;
     // Update the data
     updateDisplay( UpdateType::all );
     PROFILE_STOP("reset");
@@ -204,7 +268,7 @@ void TraceWindow::updateDisplay( UpdateType update )
 /***********************************************************************
 * Get the trace data                                                   *
 ***********************************************************************/
-std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData( const double t[2] ) const
+std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData( const std::array<double,2>& t ) const
 {
     PROFILE_START("getTraceData");
     // Get the active timers/traces
@@ -392,10 +456,12 @@ void TraceWindow::resizeDone()
 {
     PROFILE_START("resizeDone");
     // Scale the timeline window
+    int w = timeline->rect().width();
+    int h = timeline->rect().height();
     timeline->setFixedHeight(centralWidget()->height()/8);
-    int w = timeline->width();
-    int h = timeline->height();
     timeline->setPixmap(timelinePixelMap->scaled(w,h,Qt::IgnoreAspectRatio,Qt::FastTransformation));
+    timelineBoundaries[0]->setTime(t_current[0]);
+    timelineBoundaries[1]->setTime(t_current[1]);
     // Scale the timers
     for (size_t i=0; i<timerPixelMap.size(); i++) {
         int w2 = timerPlots[i]->width();
@@ -460,6 +526,24 @@ void TraceWindow::resolutionChanged()
 
 
 /***********************************************************************
+* Change the time                                                      *
+***********************************************************************/
+void TraceWindow::moveTimelineWindow( int index, double t )
+{
+    std::array<double,2> t_new = t_current;
+    t_new[index] = t;
+    if ( std::max<double>(t_new[1]-t_new[0],0) < 0.1*(t_current[1]-t_current[0]) ) {
+        if ( index==0 )
+            t_new[0] = t_current[1] - 0.1*(t_current[1]-t_current[0]);
+        else
+            t_new[1] = t_current[0] + 0.1*(t_current[1]-t_current[0]);
+    }
+    t_current = t_new;
+    updateDisplay(UpdateType::time);
+}
+
+
+/***********************************************************************
 * Create the toolbar                                                   *
 ***********************************************************************/
 void TraceWindow::createToolBars()
@@ -513,6 +597,27 @@ void TraceWindow::createToolBars()
     toolBar->addWidget(resolutionBox);
     connect(resolutionBox, SIGNAL(editingFinished()), this, SLOT(resolutionChanged()));
 
+}
+
+
+/***********************************************************************
+* Helper function to return the global start/stop time                 *
+***********************************************************************/
+std::array<double,2> TraceWindow::getGlobalTime( const std::vector<TimerResults>& timers )
+{
+    std::array<double,2> t_global;
+    t_global[0] = 1e100;
+    t_global[1] = -1e100;
+    for (size_t i=0; i<timers.size(); i++) {
+        for (size_t j=0; j<timers[i].trace.size(); j++) {
+            const int N_trace = timers[i].trace[j].N_trace;
+            const double* start = timers[i].trace[j].start();
+            const double* stop  = timers[i].trace[j].stop();
+            t_global[0] = std::min(t_global[0],start[0]);
+            t_global[1] = std::max(t_global[1],stop[N_trace-1]);
+        }
+    }
+    return t_global;
 }
 
 
