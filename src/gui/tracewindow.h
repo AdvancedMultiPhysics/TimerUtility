@@ -17,6 +17,8 @@
 
 
 class CurrentTimeLineClass;
+class DrawVerticalLineClass;
+class QLabelMouse;
 
 
 class TraceWindow : public QMainWindow
@@ -56,7 +58,7 @@ private:
     QToolButton *threadButton;
     QLineEdit *resolutionBox;
     std::vector<std::shared_ptr<QLabel>> timerLabels;
-    std::vector<std::shared_ptr<QLabel>> timerPlots;
+    std::vector<std::shared_ptr<QLabelMouse>> timerPlots;
     std::vector<std::shared_ptr<QPixmap>> timerPixelMap;
 
     std::shared_ptr<CurrentTimeLineClass> timelineBoundaries[2];
@@ -74,10 +76,21 @@ private:
     std::map<id_struct,uint64_t> idRgbMap;
     std::shared_ptr<QPixmap> timelinePixelMap;
 
+    bool traceZoomActive;
+    std::array<double,2> t_zoom;
+    int traceZoomLastPos;
+    std::shared_ptr<DrawVerticalLineClass> zoomBoundaries[2];
+
 private:
     static std::array<double,2> getGlobalTime( const std::vector<TimerResults>& timers );
 
+protected:
+    void traceMousePressEvent(QMouseEvent *event);
+    void traceMouseMoveEvent(QMouseEvent *event);
+    void traceMouseReleaseEvent(QMouseEvent *event);
+
 friend class CurrentTimeLineClass;
+friend class QLabelMouse;
 };
 
 

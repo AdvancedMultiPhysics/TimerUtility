@@ -14,29 +14,60 @@
 #include "TableValue.h"
 
 
+// Class to draw a vertical line
+class DrawVerticalLineClass : public QWidget
+{
+public:
+    DrawVerticalLineClass(QWidget* parent, double pos_, int boarder=0 ):
+        QWidget(parent), d_parent(parent), d_boarder(boarder), pos(pos_)
+    {
+        move( pos );
+    }
+    // Move to the given position
+    void move( double pos_ ) {
+        pos = pos_;
+        pos = std::max(pos,0.0);
+        pos = std::min(pos,1.0);
+        int x, y, w, h;
+        d_parent->rect().getRect(&x,&y,&w,&h);
+        setGeometry(QRect(x+w*pos-d_boarder,y,2+2*d_boarder,h));
+        this->update();
+    }
+    // Update
+    void redraw( ) {
+        move(pos);
+    }
+    // Draw the rectangle
+    void paintEvent(QPaintEvent *) {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        int x, y, w, h;
+        rect().getRect(&x,&y,&w,&h);
+        p.fillRect(QRect(x+d_boarder,y,2,h),QBrush(QColor(255,255,255)));
+    }
+protected:
+    QWidget *d_parent;
+    int d_boarder;
+    double pos;
+};
+
+
 // Class to draw a line for the current time
-class CurrentTimeLineClass : public QWidget
+class CurrentTimeLineClass : public DrawVerticalLineClass
 {
 public:
     CurrentTimeLineClass(QWidget* parent, TraceWindow *traceWindow, 
         const std::array<double,2>& t_global, int id, double t0 ):
-        QWidget(parent), d_parent(parent), d_traceWindow(traceWindow),
-        d_t_global(t_global), d_t(t0), d_t0(t0), d_id(id), start(0), last(0), active(false)
+        DrawVerticalLineClass(parent,0,3), d_traceWindow(traceWindow),
+        d_t_global(t_global), d_t(t0), pos0(0), d_id(id), start(0), last(0), active(false)
     {
         setMouseTracking(true);
         setTime(t0);
     }
     void setTime( double t ) {
         d_t = t;
-        d_t0 = t;
-        move(t);
-    }
-    void paintEvent(QPaintEvent *) {
-        QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
-        int x, y, w, h;
-        rect().getRect(&x,&y,&w,&h);
-        p.fillRect(QRect(x+3,y+3,w-6,h-6),QBrush(QColor(255,255,255)));
+        pos0 = (t-d_t_global[0])/(d_t_global[1]-d_t_global[0]);
+        move(pos0);
     }
     void mousePressEvent(QMouseEvent *event)
     {
@@ -53,17 +84,16 @@ public:
             return;
         last = pos;
         double w = d_parent->rect().width();
-        double t = d_t0 + (pos-start)*(d_t_global[1]-d_t_global[0])/w;
-        t = std::max(t,d_t_global[0]);
-        t = std::min(t,d_t_global[1]);
-        move(t);
+        double pos2 = pos0 + static_cast<double>(pos-start)/w;
+        move(pos2);
     }
     void mouseReleaseEvent(QMouseEvent * event)
     {
         if (event->button() == Qt::LeftButton) {
             int pos = event->globalPos().x();
             double w = d_parent->rect().width();
-            double t = d_t0 + (pos-start)*(d_t_global[1]-d_t_global[0])/w;
+            double pos2 = pos0 + static_cast<double>(pos-start)/w;
+            double t = d_t_global[0] + pos2*(d_t_global[1]-d_t_global[0]);
             t = std::max(t,d_t_global[0]);
             t = std::min(t,d_t_global[1]);
             active = false;
@@ -73,22 +103,29 @@ public:
         }
     }
 private:
-    QWidget *d_parent;
     TraceWindow *d_traceWindow;
     const std::array<double,2> d_t_global;
-    double d_t, d_t0;
+    double d_t, pos0;
     int d_id;
     int start, last;
     bool active;
-    // Move to the given position, but do not update the time
-    void move( double t ) {
-        int x, y, w, h;
-        d_parent->rect().getRect(&x,&y,&w,&h);
-        int x2 = x + w*(t-d_t_global[0])/(d_t_global[1]-d_t_global[0]);
-        setGeometry(QRect(x2-4,y,8,h));
-        this->update();
-    }
 
+};
+
+
+// Class for QLabel that has mouse movement functions
+class QLabelMouse : public QLabel
+{
+public:
+	QLabelMouse( TraceWindow *trace ):
+        QLabel(NULL), d_trace(trace), active(false), start(0), last(0) {}
+	void mousePressEvent( QMouseEvent * event ) { d_trace->traceMousePressEvent(event); }
+	void mouseMoveEvent( QMouseEvent * event  ) { d_trace->traceMouseMoveEvent(event);  }
+	void mouseReleaseEvent( QMouseEvent * event ) { d_trace->traceMouseReleaseEvent(event); }
+private:
+    TraceWindow *d_trace;
+    bool active;
+    int start, last;
 };
 
 
@@ -181,7 +218,7 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     for (size_t i=0; i<timerLabels.size(); i++) {
         timerLabels[i].reset(new QLabel());
         timerLabels[i]->setFixedWidth(120);
-        timerPlots[i].reset(new QLabel());
+        timerPlots[i].reset(new QLabelMouse(this));
         timerPlots[i]->setScaledContents(true);
         timerPlots[i]->setMinimumSize(1000,30);
         timerGrid->addWidget(timerLabels[i].get(),i,0);
@@ -215,6 +252,10 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     // Plot the data
     timelineBoundaries[0].reset(new CurrentTimeLineClass(timeline,this,t_global,0,t_global[0]));
     timelineBoundaries[1].reset(new CurrentTimeLineClass(timeline,this,t_global,1,t_global[1]));
+    zoomBoundaries[0].reset( new DrawVerticalLineClass(timerArea,0.1,0) );
+    zoomBoundaries[1].reset( new DrawVerticalLineClass(timerArea,0.9,0) );
+    zoomBoundaries[0]->setVisible(false);
+    zoomBoundaries[1]->setVisible(false);
     reset();
 
     PROFILE_STOP("TraceWindow");
@@ -468,6 +509,10 @@ void TraceWindow::resizeDone()
         int h2 = timerPlots[i]->height();
         timerPlots[i]->setPixmap(timerPixelMap[i]->scaled(w2,h2,Qt::IgnoreAspectRatio,Qt::FastTransformation));        
     }
+    if ( zoomBoundaries[0].get() != NULL ) {
+        zoomBoundaries[0]->redraw();
+        zoomBoundaries[1]->redraw();
+    }
     PROFILE_STOP("resizeDone");
 }
 
@@ -618,6 +663,55 @@ std::array<double,2> TraceWindow::getGlobalTime( const std::vector<TimerResults>
         }
     }
     return t_global;
+}
+
+
+/***********************************************************************
+* Create/move the trace sliders for the detailed timeline              *
+***********************************************************************/
+void TraceWindow::traceMousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        traceZoomActive = true;
+        traceZoomLastPos = event->globalPos().x();
+        int x = timerArea->mapFromGlobal(event->globalPos()).x();
+        double pos = ((double)x-timerArea->rect().left())/timerArea->rect().width();
+        zoomBoundaries[0]->move(pos);
+        zoomBoundaries[1]->move(pos);
+        zoomBoundaries[0]->setVisible(true);
+        zoomBoundaries[1]->setVisible(true);
+        int x2 = timerPlots[0]->mapFromGlobal(event->globalPos()).x();
+        double t = t_current[0] + x2*(t_current[1]-t_current[0])/timerPlots[0]->rect().width();
+        t_zoom[0] = t;
+        t_zoom[1] = t;
+    }
+}
+void TraceWindow::traceMouseMoveEvent(QMouseEvent *event)
+{
+    int x0 = event->globalPos().x();
+    if ( !traceZoomActive && abs(x0-traceZoomLastPos)<4 )
+        return;
+    traceZoomLastPos = x0;
+    int x = timerArea->mapFromGlobal(event->globalPos()).x();
+    double pos = ((double)x-timerArea->rect().left())/timerArea->rect().width();
+    zoomBoundaries[1]->move(pos);
+}
+void TraceWindow::traceMouseReleaseEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        traceZoomActive = false;
+        int x2 = timerPlots[0]->mapFromGlobal(event->globalPos()).x();
+        double t = t_current[0] + x2*(t_current[1]-t_current[0])/timerPlots[0]->rect().width();
+        t_zoom[1] = t;
+        if ( t_zoom[1] < t_zoom[0] )
+            std::swap(t_zoom[0],t_zoom[1]);
+        zoomBoundaries[0]->setVisible(false);
+        zoomBoundaries[1]->setVisible(false);
+        if ( t_zoom[1]-t_zoom[0] > 0.05*t_current[1]-t_current[0] ) {
+            t_current = t_zoom;
+            updateDisplay(UpdateType::time);
+        }
+    }
 }
 
 
