@@ -71,6 +71,7 @@ struct id_struct {
     inline bool operator> (const id_struct& rhs ) const { return data.u64> rhs.data.u64; }
     inline bool operator< (const id_struct& rhs ) const { return data.u64< rhs.data.u64; }
     inline bool operator<=(const id_struct& rhs ) const { return data.u64<=rhs.data.u64; }
+    static id_struct create_id( size_t id );
 private:
     union {
         uint64_t u64;

@@ -389,6 +389,7 @@ MACRO( ADD_CXX_STD )
         MESSAGE( FATAL_ERROR "Unknown c++ standard (98,11,14,NONE)" )
     ENDIF()
     # Add the flags
+    ADD_DEFINITIONS( -DCXX_STD=${CXX_STD} )
     SET( CMAKE_CXX_STANDARD ${CXX_STD} )
     MESSAGE( "C++ standard: ${CXX_STD}" )
     IF ( USING_GCC )

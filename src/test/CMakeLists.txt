@@ -5,6 +5,9 @@ ADD_TIMER_TEST( test_MemoryApp )
 ADD_TIMER_TEST_1_2_4( test_ProfilerApp )
 ADD_TIMER_TEST( test_ProfilerApp_C )
 ADD_TIMER_TEST( test_Load set1.1.timer )
+IF ( ( ${CXX_STD} STREQUAL "11" ) OR ( ${CXX_STD} STREQUAL "14" ) )
+    ADD_TIMER_PROVISIONAL_TEST( test_Callgrind )
+ENDIF()
 
 
 # Regression test for ProfilerApp to ensure we can continue to load the data from older versions

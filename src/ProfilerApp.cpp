@@ -456,6 +456,10 @@ static inline id_struct convert_timer_id( size_t key )
     }
     return id_struct(id);
 }
+id_struct id_struct::create_id( size_t id )
+{
+    return convert_timer_id(id);
+}
 
 
 /***********************************************************************
