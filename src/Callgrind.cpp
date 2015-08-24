@@ -240,7 +240,8 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
     for (size_t i=0; i<functions.size(); i++)
         total_cost += functions[i].exclusive_cost;
     if ( std::abs(total_cost-global_cost) > 0.001*global_cost )
-        printf("Warning: cost is not conserved loading callgrind files");
+        std::cout <<"Warning: cost is not conserved loading callgrind files ("
+            << total_cost << "," << global_cost << ")\n";
     // Delete functions whose cost is < tol*global cost or whose filename is an address
     if ( tol < 0 )
         ERROR_MSG("tol must be >=0");
@@ -352,12 +353,12 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
                 }
             }
         } else {
-            ERROR_MSG("Internal error: no parent");
+            printf("No parent detected in function list, not all data converted\n");
+            break;
         }
         it++;
     }
     return timers;
-
 }
 
 

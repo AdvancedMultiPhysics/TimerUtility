@@ -12,6 +12,8 @@
 
 #include "tracewindow.h"
 #include "TableValue.h"
+#include "MemoryPlot.h"
+#include "colormap.h"
 
 
 // Class to draw a vertical line
@@ -129,45 +131,6 @@ private:
 };
 
 
-// Convert a double value (0:1) to uint rbg for QImage
-// This uses the jet colormap (reverse order) with negitive values set as black
-inline uint getRGB( double value )
-{
-    uint r, g, b;
-    if ( value<0 ) {
-        r=g=b=0;
-    } else if ( value < 0.125 ) {
-        r=255*4*(value+0.125);
-        g=b=0;
-    } else if ( value < 0.375 ) {
-        r=255;
-        g=255*4*(value-0.125);
-        b=0;
-    } else if ( value < 0.625 ) {
-        r=255-255*4*(value-0.375);
-        g=255;
-        b=255*4*(value-0.375);
-    } else if ( value < 0.875 ) {
-        r=0;
-        g=255-255*4*(value-0.625);
-        b=255;
-    } else if ( value < 1.0 ) {
-        r=g=0;
-        b=255-255*4*(value-0.875);
-    } else {
-        r=g=0;
-        b=127;
-    }
-    return (0xffu<<24) | (r<<16) | (g<<8) | b;
-}
-inline void getRGB( uint rgb, unsigned char& r, unsigned char& g, unsigned char& b )
-{
-    r = (rgb>>16)&0xFF;
-    g = (rgb>>8)&0xFF;
-    b = rgb&0xFF;
-}
-
-
 // Compute the sum of a vector
 template<class TYPE> TYPE sum( const std::vector<TYPE>& x )
 {
@@ -229,7 +192,10 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     timerArea->setWidget(timerGridWidget);
 
     // Create the memory plot
-    memory = new QWidget;
+    if ( !parent->d_data.memory.empty() )
+        memory = new MemoryPlot( this, parent->d_data.memory );
+    else
+        memory = new QWidget( );
 
     // Create the layout
     QVBoxLayout *layout = new QVBoxLayout;
@@ -371,14 +337,14 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData( const std
 void TraceWindow::updateTimeline()
 {
     PROFILE_START("updateTimeline");
-    const uint64_t rgb0 = getRGB(-1);
+    const uint64_t rgb0 = jet(-1);
     // Get the data for the entire window
     std::vector<std::shared_ptr<TimerTimeline>> data = TraceWindow::getTraceData(t_global);
     // Create the global id map
     for (size_t i=0; i<parent->d_data.timers.size(); i++)
         idRgbMap[parent->d_data.timers[i].id] = rgb0;
     for (size_t i=0; i<data.size(); i++)
-        idRgbMap[data[i]->id] = getRGB(i/(data.size()-1.0));
+        idRgbMap[data[i]->id] = jet(i/(data.size()-1.0));
     // Create the image
     QImage *image = NULL;
     int Np = selected_rank==-1 ? N_procs:1;
@@ -447,7 +413,7 @@ void TraceWindow::updateTimers()
     }
     timerPixelMap.clear();
     // Add the labels and plots
-    const uint64_t rgb0 = getRGB(-1);
+    const uint64_t rgb0 = jet(-1);
     timerPixelMap.resize(data.size());
     int Np = selected_rank==-1 ? N_procs:1;
     int Nt = selected_thread==-1 ? N_threads:1;
@@ -480,7 +446,7 @@ void TraceWindow::updateMemory()
         return;
     }
     PROFILE_START("updateMemory");
-
+    dynamic_cast<MemoryPlot*>(memory)->plot( t_current, selected_rank );
     PROFILE_STOP("updateMemory");
 }
 
@@ -490,7 +456,7 @@ void TraceWindow::updateMemory()
 ***********************************************************************/
 void TraceWindow::resizeEvent( QResizeEvent *e )
 {
-    resizeTimer.start( 300 );
+    resizeTimer.start( 100 );
     QMainWindow::resizeEvent(e);
 }
 void TraceWindow::resizeDone()
@@ -512,6 +478,13 @@ void TraceWindow::resizeDone()
     if ( zoomBoundaries[0].get() != NULL ) {
         zoomBoundaries[0]->redraw();
         zoomBoundaries[1]->redraw();
+    }
+    // Resize the memory axis to align with the timers
+    MemoryPlot* memplot = dynamic_cast<MemoryPlot*>(memory);
+    if ( memplot != NULL ) {
+        int left = timerPlots[0]->x();
+        int right = left + timerPlots[0]->width();
+        memplot->align(left,right);
     }
     PROFILE_STOP("resizeDone");
 }

@@ -106,6 +106,7 @@ MACRO (BEGIN_PACKAGE_CONFIG PACKAGE)
     SET( CSOURCES "" )
     SET( FSOURCES "" )
     SET( M4FSOURCES "" )
+    SET( CUDASOURCES "" )
     SET( SOURCES "" )
     SET( CURPACKAGE ${PACKAGE} )
 ENDMACRO ()
@@ -840,7 +841,7 @@ ENDFUNCTION()
 # Begin configure for the examples for a package
 MACRO( BEGIN_EXAMPLE_CONFIG PACKAGE )
     # Set example install dir
-    SET( EXAMPLE_INSTALL_DIR ${AMP_INSTALL_DIR}/examples/${PACKAGE} )
+    SET( EXAMPLE_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/examples/${PACKAGE} )
     # Create list of examples
     SET( EXAMPLE_LIST "dummy" CACHE INTERNAL "example_list" FORCE )
     # Create doxygen input file for examples
@@ -848,6 +849,7 @@ MACRO( BEGIN_EXAMPLE_CONFIG PACKAGE )
     FILE(WRITE  ${EXAMPLE_INSTALL_DIR}/examples.h "// Include file for doxygen providing the examples for ${PACKAGE}\n")
     FILE(APPEND ${EXAMPLE_INSTALL_DIR}/examples.h "/*! \\page Examples_${PACKAGE}\n" )
 ENDMACRO()
+
 
 # Install the examples
 MACRO( INSTALL_${PROJ}_EXAMPLE PACKAGE )
