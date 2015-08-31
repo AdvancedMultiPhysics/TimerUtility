@@ -9,6 +9,8 @@
 #include "MemoryPlot.h"
 #include "ProfilerApp.h"
 
+#include <array>
+
 
 class MemoryPlot: public QwtPlot
 {
