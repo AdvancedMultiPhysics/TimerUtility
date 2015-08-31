@@ -273,7 +273,7 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
         std::tie(timers[i].path,timers[i].file) = splitFilename(filename);
         timers[i].start = -1;
         timers[i].stop = -1;
-        index_map.insert(std::pair<id_struct,int>(timers[i].id,i));
+        index_map.insert(std::pair<id_struct,int>(timers[i].id,static_cast<int>(i)));
     }
     if ( timers.size() != index_map.size() )
         ERROR_MSG("Internal error");

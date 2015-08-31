@@ -6,6 +6,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QToolButton>
+#include <QToolBar>
 #include <QTimer>
 
 #include <memory>

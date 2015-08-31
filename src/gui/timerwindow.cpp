@@ -3,6 +3,13 @@
 #include <QSqlTableModel>
 #include <QHBoxLayout>
 #include <QCloseEvent>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QHeaderView>
+#include <QStatusBar>
+#include <QAction>
+#include <QMenuBar>
+#include <QMenu>
 
 #include <memory>
 #include <vector>
@@ -619,7 +626,7 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
     if ( !includeSubfunctions ) {
         std::map<id_struct,int> id_map;
         for (size_t i=0; i<d_dataTimer.size(); i++)
-            id_map.insert(std::pair<id_struct,int>(d_dataTimer[i].id,i));
+            id_map.insert(std::pair<id_struct,int>(d_dataTimer[i].id,(int)i));
         std::vector<id_struct> ids(timers.size());
         for (size_t i=0; i<ids.size(); i++)
             ids[i] = timers[i]->id;

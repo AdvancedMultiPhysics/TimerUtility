@@ -6,6 +6,7 @@
 #include <map>
 #include <mex.h>
 #include <math.h>
+#include <algorithm>
 #include "ProfilerApp.h"
 #include "matlab_helpers.h"
 

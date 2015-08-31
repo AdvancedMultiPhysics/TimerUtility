@@ -12,6 +12,7 @@ cmake                               ^
     -D USE_MATLAB=0                 ^
         -D MATLAB_DIRECTORY:PATH="C:\Program Files\MATLAB\R2013a" ^
         -D USE_MATLAB_LAPACK=0      ^
+    -D QWT_URL:PATH="C:\nightly_builds\qwt-6.1.2.tar.bz2" ^
     ..\..\src
 
 
