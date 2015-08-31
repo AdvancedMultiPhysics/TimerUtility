@@ -47,7 +47,7 @@ struct TimerTimeline {
     std::string file;                   //!<  Timer file
     double tot;                         //!<  Total time spent in timer (all threads/ranks)
     BoolArray active;                   //!<  Active image
-    TimerTimeline() {}
+    TimerTimeline(): tot(0) {}
     ~TimerTimeline() {}
 };
 

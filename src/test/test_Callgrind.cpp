@@ -6,6 +6,7 @@
 #include <iostream>
 
 
+
 int main(int argc, char *argv[])
 {
     // Check the input arguments
@@ -23,6 +24,7 @@ int main(int argc, char *argv[])
     // Convert callgrind to timers
     std::vector<TimerResults> timers = convertCallgrind(results);
     std::cout << "Converted to timers\n";
+    std::cout << "   " << timers.size() << std::endl;
 
     // Finalize MPI and SAMRAI
     if ( N_errors==0 ) 
