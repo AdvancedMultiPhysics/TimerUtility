@@ -3,10 +3,19 @@
 #include <QSqlTableModel>
 #include <QHBoxLayout>
 #include <QCloseEvent>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QHeaderView>
+#include <QStatusBar>
+#include <QAction>
+#include <QToolbar>
+#include <QMenuBar>
+#include <QMenu>
 
 #include <memory>
 #include <vector>
 #include <set>
+#include <array>
 #include <limits>
 #include <sstream>
 
@@ -195,11 +204,12 @@ template<class TYPE> TYPE sum( const std::vector<TYPE>& x )
 TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     timerGrid(NULL), memory(NULL),
     parent(parent_), N_procs(parent_->N_procs), N_threads(parent_->N_threads),
-    t_global(getGlobalTime(parent_->d_data.timers)), t_current{0,0},
+    t_global(getGlobalTime(parent_->d_data.timers)), 
     resolution(1024), selected_rank(-1), selected_thread(-1)
 {
     PROFILE_START("TraceWindow");
     QWidget::setWindowTitle(QString("Trace results: ").append(parent->windowTitle()));
+    t_current = t_global;
     resize(1200,800);
 
     // Create the master timeline

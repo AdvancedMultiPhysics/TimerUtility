@@ -5,7 +5,7 @@
 int main(int argc, char *argv[])
 {
     PROFILE_ENABLE();
-    Q_INIT_RESOURCE(application);
+    //Q_INIT_RESOURCE(application);
 
     QApplication app(argc, argv);
     app.setOrganizationName("");
