@@ -8,10 +8,7 @@ ELSEIF ( (NOT QWT_URL) AND (NOT QWT_SRC_DIR) )
     MESSAGE("Qwt source is not found, gui will be disabled."
             " Please set either QWT_URL or QWT_SRC_DIR" )
 ELSE()
-    # Set final include paths
-    FOREACH ( tmp ${QT_USE_FILE} )
-        INCLUDE( ${tmp} )
-    ENDFOREACH()
+    # Set Qt include paths
     FOREACH( tmp ${QT_INCLUDES} )
         INCLUDE_DIRECTORIES( ${tmp} )
     ENDFOREACH()
