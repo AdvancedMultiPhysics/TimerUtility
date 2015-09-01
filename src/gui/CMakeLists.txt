@@ -39,7 +39,7 @@ ELSE()
     FOREACH( tmp ${QT_INCLUDES} )
         target_include_directories( QWT PUBLIC ${tmp} )
     ENDFOREACH()
-    INSTALL( TARGETS ${PACKAGE} DESTINATION "${TIMER_INSTALL_DIR}/lib" )
+    INSTALL( TARGETS QWT DESTINATION "${TIMER_INSTALL_DIR}/lib" )
     
     # Create the application
     SET(QtApp_SRCS load_timer.cpp timerwindow.cpp tracewindow.cpp LoadBalance.cpp MemoryPlot.cpp )
