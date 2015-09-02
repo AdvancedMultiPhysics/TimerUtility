@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include "ProfilerAtomicHelpers.h"
+#include "ProfilerThreadID.h"
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
@@ -49,7 +50,7 @@
                                                 // Note: this is only used if store_trace is set, and should be a power of 2
                                                 // Note: the maximum ammount of memory used per trace is 16*MAX_TRACE_TRACE bytes (plus the trace itself)
 #define MAX_TRACE_MEMORY 0x6000000              // The maximum number of times to store the memory usage
-#define THREAD_HASH_SIZE 64                     // The size of the hash table to store the threads
+#define MAX_THREADS 1024                        // The maximum number of threads supported (also change ProfilerThreadIndexHashMapSize in ProfilerThreadID.h)
 #define TIMER_HASH_SIZE 1024                    // The size of the hash table to store the timers
 
 
@@ -206,7 +207,7 @@ struct TimerMemoryResults {
   * for the timers.  All timers with a number greater than the current level in the profiler will be ignored.
   * The macros PROFILE_START and PROFILE_STOP automatically check the level for performance and calling an
   * unused timer adds ~10ns per call. <BR>
-  * For repeated calls the timer adds ~ 1us per call with without trace info, and ~1-10us per call with full trace info. 
+  * For repeated calls the timer adds < 1us per call with without trace info, and ~1-10us per call with full trace info. 
   * Most of this overhead is not in the time returned by the timer.  The resolution is ~ 1us for a single timer call.
   * Note that when a timer is created the cost may be significantly higher, but this only occurs once per timer.  <BR>
   * Example usage: \verbatim
@@ -488,10 +489,8 @@ private:
     
     // Structure to store thread specific information
     struct thread_info {
-        size_t id;                          // The id of the calling thread
-        int thread_num;                     // The internal id of the thread
+        int id;                             // The id of the thread
         unsigned int N_timers;              // The number of timers seen by the current thread
-        volatile thread_info *next;         // Pointer to the next entry in the head list
         size_t active[TRACE_SIZE];          // Store the current active traces
         store_timer *head[TIMER_HASH_SIZE]; // Store the timers in a hash table
         size_t N_memory_steps;              // The number of steps we have for the memory usage
@@ -499,13 +498,12 @@ private:
         size_t* time_memory;                // The times at which we know the memory usage (ns from start)
         size_t* size_memory;                // The memory usage at each time
         // Constructor used to initialize key values
-        thread_info() {
+        thread_info( int id_ ) {
             memset(this,0,sizeof(thread_info));
+            id = id_;
         }
         // Destructor
         ~thread_info() {
-            delete next;
-            next = NULL;
             for (int i=0; i<TIMER_HASH_SIZE; i++) {
                 delete head[i];
                 head[i] = NULL;
@@ -514,20 +512,26 @@ private:
             delete [] size_memory;
         }
       private:
+        thread_info();                                      // Private empty constructor
         thread_info( const thread_info& rhs );              // Private copy constructor
         thread_info& operator=( const thread_info& rhs );   // Private assignment operator
     };
     
-    // Store thread specific info (use a small hash table to make searching faster)
-    volatile int N_threads;
-    volatile thread_info *thread_head[THREAD_HASH_SIZE];
+    // Store thread specific info
+    thread_info *thread_table[MAX_THREADS];
+
+    // Function to return a pointer to the thread info (or create it if necessary)
+    // Note: this function does not require any blocking
+    thread_info* get_thread_data( ) {
+        int id = TimerUtility::ProfilerThreadIndex::getThreadIndex();
+        if ( thread_table[id] == NULL )
+            thread_table[id] = new thread_info(id);
+        return thread_table[id];
+    }
 
     // Store the global timer info in a hash table
     volatile int N_timers;
     volatile store_timer_data_info *timer_table[TIMER_HASH_SIZE];
-
-    // Function to return a pointer to the thread info (or create it if necessary)
-    thread_info* get_thread_data( );
 
     // Function to return a pointer to the global timer info (or create it if necessary)
     // Note: this function may block for thread safety
@@ -542,7 +546,7 @@ private:
     static inline size_t get_trace_id( const size_t *trace );
 
     // Function to return the string of active timers
-    static std::vector<id_struct> get_active_list( size_t *active, unsigned int myIndex, thread_info *head );
+    static std::vector<id_struct> get_active_list( size_t *active, unsigned int myIndex, const thread_info *head );
 
     // Function to get the current memory usage
     static inline size_t get_memory_usage();

@@ -106,12 +106,10 @@ extern "C" {
     // 32-bit macros
     // Use the hashing function 2^32*0.5*(sqrt(5)-1)
     #define GET_TIMER_HASH(id)  (((id*0x9E3779B9)>>16)%TIMER_HASH_SIZE)
-    #define GET_THREAD_HASH(id) (((id*0x9E3779B9)>>16)%THREAD_HASH_SIZE)
 #elif ARCH_SIZE == 32
     // 64-bit macros
     // Use the hashing function 2^32*0.5*(sqrt(5)-1)
     #define GET_TIMER_HASH(id)  (((id*0x9E3779B97F4A7C15)>>48)%TIMER_HASH_SIZE)
-    #define GET_THREAD_HASH(id) (((id*0x9E3779B97F4A7C15)>>48)%THREAD_HASH_SIZE)
 #else
     #error Cannot identify 32 vs 64-bit
 #endif
@@ -170,7 +168,6 @@ static inline void mergeArrays( size_t N_list,
     double total_start_time = 0;
     double total_stop_time = 0;
     double total_block_time = 0;
-    double total_thread_time = 0;
     double total_trace_id_time = 0;
 #endif
 
@@ -819,11 +816,10 @@ ProfilerApp::ProfilerApp()
     #else
         #error Unknown OS
     #endif
-    for (int i=0; i<THREAD_HASH_SIZE; i++)
-        thread_head[i] = NULL;
+    for (int i=0; i<MAX_THREADS; i++)
+        thread_table[i] = NULL;
     for (int i=0; i<TIMER_HASH_SIZE; i++)
         timer_table[i] = NULL;
-    N_threads = 0;
     N_timers = 0;
     d_level = 0;
     d_shift = 0.0;
@@ -889,7 +885,8 @@ void ProfilerApp::start( const std::string& message, const char* filename,
     if ( this->d_level<level )
         return;
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE start_time_local = get_time();
+        TIME_TYPE start_time_local;
+        get_time(start_time_local);
     #endif
     // Get the thread data
     thread_info* thread_data = get_thread_data();
@@ -931,7 +928,8 @@ void ProfilerApp::start( const std::string& message, const char* filename,
         thread_data->N_memory_steps++;
     }
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE stop_time_local = get_time();
+        TIME_TYPE stop_time_local;
+        get_time(stop_time_local);
         total_start_time += get_diff(start_time_local,stop_time_local,d_frequency);
     #endif
 }
@@ -948,7 +946,8 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
     if ( this->d_level<level )
         return;
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE start_time_loca = get_time();
+        TIME_TYPE start_time_local;
+        get_time(start_time_local);
     #endif
     // Use the current time (minimize the effects of the overhead of the timer)
     TIME_TYPE end_time;
@@ -1034,7 +1033,8 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
         thread_data->N_memory_steps++;
     }
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        TIME_TYPE stop_time_local = get_time();
+        TIME_TYPE stop_time_local;
+        get_time(stop_time_local);
         total_stop_time += get_diff(start_time_local,stop_time_local,d_frequency);
     #endif
 }
@@ -1069,11 +1069,10 @@ void ProfilerApp::disable( )
     GET_LOCK(&lock);
     d_level = -1;
     // delete the thread structures
-    for (int i=0; i<THREAD_HASH_SIZE; i++) {
-        delete thread_head[i];
-        thread_head[i] = NULL;
+    for (int i=0; i<MAX_THREADS; i++) {
+        delete thread_table[i];
+        thread_table[i] = NULL;
     }
-    N_threads = 0;
     // delete the timer data structures
     for (int i=0; i<TIMER_HASH_SIZE; i++) {
         delete timer_table[i];
@@ -1101,35 +1100,14 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
     TIME_TYPE end_time;
     get_time(end_time);
     int rank = comm_rank();
-    // Get the mutex for thread safety (we don't want the list changing while we are saving the data)
-    // Note: Because we don't block for most operations in the timer this is not full proof but should help
-    bool error = GET_LOCK(&lock);
-    if ( error )
-        return std::vector<TimerResults>();
-    // Get the thread specific data for each thread
-    int N_threads2 = N_threads;     // Cache the number of threads since we are holing the lock
-    thread_info **thread_data = new thread_info*[N_threads2];
-    for (int i=0; i<N_threads2; i++)
-        thread_data[i] = NULL;
-    for (int i=0; i<THREAD_HASH_SIZE; i++) {
-        // It is safe to case to a non-volatile object since we hold the lock
-        thread_info *ptr = const_cast<thread_info*>(thread_head[i]);  
-        while ( ptr != NULL ) {
-            if ( ptr->thread_num >= N_threads2 )
-                ERROR_MSG("Internal error (1)");
-            if ( thread_data[ptr->thread_num] != NULL )
-                ERROR_MSG("Internal error (2)");
-            thread_data[ptr->thread_num] = ptr;
-            ptr = const_cast<thread_info*>(ptr->next);
-        }
-    }
-    for (int i=0; i<N_threads2; i++) {
-        if ( thread_data[i] == NULL ) {
-            delete [] thread_data;
-            thread_data = NULL;
-            RELEASE_LOCK(&lock);
-            ERROR_MSG("Internal error (3)");
-        }
+    // Get a lock
+    GET_LOCK(&lock);
+    // Get the thread data
+    // This can safely be done lock-free
+    std::vector<const thread_info*> thread_list;
+    for (int i=0; i<MAX_THREADS; i++) {
+        if ( thread_table[i] != NULL )
+            thread_list.push_back(thread_table[i]);
     }
     // Get a list of all timer ids
     std::vector<size_t> ids;
@@ -1156,8 +1134,6 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
             timer_global = const_cast<store_timer_data_info*>(timer_global->next);
         }
         if ( timer_global==NULL ) {
-            delete [] thread_data;
-            thread_data = NULL;
             RELEASE_LOCK(&lock);
             ERROR_MSG("Internal error");
         }
@@ -1168,10 +1144,11 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
         results[i].start = timer_global->start_line;
         results[i].stop = timer_global->stop_line;
         // Loop through the thread entries
-        for (int thread_id=0; thread_id<N_threads2; thread_id++) {
-            thread_info *head = thread_data[thread_id];
+        for (size_t j=0; j<thread_list.size(); j++) {
+            const thread_info *thread_data = thread_list[j];
+            int thread_id = thread_data->id;
             // Search for a timer that matches the current id
-            store_timer* timer = head->head[key];
+            store_timer* timer = thread_data->head[key];
             while ( timer != NULL ) {
                 if ( timer->id == id )
                     break;
@@ -1195,7 +1172,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
                 time = get_diff(timer->start_time,end_time,d_frequency);
                 // The timer is only a calling timer if it was active before and after the current timer
                 for (size_t i=0; i<TRACE_SIZE; i++)
-                    active[i] = head->active[i] & timer->trace[i];
+                    active[i] = thread_data->active[i] & timer->trace[i];
                 unset_trace_bit(timer->trace_index,TRACE_SIZE,active);
                 trace_id = get_trace_id( active );
             }
@@ -1208,7 +1185,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
                 size_t N_stored_trace = 0;
                 if ( d_store_trace_data ) 
                     N_stored_trace = std::min(trace->N_calls,static_cast<size_t>(MAX_TRACE_TRACE));
-                std::vector<id_struct> list = get_active_list( trace->trace, timer->trace_index, head );
+                std::vector<id_struct> list = get_active_list( trace->trace, timer->trace_index, thread_data );
                 results[i].trace[k].id = results[i].id;
                 results[i].trace[k].thread = thread_id;
                 results[i].trace[k].rank = rank;
@@ -1247,7 +1224,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
                 size_t N_stored_trace = 0;
                 if ( d_store_trace_data ) 
                     N_stored_trace = 1;
-                std::vector<id_struct> list = get_active_list( active, timer->trace_index, head );
+                std::vector<id_struct> list = get_active_list( active, timer->trace_index, thread_data );
                 results[i].trace[k].id = results[i].id;
                 results[i].trace[k].thread = thread_id;
                 results[i].trace[k].rank = rank;
@@ -1269,7 +1246,6 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
             }
         }
     }
-    delete [] thread_data;
     // Release the mutex
     RELEASE_LOCK(&lock);
     return results;
@@ -1281,37 +1257,37 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
 ***********************************************************************/
 MemoryResults ProfilerApp::getMemoryResults() const
 {
-    // Get the mutex for thread safety (we don't want the list changing while we are saving the data)
-    // Note: Because we don't block for most operations in the timer this is not full proof but should help
     MemoryResults data;
     data.rank = comm_rank();
-    bool error = GET_LOCK(&lock);
-    if ( error )
-        return data;
+    // Get the thread data
+    // This can safely be done lock-free
+    std::vector<const thread_info*> thread_list;
+    for (int i=0; i<MAX_THREADS; i++) {
+        if ( thread_table[i] != NULL )
+            thread_list.push_back(thread_table[i]);
+    }
     // First unify the memory info from the different threads
+    // Technically there should be a lock, but we do not use locks on individual threads
     TimerUtility::atomic::int64_atomic bytes_changed = 0;
     std::vector<size_t> N_time;
     std::vector<size_t*> data_time;
     std::vector<size_t*> size_time;
-    for (int i=0; i<THREAD_HASH_SIZE; i++) {
-        volatile thread_info *thread_data = thread_head[i];
-        while ( thread_data != NULL ) {
-            // Copy the pointers so that we minimize the chance of the data being modified
-            size_t N_steps = thread_data->N_memory_steps;
-            size_t N_alloc = thread_data->N_memory_alloc;
-            size_t* time = thread_data->time_memory;
-            size_t* size = thread_data->size_memory;
-            thread_data->N_memory_steps = 0;
-            thread_data->N_memory_alloc = 0;
-            thread_data->time_memory = NULL;
-            thread_data->size_memory = NULL;
-            bytes_changed -= N_alloc*(sizeof(double)+sizeof(size_t));
-            if ( N_steps>0 ) { 
-                N_time.push_back(N_steps);
-                data_time.push_back(time);
-                size_time.push_back(size);
-            }
-            thread_data = thread_data->next;
+    for (size_t i=0; i<thread_list.size(); i++) {
+        volatile thread_info *thread_data = const_cast<volatile thread_info*>(thread_list[i]);
+        // Copy the pointers so that we minimize the chance of the data being modified
+        size_t N_steps = thread_data->N_memory_steps;
+        size_t N_alloc = thread_data->N_memory_alloc;
+        size_t* time = thread_data->time_memory;
+        size_t* size = thread_data->size_memory;
+        thread_data->N_memory_steps = 0;
+        thread_data->N_memory_alloc = 0;
+        thread_data->time_memory = NULL;
+        thread_data->size_memory = NULL;
+        bytes_changed -= N_alloc*(sizeof(double)+sizeof(size_t));
+        if ( N_steps>0 ) { 
+            N_time.push_back(N_steps);
+            data_time.push_back(time);
+            size_time.push_back(size);
         }
     }
     if ( d_N_memory_steps>0 ) {
@@ -1344,8 +1320,6 @@ MemoryResults ProfilerApp::getMemoryResults() const
     d_max_trace_remaining = std::max((size_t)MAX_TRACE_MEMORY-d_N_memory_steps,(size_t)0);
     bytes_changed += (d_N_memory_steps-N_memory_steps_old)*(sizeof(double)+sizeof(size_t));
     TimerUtility::atomic::atomic_add(&d_bytes,bytes_changed);
-    // Release the mutex
-    RELEASE_LOCK(&lock);
     // Copy the results to the output vector
     data.time.resize(d_N_memory_steps);
     data.bytes.resize(d_N_memory_steps);
@@ -1395,6 +1369,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         for (size_t i=0; i<results.size(); i++) {
             id_order[i] = i;
             total_time[i] = 0.0;
+            int N_threads = TimerUtility::ProfilerThreadIndex::getNThreads();
             std::vector<double> time_thread(N_threads,0);
             for (size_t j=0; j<results[i].trace.size(); j++)
                 time_thread[results[i].trace[j].thread] += results[i].trace[j].tot;
@@ -1425,6 +1400,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         // Loop through the list of timers, storing the most expensive first
         for (int ii=N_timers-1; ii>=0; ii--) {
             size_t i=id_order[ii];
+            int N_threads = TimerUtility::ProfilerThreadIndex::getNThreads();
             std::vector<int> N_thread(N_threads,0);
             std::vector<float> min_thread(N_threads,1e38);
             std::vector<float> max_thread(N_threads,0);
@@ -1540,8 +1516,8 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         fclose(memoryFile);
     }
     #if MONITOR_PROFILER_PERFORMANCE > 0
-        printp("start = %e, stop = %e, block = %e, thread = %e, trace_id = %e\n",
-            total_start_time,total_stop_time,total_block_time,total_thread_time,total_trace_id_time);
+        printp("start = %e, stop = %e, block = %e, trace_id = %e\n",
+            total_start_time,total_stop_time,total_block_time,total_trace_id_time);
     #endif
 
 }
@@ -1978,7 +1954,7 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
 /***********************************************************************
 * Function to get the list of active timers                            *
 ***********************************************************************/
-std::vector<id_struct> ProfilerApp::get_active_list( size_t *active, unsigned int myIndex, thread_info *head )
+std::vector<id_struct> ProfilerApp::get_active_list( size_t *active, unsigned int myIndex, const thread_info *head )
 {
     unsigned int size_t_size = 8*sizeof(size_t);
     std::vector<id_struct> active_list;
@@ -2011,90 +1987,6 @@ std::vector<id_struct> ProfilerApp::get_active_list( size_t *active, unsigned in
 }
 
 
-/************************************************************************
-* Function to get the data for the current thread                       *
-* Note:  If a thread has called this function at some time in the past  *
-* then it will be able to return without blocking. When a thread enters *
-*  this function for the first time then it will block as necessary.    *
-***********************************************************************/
-ProfilerApp::thread_info* ProfilerApp::get_thread_data( ) 
-{
-    #if MONITOR_PROFILER_PERFORMANCE > 1
-        TIME_TYPE start_time_local;
-        get_time(&start_time_local);
-    #endif
-    // Get the thread id (as an integer)
-    #ifdef USE_WINDOWS
-        DWORD tmp_thread_id = GetCurrentThreadId();
-        size_t thread_id = (size_t) tmp_thread_id;
-    #elif defined(USE_LINUX) || defined(USE_MAC)
-        pthread_t tmp_thread_id = pthread_self();
-        size_t thread_id = (size_t) tmp_thread_id;
-    #else
-        #error Unknown OS
-    #endif
-    // Get the hash key for the thread
-    size_t key = GET_THREAD_HASH( thread_id );
-    // Find the first entry with the given key (creating one if necessary)
-    if ( thread_head[key]==NULL ) {
-        // The entry in the hash table is empty
-        // Acquire the lock
-        bool error = GET_LOCK(&lock);
-        if ( error )
-            return NULL;
-        // Check if the entry is still NULL
-        if ( thread_head[key]==NULL ) {
-            // Create a new entry
-            thread_head[key] = new thread_info;
-            thread_head[key]->id = thread_id;
-            thread_head[key]->N_timers = 0;
-            thread_head[key]->next = NULL;
-            thread_head[key]->thread_num = N_threads;
-            N_threads++;
-            TimerUtility::atomic::int64_atomic size = sizeof(thread_info);
-            TimerUtility::atomic::atomic_add(&d_bytes,size);
-        }
-        // Release the lock
-        RELEASE_LOCK(&lock);
-    }
-    volatile thread_info* head = thread_head[key];
-    // Find the entry by looking through the list (creating the entry if necessary)
-    while ( head->id != thread_id ) {
-        // Check if there is another entry to check (and create one if necessary)
-        if ( head->next==NULL ) {
-            // Acquire the lock
-            bool error = GET_LOCK(&lock);
-            if ( error )
-                return NULL;
-            // Check if another thread created an entry while we were waiting for the lock
-            if ( head->next==NULL ) {
-                // Create a new entry
-                thread_info* new_data = new thread_info;
-                new_data->id = thread_id;
-                new_data->N_timers = 0;
-                new_data->next = NULL;
-                new_data->thread_num = N_threads;
-                N_threads++;
-                head->next = new_data;
-                TimerUtility::atomic::int64_atomic size = sizeof(thread_info);
-                TimerUtility::atomic::atomic_add(&d_bytes,size);
-            }
-            // Release the lock
-            RELEASE_LOCK(&lock);
-        } 
-        // Advance to the next entry
-        head = head->next;
-    }
-    // Return the pointer (Note: we no longer need volatile since we are accessing it from the creating thread)
-    #if MONITOR_PROFILER_PERFORMANCE > 1
-        TIME_TYPE stop_time_local;
-        get_time(&stop_time_local);
-        total_thread_time += get_diff(start_time_local,stop_time_local,frequency);
-    #endif
-    return const_cast<thread_info*>(head);
-}
-
-
 /***********************************************************************
 * Function to get the timmer for a particular block of code            *
 * Note: This function performs some blocking as necessary.             *
@@ -2104,7 +1996,7 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
 {
     #if MONITOR_PROFILER_PERFORMANCE > 1
         TIME_TYPE start_time_local;
-        get_time(&start_time_local);
+        get_time(start_time_local);
     #endif
     if ( id==0 )
         id = get_timer_id(message,filename);
@@ -2176,7 +2068,7 @@ inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info *thread_dat
     }
     #if MONITOR_PROFILER_PERFORMANCE > 1
         TIME_TYPE stop_time_local;
-        get_time(&stop_time_local);
+        get_time(stop_time_local);
         total_block_time += get_diff(start_time_local,stop_time_local,frequency);
     #endif
     return timer;
@@ -2385,7 +2277,7 @@ inline size_t ProfilerApp::get_trace_id( const size_t *trace )
     #endif
     #if MONITOR_PROFILER_PERFORMANCE > 1
         TIME_TYPE start_time_local;
-        get_time(&start_time_local);
+        get_time(start_time_local);
     #endif
     size_t hash1 = 5381;
     size_t hash2 = 104729;
@@ -2433,7 +2325,7 @@ inline size_t ProfilerApp::get_trace_id( const size_t *trace )
     size_t hash = hash1 ^ hash2 ^ hash3 ^ hash4;
     #if MONITOR_PROFILER_PERFORMANCE > 1
         TIME_TYPE stop_time_local;
-        get_time(&stop_time_local);
+        get_time(stop_time_local);
         total_trace_id_time += get_diff(start_time_local,stop_time_local,frequency);
     #endif
     return hash;
