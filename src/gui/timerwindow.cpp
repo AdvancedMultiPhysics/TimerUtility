@@ -412,8 +412,20 @@ void TimerWindow::loadFile(const QString &fileName)
             ADD_MENU_ACTION(menu,"Average",-1);
             ADD_MENU_ACTION(menu,"Minimum",-2);
             ADD_MENU_ACTION(menu,"Maximum",-3);
-            for (int i=0; i<N_procs; i++)
-                ADD_MENU_ACTION(menu,stringf("Rank %i",i).c_str(),i);
+            if ( N_procs < 100 ) {
+                for (int i=0; i<N_procs; i++)
+                    ADD_MENU_ACTION(menu,stringf("Rank %i",i).c_str(),i);
+            } else {
+                const int ranks_per_menu = 250;
+                QMenu *rank_menu = NULL;
+                for (int i=0; i<N_procs; i++) {
+                    if ( i%ranks_per_menu==0 ) {
+                        std::string name = stringf("Ranks %i-%i",i,i+ranks_per_menu-1);
+                        rank_menu = menu->addMenu(name.c_str());
+                    }
+                    ADD_MENU_ACTION(rank_menu,stringf("%5i",i).c_str(),i);
+                }
+            }
             connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(selectProcessor(int)));
             selectProcessor(-1);
             processorButton->setMenu(menu);

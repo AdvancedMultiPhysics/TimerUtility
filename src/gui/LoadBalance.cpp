@@ -139,6 +139,12 @@ void LoadBalance::plot( const std::vector<float>& time_ )
     QwtScaleDiv xtick(range[0],range[1]);
     if ( rank.size() < 16 ) {
         xtick = QwtScaleDiv(range[0],range[1],QList<double>(),QList<double>(),rank.toList());
+    } else {
+        QList<double> ticks;
+        for (int i=0; i<N_procs-1; i+=N_procs/16)
+            ticks.push_back(i);
+        ticks.push_back(N_procs-1);
+        xtick = QwtScaleDiv(range[0],range[1],QList<double>(),QList<double>(),ticks);
     }
 
     // Set the axis
