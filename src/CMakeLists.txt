@@ -43,6 +43,7 @@ SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
 SET( PROJ TIMER )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake" )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake" )
+INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteCompilerFeatures.cmake" )
 
 
 # Check if we are only compiling docs
@@ -70,6 +71,7 @@ ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT )
 # Check the compile mode and compile flags
 IF ( NOT ONLY_BUILD_DOCS )
     CONFIGURE_SYSTEM()
+    WRITE_COMPILE_FEATURES( "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" )
 ENDIF()
 
 

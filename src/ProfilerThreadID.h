@@ -4,22 +4,24 @@
 #define INCLUDED_ProfilerThreadIndex_H
 
 #include "ProfilerAtomicHelpers.h"
+#include "ProfilerDefinitions.h"
 
 #include <stdint.h>
 
 
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-    #define USE_WINDOWS
-    #include <windows.h>
-#elif defined(__APPLE__)
-    #define USE_MAC
-    #include <pthread.h>
-#else
-    #define USE_LINUX
-    #include <pthread.h>
+#ifndef ENABLE_THREAD_LOCAL
+    #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+        #define USE_WINDOWS
+        #include <windows.h>
+    #elif defined(__APPLE__)
+        #define USE_MAC
+        #include <pthread.h>
+    #else
+        #define USE_LINUX
+        #include <pthread.h>
+    #endif
+    #define ProfilerThreadIndexHashMapSize 1024
 #endif
-
-#define ProfilerThreadIndexHashMapSize 1024
 
 
 namespace TimerUtility {
@@ -35,7 +37,7 @@ public:
     static inline int getNThreads() { return N_threads; }
 protected:
     static volatile atomic::int32_atomic N_threads;
-    #if CXX_STD==98 || !defined(CXX_STD)
+    #ifndef ENABLE_THREAD_LOCAL
         static volatile atomic::int32_atomic map[2*ProfilerThreadIndexHashMapSize];
         friend bool initialize_map();
     #endif
@@ -49,7 +51,7 @@ private:
 // Get the id for the current thread
 inline int ProfilerThreadIndex::getThreadIndex()
 {
-    #if CXX_STD==11 || CXX_STD==14
+    #ifdef ENABLE_THREAD_LOCAL
         thread_local static int id = atomic::atomic_increment(&N_threads)-1;
         return id;
     #else
