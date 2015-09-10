@@ -848,10 +848,21 @@ void TimerWindow::createMenus()
     helpMenu->addAction(aboutAct);
 
     // Create developer menu on rhs
-    QMenuBar *bar = new QMenuBar(this);
-    QMenu *developer = bar->addMenu(tr("&Developer"));
+    QMenuBar *developer_bar = new QMenuBar(this);
+    QMenu *developer = developer_bar->addMenu(tr("&Developer"));
     developer->addAction(savePerformanceTimers);
-    menuBar()->setCornerWidget(bar);
+    menuBar()->setCornerWidget(developer_bar);
+
+    // In Ubuntu 14.04 with qt5 the window's menu bar goes missing entirely
+    // if the user is running any desktop environment other than Unity
+    // (in which the faux single-menubar appears). The user has a
+    // workaround, to remove the appmenu-qt5 package, but that is
+    // awkward and the problem is so severe that it merits disabling
+    // the system menubar integration altogether. Like this:
+    #if defined(Q_OS_LINUX) && QT_VERSION>=0x050000
+        menuBar()->setNativeMenuBar(false);  // fix #1039
+        developer_bar->setNativeMenuBar(false);  // fix #1039
+    #endif
 }
 
 void TimerWindow::createToolBars()

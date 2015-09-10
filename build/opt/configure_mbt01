@@ -17,6 +17,7 @@ cmake                                                   \
         -D MPI_LIBRARIES="-lmpichcxx;-lmpich;-lopa;-lmpl;-lrt;-lpthread" \
     -D USE_MATLAB=0                                     \
         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
+    -D QT_VERSION=5                                     \
     -D QWT_URL=/packages/archives/qwt-6.1.2.tar.bz2     \
     ../../src/
 

@@ -687,9 +687,11 @@ void TraceWindow::traceMouseReleaseEvent(QMouseEvent *event)
         t_zoom[1] = t;
         if ( t_zoom[1] < t_zoom[0] )
             std::swap(t_zoom[0],t_zoom[1]);
+        t_zoom[0] = std::max(t_zoom[0],t_global[0]);
+        t_zoom[1] = std::min(t_zoom[1],t_global[1]);
         zoomBoundaries[0]->setVisible(false);
         zoomBoundaries[1]->setVisible(false);
-        if ( t_zoom[1]-t_zoom[0] > 0.05*t_current[1]-t_current[0] ) {
+        if ( t_zoom[1]-t_zoom[0] > 0.02*(t_current[1]-t_current[0]) ) {
             t_current = t_zoom;
             updateDisplay(UpdateType::time);
         }
