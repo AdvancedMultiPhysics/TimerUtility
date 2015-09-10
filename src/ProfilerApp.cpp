@@ -1585,13 +1585,13 @@ static inline void get_active_ids( const char* active_list, std::vector<id_struc
         }
     }
 }
-static inline std::vector<id_struct> get_active_ids( const char* active_list )
+/*static inline std::vector<id_struct> get_active_ids( const char* active_list )
 {
     std::vector<id_struct> ids;
     get_active_ids( active_list, ids );
     std::sort(ids.begin(),ids.end());
     return ids;
-}
+}*/
 int ProfilerApp::loadFiles( const std::string& filename, int index, TimerMemoryResults& data )
 {
     int N_procs = 0;
