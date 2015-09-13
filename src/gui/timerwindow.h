@@ -30,17 +30,18 @@ class TimerWindow : public QMainWindow
 
 public:
     TimerWindow();
+    ~TimerWindow();
 
 protected:
     void closeEvent(QCloseEvent *event);
 
+public slots:
+    void exit();
 private slots:
     void close();
-    void exit();
     void open();
     void reset();
     void about();
-    void savePerformance();
     void cellSelected(int nRow, int nCol);
     void backButtonPressed();
     void exclusiveFun();
@@ -51,6 +52,10 @@ private slots:
     void resizeEvent( QResizeEvent *e );
     void resizeDone();
 
+    // Developer functions
+    void savePerformance();
+    void runUnitTestsSlot( );
+
 private:
     void createActions();
     void createMenus();
@@ -58,7 +63,7 @@ private:
     void createStatusBar();
     void readSettings();
     void writeSettings();
-    void loadFile(const QString &fileName);
+    void loadFile( std::string filename, bool showFailure=true );
     void setCurrentFile(const QString &fileName);
     void updateDisplay();
     QString strippedName(const QString &fullFileName);
@@ -87,10 +92,11 @@ private:
     QAction *exitAct;
     QAction *aboutAct;
     QAction *savePerformanceTimers;
+    QAction *runUnitTestAction;
     QAction *exclusiveAct;
     QAction *subfunctionsAct;
-
     QTimer resizeTimer;
+    std::shared_ptr<QMenu> processorButtonMenu;
 
 protected:
     std::vector<std::shared_ptr<TimerSummary>> getTimers() const;
@@ -108,6 +114,16 @@ protected:
     std::shared_ptr<TraceWindow> traceWindow;
 
 friend class TraceWindow;
+
+// Data for unit testing
+public:
+    int runUnitTests( const std::string& file );
+private:
+    std::string unitTestFilename;
+    volatile bool unitTestRunning;
+private slots:
+    void resetUnitTestRunning( );
+    void callLoadFile( );
 };
 
 #endif

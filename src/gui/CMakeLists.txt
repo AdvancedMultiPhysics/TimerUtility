@@ -50,6 +50,17 @@ ELSE()
     ADD_EXECUTABLE( load_timer ${QtApp_SRCS} ${QtApp_MOC_SRCS} ${QtApp_RCC_SRCS})
     TARGET_LINK_LIBRARIES(load_timer QWT ${QT_QTMAIN_LIBRARY} ${QT_LIBRARIES})
     ADD_PROJ_EXE_DEP( load_timer )
+    INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/gui )
+
+    # Add the tests
+    SET( COPY_LIST  set1.1.timer  set1.2.timer  set1.3.timer  set1.4.timer
+                    set2.1.timer  set2.2.timer  set2.3.timer  set2.4.timer 
+                    set2.1.trace  set2.2.trace  set2.3.trace  set2.4.trace 
+                    set2.1.memory set2.2.memory set2.3.memory set2.4.memory )
+    FOREACH( tmp ${COPY_LIST} )
+        CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/../test/data/${tmp} ${CMAKE_CURRENT_BINARY_DIR}/${tmp} COPYONLY )
+    ENDFOREACH()
+    ADD_TIMER_TEST( load_timer set1.1.timer set2.1.timer )
 ENDIF()
 
 

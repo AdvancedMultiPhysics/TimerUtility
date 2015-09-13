@@ -1,0 +1,725 @@
+# To run valgrind:
+# valgrind --leak-check=yes --show-reachable=yes --track-origins=yes --log-file=memory.log --suppressions=/projects/TimerUtility/src/ValgrindSuppresionFile --gen-suppressions=all ./load_timer ../test/set1.2.timer ../test/set7.1.timer
+
+
+# Suppress issues for gui
+{
+   QCoreApplication_init_memleak
+   Memcheck:Leak
+   ...
+   fun:_ZN19QApplicationPrivate21createEventDispatcherEv
+   fun:_ZN16QCoreApplication4initEv
+   fun:_ZN16QCoreApplicationC1ER23QCoreApplicationPrivate
+   ...
+}
+{
+   QApplicationPrivate_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN19QApplicationPrivate10initializeEv
+   fun:_ZN19QApplicationPrivate9constructEP9_XDisplaymm
+   fun:_ZN12QApplicationC1ERiPPci
+   ...
+}
+{
+   QGtkStyle_read
+   Memcheck:Addr4
+   ...
+   fun:_ZN9QGtkStyleC1Ev
+   ...
+}
+{
+   g_strdup_leak
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   ...
+   fun:g_malloc
+   fun:g_strdup
+   ...
+}
+{
+   strdup_leak
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:strdup
+   ...
+}
+{
+   g_type_class_ref_leak
+   Memcheck:Leak
+   ...
+   fun:g_type_class_ref
+   ...
+   fun:g_object_new
+   ...
+}
+{
+   FcValueSave_leak
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:malloc
+   fun:strdup
+   fun:FcValueSave
+   ...
+}
+{
+   g_strjoinv_leak
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_malloc
+   fun:g_strjoinv
+   fun:pango_font_description_from_string
+   ...
+}
+{
+   g_pattern_spec_new_leak
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_malloc
+   fun:g_pattern_spec_new
+   ...
+}
+{
+   g_signal_new_leak
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:g_malloc
+   ...
+   fun:g_signal_new
+   ...
+}
+
+
+# Suppress some libraries
+{
+   libdbus_leak
+   Memcheck:Leak
+   ...
+   obj:/lib/x86_64-linux-gnu/libdbus-1.so.3.7.6
+   ...
+}
+{
+   libcairo_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libcairo.so.2.11301.0
+   ...
+}
+{
+   libpangocairo_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libpangocairo-1.0.so.0.3600.3
+   ...
+}
+{
+   libpango_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libpango-1.0.so.0.3600.3
+   ...
+}
+{
+   libgtk_x11_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libgtk-x11-2.0.so.0.2400.23
+   ...
+}
+{
+   libexpat_leak
+   Memcheck:Leak
+   ...
+   obj:/lib/x86_64-linux-gnu/libexpat.so.1.6.0
+   ...
+}
+{
+   libgio_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0.4002.0
+   ...
+}
+{
+   libdbus_leak
+   Memcheck:Leak
+   ...
+   obj:/lib/x86_64-linux-gnu/libdbus-1.so.3.7.6
+   ...
+}
+{
+   libgobject_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0.4002.0
+   ...
+}
+{
+   libicuuc_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libicuuc.so.52.1
+   ...
+}
+{
+   libpixman_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libpixman-1.so.0.30.2
+   ...
+}
+{
+   libpixman_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libfontconfig.so.1.8.0
+   ...
+}
+
+
+# ACML supressions
+{
+   IdentifyCPUCond
+   Memcheck:Cond
+   ...
+   fun:acmlcpuid2
+   ...
+}
+{
+   IdentifyCPUValue
+   Memcheck:Value8
+   ...
+   fun:acmlcpuid_once
+   fun:acmlcpuid2
+   ...
+}
+{
+   acmlfma3_cond
+   Memcheck:Cond
+   fun:acmlfma3_supported_
+   ...
+}
+{
+   acmlfma4_cond
+   Memcheck:Cond
+   fun:acmlfma4_supported_
+   ...
+}
+
+
+# MPI supressions
+{
+   MPI_init_cond
+   Memcheck:Cond
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   MPI_init_value
+   Memcheck:Value8
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   MPI_init_addr16
+   Memcheck:Addr16
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   MPI_init_addr8
+   Memcheck:Addr8
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   MPI_init_addr4
+   Memcheck:Addr4
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   MPI_init_addr1
+   Memcheck:Addr1
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   gethostname_cond
+   Memcheck:Cond
+   ...
+   fun:gethostbyname_r
+   fun:gethostbyname
+   ...
+}
+{
+   gethostname_value
+   Memcheck:Value8
+   ...
+   fun:gethostbyname_r
+   fun:gethostbyname
+   ...
+}
+
+
+# pthread errors
+{
+   pthread_initialize_param
+   Memcheck:Param
+   set_robust_list(head)
+   fun:__pthread_initialize_minimal
+   fun:(below main)
+}
+{
+   pthread_initialize_cond
+   Memcheck:Cond
+   fun:__register_atfork
+   fun:__libc_pthread_init
+   fun:__pthread_initialize_minimal
+   fun:(below main)
+}
+
+
+# std
+{
+   libc_cond
+   Memcheck:Cond
+   ...
+   fun:_dl_init_paths
+   fun:_dl_non_dynamic_init
+   fun:__libc_init_first
+   fun:(below main)
+}
+{
+   libc_val8
+   Memcheck:Value8
+   ...
+   fun:_dl_init_paths
+   fun:_dl_non_dynamic_init
+   fun:__libc_init_first
+   fun:(below main)
+}
+{
+   mallinfo_cond
+   Memcheck:Cond
+   fun:int_mallinfo
+   fun:mallinfo
+   ...
+}
+{
+   mallinfo_value
+   Memcheck:Value8
+   fun:int_mallinfo
+   fun:mallinfo
+   ...
+}
+{
+   int_free_cond
+   Memcheck:Cond
+   fun:_int_free
+   ...
+}
+{
+   string_len_cond
+   Memcheck:Cond
+   fun:strlen
+   ...
+}
+{
+   int_malloc_cond
+   Memcheck:Cond
+   fun:_int_malloc
+   fun:malloc
+   ...
+}
+{
+   malloc_consolidate_malloc
+   Memcheck:Cond
+   fun:malloc_consolidate
+   fun:_int_malloc
+   ...
+}
+{
+   malloc_consolidate_free
+   Memcheck:Cond
+   fun:malloc_consolidate
+   fun:_int_free
+   ...
+}
+{
+   catch_cond
+   Memcheck:Cond
+   fun:__cxa_begin_catch
+   ...
+}
+{
+   popen
+   Memcheck:Param
+   set_robust_list(head)
+   fun:__nptl_set_robust
+   fun:__libc_fork
+   fun:_IO_proc_open
+   fun:popen
+   ...
+}
+{
+   exit
+   Memcheck:Value8
+   fun:__run_exit_handlers
+   ...
+   fun:exit
+   ...
+}
+{
+   sse42
+   Memcheck:Cond
+   fun:__strstr_sse42
+   ...
+}
+
+
+# MATLAB suppressions
+{
+   MATLAB_startup
+   Memcheck:Addr1
+   ...
+   fun:_Z13mnLmStartupLMiPKc
+   ...
+   fun:_Z14mcr_initializeP11MfileReaderP13MexFileReaderbPKcPS4_
+   fun:_ZN11mcrInstanceC1ER10mcrOptionsP11MfileReaderP13MexFileReader
+   ...
+   fun:start_thread
+   fun:clone
+}
+{
+   MATLAB_CreateShell
+   Memcheck:Cond
+   ...
+   fun:Initialize
+   ...
+   fun:_XtAppCreateShell
+   fun:XtVaAppCreateShell
+   fun:_ZN21uixDisplayInformationC1EPKcm
+   fun:_Z18UIX_GetDisplayInfoPKcm
+   ...
+   fun:_Z6x_initPiPPKc
+}
+{
+   MATLAB_setaffinity
+   Memcheck:Param
+   sched_setaffinity(mask)
+   fun:syscall
+   ...
+}
+{
+   MATLAB_Leak_ghash
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:ut_ghash_insert_element
+   fun:ut_ghash_insert_key
+   fun:ut_namehash_add
+   ...
+   obj:*/matlab/*
+   ...
+}
+{
+   MATLAB_Free_vgnU
+   Memcheck:Free
+   fun:free
+   obj:*
+   obj:*
+   fun:_vgnU_freeres
+   obj:*
+   fun:_dl_runtime_resolve
+   fun:_Z20mcr_create_2ndThreadPFPvS_ES_b
+   ...
+   obj:*/matlab/*
+   ...
+}
+{
+   MATLAB_Leak_InitializeParser
+   Memcheck:Leak
+   ...
+   fun:_Z18inInitializeParserPFvbEPFviEPFvvES4_PFbvEPKcPS8_
+   fun:_Z18mnInitializeParserPKcPS0_
+}
+{
+   MATLAB_Leak_Znwm
+   Memcheck:Leak
+   fun:_Znwm
+   ...
+}
+{
+   MATLAB_Leak_libut
+   Memcheck:Leak
+   fun:malloc
+   obj:*/matlab/bin/glnxa64/libut.so
+   ...
+}
+{
+   MATLAB_Leak_XtMalloc
+   Memcheck:Leak
+   fun:malloc
+   fun:XtMalloc
+   ...
+}
+{
+   MATLAB_Leak_realloc_Xim
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:_XimLocalOpenIM
+   fun:_XimOpenIM
+   ...
+}
+{
+   MATLAB_Leak_malloc_Xim
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:_XimLocalOpenIM
+   fun:_XimOpenIM
+   ...
+}
+{
+   MATLAB_Leak_X11_realloc
+   Memcheck:Leak
+   fun:realloc
+   ...
+   obj:*/libX11.*
+   ...
+}
+{
+   MATLAB_Leak_X11_malloc
+   Memcheck:Leak
+   fun:malloc
+   ...
+   obj:*/libX11.*
+   ...
+}
+{
+   MATLAB_Leak_Xt_calloc
+   Memcheck:Leak
+   fun:calloc
+   ...
+   obj:*/libXt.*
+   ...
+}
+{
+   MATLAB_Leak_Xt_malloc
+   Memcheck:Leak
+   fun:malloc
+   ...
+   obj:*/libXt.*
+   ...
+}
+{
+   MATLAB_Leak_Xt_realloc
+   Memcheck:Leak
+   fun:realloc
+   ...
+   obj:*/libXt.*
+   ...
+}
+{
+   MATLAB_Leak_XGetKeyboardMapping
+   Memcheck:Leak
+   fun:malloc
+   fun:XGetKeyboardMapping
+   ...
+}
+{
+   MATLAB_Leak_XOpenDisplay
+   Memcheck:Leak
+   fun:calloc
+   ...
+   fun:XOpenDisplay
+   fun:XtOpenDisplay
+   ...
+}
+{
+   MATLAB_Leak_Hashtable
+   Memcheck:Leak
+   fun:_Znam
+   fun:_ZN9HashtableC1Ei
+   ...
+}
+{
+   MATLAB_Leak_libmwmcos
+   Memcheck:Leak
+   fun:_Znwm
+   obj:*/matlab/bin/glnxa64/libmwmcos.*
+}
+{
+   MATLAB_Leak_nss_lookup_function
+   Memcheck:Leak
+   fun:malloc
+   fun:__nss_lookup_function
+   ...
+}
+{
+   MATLAB_Leak_strdup
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   obj:*/matlab/bin/glnxa64/libmwservices.so
+   ...
+}
+{
+   MATLAB_Leak_nc_read_termtype
+   Memcheck:Leak
+   fun:calloc
+   fun:_nc_read_termtype
+   fun:_nc_read_file_entry
+   fun:_nc_read_entry
+   ...
+}
+{
+   MATLAB_Leak_dl_map_object_deps
+   Memcheck:Leak
+   fun:malloc
+   fun:_dl_map_object_deps
+   fun:dl_open_worker
+   fun:_dl_catch_error
+   fun:_dl_open
+   ...
+}
+{
+   MATLAB_Leak_nc_find_type_entry
+   Memcheck:Leak
+   fun:calloc
+   ...
+   fun:_nc_find_type_entry
+   fun:tigetstr
+   ...
+}
+{
+   MATLAB_Leak_Xcursor
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:Xcursor*
+   ...
+}
+{
+   MATLAB_Cond_Initialize
+   Memcheck:Cond
+   ...
+   fun:Initialize
+   ...
+}
+{
+   MATLAB_Leak_MathWorks
+   Memcheck:Leak
+   ...
+   fun:_ZN9MathWorks4I18n12MlLocaleInitC1Ev
+   fun:_ZN9MathWorks4I18n17init__lcmgmt_initEi
+   ...
+}
+{
+   MATLAB_Leak_mxSetArrayScope
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:mxSetArrayScope
+   fun:mxCreateString
+   ...
+}
+{
+   MATLAB_Leak_tsearch
+   Memcheck:Leak
+   fun:malloc
+   fun:tsearch
+   fun:__nss_lookup_function
+   ...
+}
+{
+   MATLAB_Leak_libmwudd_new
+   Memcheck:Leak
+   fun:_Znam
+   obj:*/matlab/bin/glnxa64/libmwudd.so
+   ...
+}
+{
+   MATLAB_Leak_libmwudd_realloc
+   Memcheck:Leak
+   fun:realloc
+   obj:*/matlab/bin/glnxa64/libut.so
+   ...
+}
+{
+   MATLAB_Leak_start_thread
+   Memcheck:Leak
+   ...
+   fun:_Z14mcr_initializeP11MfileReaderP13MexFileReaderbPKcPS4_
+   fun:_ZN11mcrInstanceC1ER10mcrOptionsP11MfileReaderP13MexFileReader
+   ...
+   fun:start_thread
+   ...
+}
+{
+   MATLAB_Leak_dl_open
+   Memcheck:Leak
+   ...
+   fun:_dl_open
+   fun:dlopen_doit
+   fun:_dl_catch_error
+   ...
+}
+{
+   MATLAB_Leak_hgInitialize
+   Memcheck:Leak
+   ...
+   fun:hgInitialize
+   ...
+}
+{
+   MATLAB_Leak_ioSetupLineProtocol
+   Memcheck:Leak
+   ...
+   fun:ioSetNonCanonicalMode
+   fun:ioSetupLineProtocol
+   ...
+}
+{
+   MATLAB_Leak_ut_initialize
+   Memcheck:Leak
+   fun:calloc
+   ...
+   fun:ut_initialize_message_context
+   fun:utInitializeBasicContexts_full
+   fun:utInitializeBasicContexts
+   ...
+}
+{
+   MATLAB_Leak_nss_parse_service_list
+   Memcheck:Leak
+   fun:malloc
+   fun:nss_parse_service_list
+   fun:__nss_database_lookup
+   ...
+}
+{
+   MATLAB_Leak_dl_allocate_tls
+   Memcheck:Leak
+   fun:calloc
+   fun:_dl_allocate_tls
+   fun:pthread_create*
+   ...
+}
+
+
+
+
+

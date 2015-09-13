@@ -16,6 +16,7 @@
 #include <set>
 #include <limits>
 #include <sstream>
+#include <thread>
 
 #include "timerwindow.h"
 #include "tracewindow.h"
@@ -155,7 +156,8 @@ inline void ERROR_MSG( const std::string& msg ) {
 * Constructor/destructor                                               *
 ***********************************************************************/
 TimerWindow::TimerWindow():
-    timerTable(NULL), callLineText(NULL), backButton(NULL), processorButton(NULL)
+    timerTable(NULL), callLineText(NULL), backButton(NULL), processorButton(NULL),
+    unitTestRunning(false)
 {
     PROFILE_START("TimerWindow constructor");
     QWidget::setWindowTitle(QString("load_timer"));
@@ -214,6 +216,9 @@ TimerWindow::TimerWindow():
     reset();
     updateDisplay();
     PROFILE_STOP("TimerWindow constructor");
+}
+TimerWindow::~TimerWindow()
+{
 }
 void TimerWindow::closeEvent(QCloseEvent *event)
 {
@@ -282,12 +287,11 @@ void TimerWindow::open()
 {
     QString filename = QFileDialog::getOpenFileName( this, 
         "Select the timer file", lastPath.c_str(), "*.0.timer *.1.timer" );
-    loadFile(filename);
+    loadFile(filename.toStdString());
 }
-void TimerWindow::loadFile(const QString &fileName)
+void TimerWindow::loadFile( std::string filename, bool showFailure )
 {
     PROFILE_START("loadFile");
-    std::string filename = fileName.toStdString();
     if ( !filename.empty() ) {
         // Clear existing data
         close();
@@ -314,19 +318,21 @@ void TimerWindow::loadFile(const QString &fileName)
             d_data = ProfilerApp::load( filename, -1, global );
             PROFILE_STOP("ProfilerApp::load");
         } catch ( std::exception& e ) {
-            std::string msg = e.what();
-            QMessageBox::information( this, 
-                tr("Error loading file"), 
-                tr(msg.c_str()) );
             PROFILE_STOP2("ProfilerApp::load");
             PROFILE_STOP2("loadFile");
+            if ( showFailure ) {
+                std::string msg = e.what();
+                QMessageBox::information( this, 
+                    tr("Error loading file"), tr(msg.c_str()) );
+            }
             return;
         } catch (...) {
-            QMessageBox::information( this, 
-                tr("Error loading file"), 
-                tr("Caught unknown exception") );
             PROFILE_STOP2("ProfilerApp::load");
             PROFILE_STOP2("loadFile");
+            if ( showFailure ) {
+                QMessageBox::information( this, 
+                    tr("Error loading file"), tr("Caught unknown exception") );
+            }
             return;
         }
         // Get the number of processors/threads
@@ -407,28 +413,28 @@ void TimerWindow::loadFile(const QString &fileName)
         // Update the display
         printf("%s loaded successfully\n",filename.c_str());
         if ( N_procs > 1 ) {
-            QMenu *menu = new QMenu();
+            processorButtonMenu.reset(new QMenu());
             QSignalMapper* signalMapper = new QSignalMapper(this);
-            ADD_MENU_ACTION(menu,"Average",-1);
-            ADD_MENU_ACTION(menu,"Minimum",-2);
-            ADD_MENU_ACTION(menu,"Maximum",-3);
+            ADD_MENU_ACTION(processorButtonMenu,"Average",-1);
+            ADD_MENU_ACTION(processorButtonMenu,"Minimum",-2);
+            ADD_MENU_ACTION(processorButtonMenu,"Maximum",-3);
             if ( N_procs < 100 ) {
                 for (int i=0; i<N_procs; i++)
-                    ADD_MENU_ACTION(menu,stringf("Rank %i",i).c_str(),i);
+                    ADD_MENU_ACTION(processorButtonMenu,stringf("Rank %i",i).c_str(),i);
             } else {
                 const int ranks_per_menu = 250;
                 QMenu *rank_menu = NULL;
                 for (int i=0; i<N_procs; i++) {
                     if ( i%ranks_per_menu==0 ) {
                         std::string name = stringf("Ranks %i-%i",i,i+ranks_per_menu-1);
-                        rank_menu = menu->addMenu(name.c_str());
+                        rank_menu = processorButtonMenu->addMenu(name.c_str());
                     }
                     ADD_MENU_ACTION(rank_menu,stringf("%5i",i).c_str(),i);
                 }
             }
             connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(selectProcessor(int)));
             selectProcessor(-1);
-            processorButton->setMenu(menu);
+            processorButton->setMenu(processorButtonMenu.get());
         }
         updateDisplay();
     }
@@ -835,12 +841,17 @@ void TimerWindow::createActions()
     savePerformanceTimers = new QAction(tr("&Save performance"), this);
     savePerformanceTimers->setStatusTip(tr("Save performance timers"));
     connect(savePerformanceTimers, SIGNAL(triggered()), this, SLOT(savePerformance()));
-    
+
+    runUnitTestAction = new QAction(tr("&Run unit tests"), this);
+    runUnitTestAction->setStatusTip(tr("Run unit tests"));
+    connect(runUnitTestAction, SIGNAL(triggered()), this, SLOT(runUnitTestsSlot()));
+   
 }
 
 void TimerWindow::createMenus()
 {
-    fileMenu = menuBar()->addMenu(tr("&File"));
+    QMenuBar *mainMenu = new QMenuBar(NULL);
+    fileMenu = mainMenu->addMenu(tr("&File"));
     fileMenu->addAction(openAct);
     fileMenu->addAction(closeAct);
     fileMenu->addAction(resetAct);
@@ -849,21 +860,22 @@ void TimerWindow::createMenus()
     //fileMenu->addSeparator();
     fileMenu->addAction(exitAct);
 
-    //editMenu = menuBar()->addMenu(tr("&Edit"));
+    //editMenu = mainMenu->addMenu(tr("&Edit"));
     //editMenu->addAction(cutAct);
     //editMenu->addAction(copyAct);
     //editMenu->addAction(pasteAct);
 
-    menuBar()->addSeparator();
+    mainMenu->addSeparator();
 
-    helpMenu = menuBar()->addMenu(tr("&Help"));
+    helpMenu = mainMenu->addMenu(tr("&Help"));
     helpMenu->addAction(aboutAct);
 
     // Create developer menu on rhs
     QMenuBar *developer_bar = new QMenuBar(this);
     QMenu *developer = developer_bar->addMenu(tr("&Developer"));
     developer->addAction(savePerformanceTimers);
-    menuBar()->setCornerWidget(developer_bar);
+    developer->addAction(runUnitTestAction);
+    mainMenu->setCornerWidget(developer_bar);
 
     // In Ubuntu 14.04 with qt5 the window's menu bar goes missing entirely
     // if the user is running any desktop environment other than Unity
@@ -872,9 +884,11 @@ void TimerWindow::createMenus()
     // awkward and the problem is so severe that it merits disabling
     // the system menubar integration altogether. Like this:
     #if defined(Q_OS_LINUX) && QT_VERSION>=0x050000
-        menuBar()->setNativeMenuBar(false);  // fix #1039
+        mainMenu->setNativeMenuBar(false);  // fix #1039
         developer_bar->setNativeMenuBar(false);  // fix #1039
     #endif
+    
+    setMenuBar(mainMenu);
 }
 
 void TimerWindow::createToolBars()
@@ -955,6 +969,71 @@ void TimerWindow::traceFun()
 #else
     traceWindow->show();
 #endif
+}
+
+
+/***********************************************************************
+* Helpers to call slots                                                *
+***********************************************************************/
+#define callSlot(slot)                                              \
+    do {                                                            \
+        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
+        unitTestRunning = true;                                     \
+        QAction* action = new QAction(NULL);                        \
+        connect(action, SIGNAL(triggered()), this, SLOT(slot()));   \
+        action->activate(QAction::Trigger);                         \
+        delete action;                                              \
+        action = new QAction(NULL);                                 \
+        connect(action, SIGNAL(triggered()), this, SLOT(resetUnitTestRunning())); \
+        action->activate(QAction::Trigger);                         \
+        delete action;                                              \
+        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); \
+    } while(0)
+
+
+/***********************************************************************
+* Run the unit tests                                                   *
+***********************************************************************/
+void TimerWindow::runUnitTestsSlot( )
+{
+    // Get the filename to test
+    QString filename = QFileDialog::getOpenFileName( this, 
+        "Select the timer file to test", lastPath.c_str(), "*.0.timer *.1.timer" );
+    // Run the unit tests
+    int N_errors = runUnitTests(filename.toStdString());
+    if ( N_errors == 0 ) {
+        QMessageBox::information( this, tr("All tests passed"), tr("All tests passed") );
+    } else {
+        QMessageBox::information( this, tr("Some tests failed"), tr("Some tests failed") );
+    }
+}
+void TimerWindow::resetUnitTestRunning( )
+{
+    unitTestRunning = false;
+}
+void TimerWindow::callLoadFile( )
+{
+    loadFile(unitTestFilename,false);
+}
+int TimerWindow::runUnitTests( const std::string& filename )
+{
+    int N_errors = 0;
+    // Try to load the file
+    unitTestFilename = filename;
+    callSlot(callLoadFile);
+    if ( d_dataTimer.empty() ) {
+        printf("   Failed to load file %s\n",filename.c_str());
+        N_errors++;
+    }
+
+    // Try to close the file
+    callSlot(close);
+    if ( !d_dataTimer.empty() ) {
+        printf("   Failed call to close\n");
+        N_errors++;
+    }
+    return N_errors;
 }
 
 

@@ -81,6 +81,14 @@ LoadBalance::LoadBalance( QWidget *parent ):
 }
 
 
+LoadBalance::~LoadBalance( )
+{
+    delete barChart;
+    delete curvePlot[0];
+    delete curvePlot[1];
+}
+
+
 void LoadBalance::plot( const std::vector<float>& time_ )
 {
     PROFILE_START("plot");
