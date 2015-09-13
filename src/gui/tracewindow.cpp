@@ -638,10 +638,12 @@ std::array<double,2> TraceWindow::getGlobalTime( const std::vector<TimerResults>
     for (size_t i=0; i<timers.size(); i++) {
         for (size_t j=0; j<timers[i].trace.size(); j++) {
             const int N_trace = timers[i].trace[j].N_trace;
-            const double* start = timers[i].trace[j].start();
-            const double* stop  = timers[i].trace[j].stop();
-            t_global[0] = std::min(t_global[0],start[0]);
-            t_global[1] = std::max(t_global[1],stop[N_trace-1]);
+            if ( N_trace > 0 ) {
+                const double* start = timers[i].trace[j].start();
+                const double* stop  = timers[i].trace[j].stop();
+                t_global[0] = std::min(t_global[0],start[0]);
+                t_global[1] = std::max(t_global[1],stop[N_trace-1]);
+            }
         }
     }
     return t_global;
@@ -696,6 +698,41 @@ void TraceWindow::traceMouseReleaseEvent(QMouseEvent *event)
             updateDisplay(UpdateType::time);
         }
     }
+}
+
+
+/***********************************************************************
+* Helpers to call slots                                                *
+***********************************************************************/
+#define callSlot(slot)                                              \
+    do {                                                            \
+        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
+        unitTestRunning = true;                                     \
+        QAction* action = new QAction(NULL);                        \
+        connect(action, SIGNAL(triggered()), this, SLOT(slot()));   \
+        action->activate(QAction::Trigger);                         \
+        delete action;                                              \
+        action = new QAction(NULL);                                 \
+        connect(action, SIGNAL(triggered()), this, SLOT(resetUnitTestRunning())); \
+        action->activate(QAction::Trigger);                         \
+        delete action;                                              \
+        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); \
+    } while(0)
+
+
+/***********************************************************************
+* Run the unit tests                                                   *
+***********************************************************************/
+void TraceWindow::resetUnitTestRunning( )
+{
+    unitTestRunning = false;
+}
+int TraceWindow::runUnitTests( )
+{
+    int N_errors = 0;
+
+    return N_errors;
 }
 
 

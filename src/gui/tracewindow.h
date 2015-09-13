@@ -91,6 +91,14 @@ protected:
 
 friend class CurrentTimeLineClass;
 friend class QLabelMouse;
+
+// Data for unit testing
+public:
+    int runUnitTests( );
+private:
+    volatile bool unitTestRunning;
+private slots:
+    void resetUnitTestRunning( );
 };
 
 

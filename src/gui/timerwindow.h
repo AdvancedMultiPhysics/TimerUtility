@@ -98,6 +98,9 @@ private:
     QTimer resizeTimer;
     std::shared_ptr<QMenu> processorButtonMenu;
 
+private:
+    bool hasTraceData() const;
+
 protected:
     std::vector<std::shared_ptr<TimerSummary>> getTimers() const;
 

@@ -403,13 +403,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             }
             timer.threads = std::vector<int>(ids.begin(),ids.end());
         }
-        // Check if we want to display trace data
-        bool traceData = false;
-        for (size_t i=0; i<d_data.timers.size(); i++) {
-            for (size_t j=0; j<d_data.timers[i].trace.size(); j++)
-                traceData = traceData || d_data.timers[i].trace[j].N_trace>0;
-        }
-        traceToolbar->setVisible(traceData);
+        traceToolbar->setVisible(hasTraceData());
         // Update the display
         printf("%s loaded successfully\n",filename.c_str());
         if ( N_procs > 1 ) {
@@ -439,6 +433,20 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         updateDisplay();
     }
     PROFILE_STOP("loadFile");
+}
+
+
+/***********************************************************************
+* Update the display                                                   *
+***********************************************************************/
+bool TimerWindow::hasTraceData() const
+{
+    bool traceData = false;
+    for (size_t i=0; i<d_data.timers.size(); i++) {
+        for (size_t j=0; j<d_data.timers[i].trace.size(); j++)
+            traceData = traceData || d_data.timers[i].trace[j].N_trace>0;
+    }
+    return traceData;
 }
 
 
@@ -1027,6 +1035,12 @@ int TimerWindow::runUnitTests( const std::string& filename )
         N_errors++;
     }
 
+
+    // Run the trace unit tests
+    if ( hasTraceData() ) {
+        callSlot(traceFun);
+        N_errors += traceWindow->runUnitTests();
+    }
     // Try to close the file
     callSlot(close);
     if ( !d_dataTimer.empty() ) {
