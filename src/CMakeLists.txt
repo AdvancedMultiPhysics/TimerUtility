@@ -65,7 +65,7 @@ ADD_CUSTOM_TARGET( doc )
 ADD_CUSTOM_TARGET( latex_docs )
 ADD_CUSTOM_TARGET( build-test )
 ADD_CUSTOM_TARGET( check COMMAND  make test  )
-ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT )
+ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT Debug TIMER.build TIMER.xcodeproj )
 
 
 # Check the compile mode and compile flags

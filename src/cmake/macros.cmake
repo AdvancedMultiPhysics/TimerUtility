@@ -425,7 +425,7 @@ MACRO( ADD_CXX_STD )
     ELSEIF ( USING_CLANG )
         # Clang: -std=
         IF ( ( ${CXX_STD} STREQUAL "98") OR ( ${CXX_STD} STREQUAL "11" ) )
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD}")
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CXX_STD} -stdlib=libc++")
         ELSEIF ( ${CXX_STD} STREQUAL "14" )
             SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
         ELSE()

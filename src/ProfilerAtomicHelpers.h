@@ -187,10 +187,10 @@ inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_ato
        return OSAtomicAdd64Barrier(y,x);
     }
     inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
-        return OSAtomicCompareAndSwap32Barrier(x,y,v) ? y:x;
+        return OSAtomicCompareAndSwap32Barrier(x,y,v) ? x:y;
     }
     inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
-        return OSAtomicCompareAndSwap64Barrier(x,y,v) ? y:x;
+        return OSAtomicCompareAndSwap64Barrier(x,y,v) ? x:y;
     }
 #elif defined(__GNUC__)
     int32_atomic atomic_increment( int32_atomic volatile *x ) {
