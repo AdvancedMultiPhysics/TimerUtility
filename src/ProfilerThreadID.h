@@ -71,8 +71,7 @@ inline int ProfilerThreadIndex::getThreadIndex()
         int i = hash;
         while ( map[2*i]!=hash ) {
             if ( map[2*i]==-1 ) {
-                atomic::int32_atomic result = atomic::atomic_compare_and_swap(&map[2*i],-1,hash);
-                if ( result == -1 ) {
+                if ( atomic::atomic_compare_and_swap(&map[2*i],-1,hash) ) {
                     int id = atomic::atomic_increment(&N_threads)-1;
                     map[2*i+1] = id;
                 }

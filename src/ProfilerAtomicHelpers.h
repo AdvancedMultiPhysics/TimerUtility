@@ -51,6 +51,7 @@ namespace atomic {
 
 
 // Define int32_atomic, int64_atomic
+#include <stdint.h>
 #if defined(USE_WINDOWS)
     typedef long int32_atomic;
     typedef __int64 int64_atomic;
@@ -114,31 +115,27 @@ inline int32_atomic atomic_add( int32_atomic volatile *x, int32_atomic y ) NO_IN
  * \param[in] x     The pointer to the value to add to    
  * \param[in] y     The value to add
  */
-inline int64_atomic atomic_add( int64_atomic volatile *x, int32_atomic y ) NO_INST_ATTR;
+inline int64_atomic atomic_add( int64_atomic volatile *x, int64_atomic y ) NO_INST_ATTR;
 
 /**
  * \brief Compare the given value and swap
  * \details Compare the existing value and swap if it matches. 
- *    This function returns the previous value.
- *    To return a bool indicating if the swap was performed,
- *    use "bool t = atomic_compare_and_swap(v,x,y)==x".
+ * \return Returns true if the swap was performed
  * \param[in] v     The pointer to the value to check and swap
  * \param[in] x     The value to compare
  * \param[in] y     The value to swap iff *v==x
  */
-inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y );
+inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y );
 
 /**
  * \brief Compare the given value and swap
- * \details Compare the existing value and swap if it matches. 
- *    This function returns the previous value.
- *    To return a bool indicating if the swap was performed,
- *    use "bool t = atomic_compare_and_swap(v,x,y)==x".
+ * \details Compare the existing value and swap if it matches.
+ * \return Returns true if the swap was performed
  * \param[in] v     The pointer to the value to check and swap
  * \param[in] x     The value to compare
  * \param[in] y     The value to swap iff *v==x
  */
-inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y );
+inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y );
 
 
 // Define increment/decrement/add operators for int32, int64
@@ -161,11 +158,11 @@ inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_ato
     inline int64_atomic atomic_add( int64_atomic volatile *x, int64_atomic y ) {
         return InterlockedExchangeAdd64(x,y)+y;
     }
-    inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
-        return InterlockedCompareExchange(v,x,y);
+    inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
+        return InterlockedCompareExchange(v,x,y)==x;
     }
-    inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
-        return InterlockedCompareExchange64(v,x,y);
+    inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
+        return InterlockedCompareExchange64(v,x,y)==x;
     }
 #elif defined(USE_MAC)
     inline int32_atomic atomic_increment( int32_atomic volatile *x ) {
@@ -186,11 +183,11 @@ inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_ato
     inline int64_atomic atomic_add( int64_atomic volatile *x, int64_atomic y ) {
        return OSAtomicAdd64Barrier(y,x);
     }
-    inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
-        return OSAtomicCompareAndSwap32Barrier(x,y,v) ? x:y;
+    inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
+        return OSAtomicCompareAndSwap32Barrier(x,y,v);
     }
-    inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
-        return OSAtomicCompareAndSwap64Barrier(x,y,v) ? x:y;
+    inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
+        return OSAtomicCompareAndSwap64Barrier(x,y,v);
     }
 #elif defined(__GNUC__)
     int32_atomic atomic_increment( int32_atomic volatile *x ) {
@@ -211,11 +208,11 @@ inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_ato
     inline int64_atomic atomic_add( int64_atomic volatile *x, int64_atomic y ) {
         return __sync_add_and_fetch(x,y);
     }
-    inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
-        return __sync_val_compare_and_swap(v,x,y);
+    inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
+        return __sync_bool_compare_and_swap(v,x,y);
     }
-    inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
-        return __sync_val_compare_and_swap(v,x,y);
+    inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
+        return __sync_bool_compare_and_swap(v,x,y);
     }
 #elif defined(USE_PTHREAD_ATOMIC_LOCK)
     extern pthread_mutex_t atomic_pthread_lock;
@@ -257,19 +254,19 @@ inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_ato
         pthread_mutex_unlock(&atomic_pthread_lock);
         return z;
     }
-    inline int32_atomic atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
+    inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
         pthread_mutex_lock(&atomic_pthread_lock);
-        *v = (*v==x) ? y:x;
-        int32_atomic z = *v;
+        bool test = *v==x;
+        *v = test ? y:x;
         pthread_mutex_unlock(&atomic_pthread_lock);
-        return z;
+        return test;
     }
-    inline int64_atomic atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
+    inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
         pthread_mutex_lock(&atomic_pthread_lock);
-        *v = (*v==x) ? y:x;
-        int64_atomic z = *v;
+        bool test = *v==x;
+        *v = test ? y:x;
         pthread_mutex_unlock(&atomic_pthread_lock);
-        return z;
+        return test;
     }
 #else
     #error Unknown OS
