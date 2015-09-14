@@ -37,6 +37,7 @@ SET( MPIEXEC            $ENV{MPIEXEC}           )
 SET( BUILD_SERIAL       $ENV{BUILD_SERIAL}      )
 SET( SKIP_TESTS         $ENV{SKIP_TESTS}        )
 SET( BUILDNAME_POSTFIX "$ENV{BUILDNAME_POSTFIX}" )
+SET( QWT_URL           "$ENV{QWT_URL}" )
 
 
 # Add the C++ version to the project name
@@ -237,6 +238,7 @@ ENDIF()
 IF ( MPIEXEC )
     SET( CTEST_OPTIONS "${CTEST_OPTIONS};-DMPIEXEC='${MPIEXEC}'" )
 ENDIF()
+SET( CTEST_OPTIONS "${CTEST_OPTIONS};-DQWT_URL='${QWT_URL}'" )
 MESSAGE("Configure options:")
 MESSAGE("   ${CTEST_OPTIONS}")
 
