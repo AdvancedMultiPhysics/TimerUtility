@@ -280,7 +280,7 @@ MACRO( CONFIGURE_TIMER )
     ENDIF()
     # Check if we want to enable the traps for new/delete
     CHECK_ENABLE_FLAG( OVERLOAD_NEW 1 )
-    IF ( NOT OVERLOAD_NEW )
+    IF ( NOT OVERLOAD_NEW OR DISABLE_NEW_OVERLOAD )
         ADD_DEFINITIONS( -DDISABLE_NEW_OVERLOAD )
     ENDIF()
     # Add flags for MATLAB

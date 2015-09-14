@@ -1,8 +1,40 @@
 # To run valgrind:
-# valgrind --leak-check=yes --show-reachable=yes --track-origins=yes --log-file=memory.log --suppressions=/projects/TimerUtility/src/ValgrindSuppresionFile --gen-suppressions=all ./load_timer ../test/set1.2.timer ../test/set7.1.timer
+# valgrind --leak-check=yes --show-reachable=yes --track-origins=yes --log-file=memory.log --suppressions=/projects/TimerUtility/src/ValgrindSuppresionFile --gen-suppressions=all ./load_timer set1.2.timer set2.1.timer
 
 
 # Suppress issues for gui
+{
+   QMutexPool_createMutex_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN10QMutexPool11createMutexEi
+   ...
+}
+{
+   QMenuBar_connectToBus_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN15QDBusConnection12connectToBusENS_7BusTypeERK7QString
+   ...
+   fun:_ZN8QMenuBarC1EP7QWidget
+   ...
+}
+{
+   QMenuBar_connect_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+   ...
+   fun:_ZN22AppMenuPlatformMenuBar13createMenuBarEv
+}
+{
+   connectToBus_connect_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+   ...
+   fun:_ZN15QDBusConnection12connectToBusENS_7BusTypeERK7QString
+}
 {
    QCoreApplication_init_memleak
    Memcheck:Leak
@@ -19,6 +51,55 @@
    fun:_ZN19QApplicationPrivate10initializeEv
    fun:_ZN19QApplicationPrivate9constructEP9_XDisplaymm
    fun:_ZN12QApplicationC1ERiPPci
+   ...
+}
+{
+   ComCanonicalAppMenuRegistrarInterface_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN22QDBusAbstractInterfaceC1ERK7QStringS2_PKcRK15QDBusConnectionP7QObject
+   fun:_ZN37ComCanonicalAppMenuRegistrarInterfaceC1ERK7QStringS2_RK15QDBusConnectionP7QObject
+   ...
+}
+{
+   QString_setNum_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN7QString6numberEii
+   fun:_ZN8QLibrary21setFileNameAndVersionERK7QStringi
+   ...
+}
+{
+   g_hash_table_new_full_leak
+   Memcheck:Leak
+   ...
+   fun:g_hash_table_new_full
+   ...
+}
+{
+   QFactoryLoader_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN14QFactoryLoader9updateDirERK7QStringR9QSettings
+   fun:_ZN14QFactoryLoader6updateEv
+   fun:_ZN14QFactoryLoaderC1EPKcRK7QStringN2Qt15CaseSensitivityE
+   ...
+}
+{
+   QLibrary_resolve_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN8QLibrary7resolveEPKc
+   fun:_ZN8QLibrary7resolveERK7QStringiPKc
+   ...
+}
+{
+   QDBusConnectionInterface_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN15QDBusConnection7connectERK7QStringS2_S2_S2_RK11QStringListS2_P7QObjectPKc
+   fun:_ZN22QDBusAbstractInterfaceC1ERK7QStringS2_PKcRK15QDBusConnectionP7QObject
+   fun:_ZN24QDBusConnectionInterfaceC1ERK15QDBusConnectionP7QObject
    ...
 }
 {
@@ -177,6 +258,13 @@
    Memcheck:Leak
    ...
    obj:/usr/lib/x86_64-linux-gnu/libfontconfig.so.1.8.0
+   ...
+}
+{
+   libfreetype_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libfreetype.so.6.11.1
    ...
 }
 

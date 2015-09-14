@@ -18,9 +18,10 @@ cmake                                                   \
     -D USE_MATLAB=0                                     \
         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
     -D ENABLE_GCOV=0                                    \
+    -D QT_VERSION=4                                     \
     -D QWT_URL=/packages/archives/qwt-6.1.2.tar.bz2     \
+    -D DISABLE_NEW_OVERLOAD=0                           \
     ../../src/
 
-#    -D QT_VERSION=4                                     \
 
 

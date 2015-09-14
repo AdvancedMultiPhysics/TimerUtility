@@ -53,7 +53,8 @@ inline size_t findfirst( const std::vector<double>& X, double Y )
 
 
 MemoryPlot::MemoryPlot( QWidget *parent, const std::vector<MemoryResults>& memory_ ):
-    QwtPlot(parent), d_last_rank(-2), d_memory(&memory_), d_N_procs(memory_.size())
+    QwtPlot(parent), d_t(std::array<double,2>{{0,0}}), d_last_rank(-10),
+    d_memory(&memory_), d_N_procs(memory_.size())
 {
     setTitle(qwtText("",QFont("Times",12,QFont::Bold)));
     setAutoFillBackground( true );

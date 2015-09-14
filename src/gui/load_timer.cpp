@@ -4,6 +4,7 @@
 #include <QtCore>
 #include "timerwindow.h"
 #include "ProfilerApp.h"
+#include "MemoryApp.h"
 #include <thread>
 
 
@@ -29,30 +30,36 @@ void runUnitTests( int N, char *files[], TimerWindow& app )
 
 int main(int argc, char *argv[])
 {
-    // Load the application
+    bool run_unit_tests = argc>1;
+    int rtn = 0;
     PROFILE_ENABLE();
-    //Q_INIT_RESOURCE(application);
-    QApplication app(argc, argv);
-    app.setOrganizationName("");
-    app.setApplicationName("load_timer");
-    TimerWindow mainWin;
-    #if defined(Q_OS_SYMBIAN)
-        mainWin.showMaximized();
-    #else
-        mainWin.show();
-    #endif
-    // Run the unit tests (if provided extra arguments)
-    std::thread thread;
-    if ( argc > 1 )
-        thread = std::thread(runUnitTests,argc-1,&argv[1],std::ref(mainWin));
-    // Wait for application to finish
-    int rtn = app.exec();
-    // Join the threads
-    if ( argc > 1 ) {
-        thread.join();
+    { // Limit scope for MemoryApp
+        // Load the application
+        //Q_INIT_RESOURCE(application);
+        QApplication app(argc, argv);
+        app.setOrganizationName("");
+        app.setApplicationName("load_timer");
+        TimerWindow mainWin;
+        #if defined(Q_OS_SYMBIAN)
+            mainWin.showMaximized();
+        #else
+            mainWin.show();
+        #endif
+        // Run the unit tests (if provided extra arguments)
+        std::thread thread;
+        if ( run_unit_tests )
+            thread = std::thread(runUnitTests,argc-1,&argv[1],std::ref(mainWin));
+        // Wait for application to finish
+        rtn = app.exec();
+        // Join the threads
+        if ( run_unit_tests )
+            thread.join();
+        if ( N_errors_global > 0 )
+            rtn = N_errors_global;
+    } // MemoryApp scope limit
+    if ( run_unit_tests ) {
         PROFILE_SAVE("load_timer");
+        MemoryApp::print(std::cout);
     }
-    if ( N_errors_global > 0 )
-        rtn = N_errors_global;
     return rtn;
 }

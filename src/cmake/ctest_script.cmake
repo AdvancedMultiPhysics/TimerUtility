@@ -162,6 +162,7 @@ SET( CTEST_CUSTOM_WARNING_EXCEPTION
     "warning: -jN forced in submake: disabling jobserver mode" 
     "warning: jobserver unavailable" 
     "This object file does not define any previously undefined public symbols"
+    "Note: No relevant classes found. No output generated."
 )
 
 

@@ -156,8 +156,8 @@ inline void ERROR_MSG( const std::string& msg ) {
 * Constructor/destructor                                               *
 ***********************************************************************/
 TimerWindow::TimerWindow():
-    timerTable(NULL), callLineText(NULL), backButton(NULL), processorButton(NULL),
-    unitTestRunning(false)
+    mainMenu(NULL), timerTable(NULL), callLineText(NULL), backButton(NULL),
+    processorButton(NULL), unitTestRunning(false)
 {
     PROFILE_START("TimerWindow constructor");
     QWidget::setWindowTitle(QString("load_timer"));
@@ -219,6 +219,25 @@ TimerWindow::TimerWindow():
 }
 TimerWindow::~TimerWindow()
 {
+    // Close the file
+    close();
+    // Disconnect signals created by createActions
+    disconnect(openAct, SIGNAL(triggered()), this, SLOT(open()));
+    disconnect(closeAct, SIGNAL(triggered()), this, SLOT(close()));
+    disconnect(resetAct, SIGNAL(triggered()), this, SLOT(reset()));
+    disconnect(exclusiveAct, SIGNAL(triggered()), this, SLOT(exclusiveFun()));
+    disconnect(subfunctionsAct, SIGNAL(triggered()), this, SLOT(subfunctionFun()));
+    disconnect(exitAct, SIGNAL(triggered()), this, SLOT(exit()));
+    disconnect(aboutAct, SIGNAL(triggered()), this, SLOT(about()));
+    disconnect(savePerformanceTimers, SIGNAL(triggered()), this, SLOT(savePerformance()));
+    disconnect(runUnitTestAction, SIGNAL(triggered()), this, SLOT(runUnitTestsSlot()));
+    // Disconnect signals created by createToolbars
+    disconnect(exclusiveButton, SIGNAL(released()), this, SLOT(exclusiveFun()));
+    disconnect(subfunctionButton, SIGNAL(released()), this, SLOT(subfunctionFun()));
+    disconnect(traceButton, SIGNAL(released()), this, SLOT(traceFun()));
+    // Delete objects
+    delete timerTable;
+    delete mainMenu;
 }
 void TimerWindow::closeEvent(QCloseEvent *event)
 {
@@ -858,7 +877,7 @@ void TimerWindow::createActions()
 
 void TimerWindow::createMenus()
 {
-    QMenuBar *mainMenu = new QMenuBar(NULL);
+    mainMenu = new QMenuBar(NULL);
     fileMenu = mainMenu->addMenu(tr("&File"));
     fileMenu->addAction(openAct);
     fileMenu->addAction(closeAct);

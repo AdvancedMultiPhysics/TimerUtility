@@ -27,7 +27,7 @@ class TraceWindow : public QMainWindow
 
 public:
     TraceWindow( const TimerWindow *parent );
-    ~TraceWindow();
+    virtual ~TraceWindow();
 
 protected:
     void closeEvent(QCloseEvent *event);

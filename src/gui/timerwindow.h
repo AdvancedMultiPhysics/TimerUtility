@@ -30,7 +30,7 @@ class TimerWindow : public QMainWindow
 
 public:
     TimerWindow();
-    ~TimerWindow();
+    virtual ~TimerWindow();
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -68,6 +68,7 @@ private:
     void updateDisplay();
     QString strippedName(const QString &fullFileName);
 
+    QMenuBar *mainMenu;
     QTableWidget *timerTable;
     QLineEdit *callLineText;
     QPushButton *backButton;
