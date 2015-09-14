@@ -148,9 +148,16 @@ ENDIF()
 
 # Add the cppcheck tests
 SET( CPPCHECK_INCLUDE "" )
-SET( CPPCHECK_OPTIONS -q --enable=all --std=c99 "--suppressions-list=${CMAKE_CURRENT_SOURCE_DIR}/cppcheckSuppressionFile" )
+SET( CPPCHECK_OPTIONS -q --enable=all --force --suppress=missingIncludeSystem 
+    "--suppressions-list=${CMAKE_CURRENT_SOURCE_DIR}/cppcheckSuppressionFile" )
+IF ( CXX_STD STREQUAL 98 )
+    SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --std=c99 --std=c++03 --std=posix )
+ELSEIF ( CXX_STD STREQUAL 11 )
+    SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --std=c11 --std=c++11 --std=posix )
+ELSEIF ( CXX_STD STREQUAL 14 )
+    SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --std=c11 --std=c++11 --std=posix )
+ENDIF()
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppcheck.cmake" )
-
 
 
 
