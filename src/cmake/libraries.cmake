@@ -290,6 +290,9 @@ MACRO( CONFIGURE_TIMER )
         SET( MEX_LIBS  -ltimerutility ${MEX_LIBS} )
         SET( MEX_LDFLAGS ${MEX_LDFLAGS} )
     ENDIF()
+    # Disable CMake warning for unused flags
+    NULL_USE(QWT_SRC_DIR)
+    NULL_USE(QWT_URL)
 ENDMACRO()
 
 

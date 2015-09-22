@@ -56,6 +56,15 @@ FUNCTION( WRITE_COMPILE_FEATURES FILENAME )
 	        return 0;
 	     }"
     )
+    TEST_FEATURE( MOVE_CONSTRUCTOR ${FILENAME}
+	    "#include <iostream>
+         struct st { int i; st(){} st(st&&){} private: st(st&); };
+         st fun() { return st(); }
+	     int main() {
+            st tmp = fun();
+	        return 0;
+	     }"
+    )
 ENDFUNCTION()
 
 
