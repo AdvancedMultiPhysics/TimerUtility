@@ -159,10 +159,10 @@ inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, i
         return InterlockedExchangeAdd64(x,y)+y;
     }
     inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, int32_atomic y ) {
-        return InterlockedCompareExchange(v,x,y)==x;
+        return InterlockedCompareExchange(v,y,x)==x;
     }
     inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y ) {
-        return InterlockedCompareExchange64(v,x,y)==x;
+        return InterlockedCompareExchange64(v,y,x)==x;
     }
 #elif defined(USE_MAC)
     inline int32_atomic atomic_increment( int32_atomic volatile *x ) {
