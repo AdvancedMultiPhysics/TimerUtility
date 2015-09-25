@@ -17,7 +17,6 @@ SET( CMAKE_CXX98_STANDARD_COMPILE_OPTION )
 # This function writes a list of the supported C++ compiler features
 FUNCTION( WRITE_COMPILE_FEATURES FILENAME )
     FILE(WRITE ${FILENAME} "// This is a automatically generated file to set define variables for supported C++ features\n" )
-    SET( CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS} )
     TEST_FEATURE( SHARED_PTR ${FILENAME}
 	    "#include <memory>
 	     int main() {
@@ -70,7 +69,14 @@ ENDFUNCTION()
 
 # This function trys to compile and then sets the appropriate macro
 FUNCTION( TEST_FEATURE FEATURE_NAME FILENAME CODE )
-    CHECK_CXX_SOURCE_COMPILES( "${CODE}" ${FEATURE_NAME} )
+    IF ( ${CXX_STD} STREQUAL "98" )
+        # Disable all features for 98
+        SET( ${FEATURE_NAME} OFF )
+    ELSE()
+        # Check if compiler allows feature
+        SET( CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS} )
+        CHECK_CXX_SOURCE_COMPILES( "${CODE}" ${FEATURE_NAME} )
+    ENDIF()
     IF ( ${FEATURE_NAME} )
         FILE(APPEND ${FILENAME} "#define ENABLE_${FEATURE_NAME}\n" )
     ELSE()
