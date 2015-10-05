@@ -42,7 +42,7 @@ private slots:
     void resolutionChanged();
 
 private:
-    enum UpdateType: uint16_t { null=0, time=0x1, proc=0x2, all=0xFFFF };
+    enum UpdateType: uint16_t { null=0, time=0x1, proc=0x2, header=0x4, all=0xFFFF };
     void createToolBars();
     void updateDisplay(UpdateType);
     void updateTimeline();

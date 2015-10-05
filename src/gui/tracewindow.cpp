@@ -265,7 +265,7 @@ void TraceWindow::updateDisplay( UpdateType update )
 {
     PROFILE_START("updateDisplay");
     // Regenerate the global timeline if the processors changed
-    if ( (update&UpdateType::time)!=0 )
+    if ( (update&UpdateType::header)!=0 )
         updateTimeline();
     // Update the line positions if time changed
 
@@ -294,6 +294,9 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData( const std
     std::vector<std::shared_ptr<TimerTimeline>> data(timers.size());
     int Np = selected_rank==-1 ? N_procs:1;
     int Nt = selected_thread==-1 ? N_threads:1;
+    const double t0 = t[0];
+    const double t1 = t[1];
+    const double dt = (t[1]-t[0])/(resolution-1);
     for (size_t i=0; i<timers.size(); i++) {
         data[i].reset(new TimerTimeline);
         data[i]->id = timers[i].id;
@@ -315,14 +318,15 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData( const std
             if ( selected_rank!=-1 && rank!=selected_rank )
                 continue;
             for (int k=0; k<N_trace; k++) {
-                if ( stop[k]<=t[0] || start[k]>=t[1] )
+                if ( stop[k]<=t0 || start[k]>=t1 )
                     continue;
-                data[i]->tot += std::min(stop[k],t[1])-std::max(start[k],t[0]);
-                for (int k2=0; k2<resolution; k2++) {
-                    double time = t[0] + k2*(t[1]-t[0])/(resolution-1);
-                    if ( time>=start[k] && time<=stop[k] )
-                        array.set(k2,it,ip);
-                }
+                int64_t m1 = static_cast<int64_t>(ceil((start[k]-t0)/dt));
+                int64_t m2 = static_cast<int64_t>(floor((stop[k]-t0)/dt));
+                if ( start[k] <= t0 ) { m1 = 0; }
+                if ( stop[k]  >= t1 ) { m2 = resolution-1; }
+                for (int k2=m1; k2<=m2; k2++)
+                    array.set(k2,it,ip);
+                data[i]->tot += std::min(stop[k],t1)-std::max(start[k],t0);
             }
         }
     }
