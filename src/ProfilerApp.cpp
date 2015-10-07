@@ -1416,13 +1416,15 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 if ( N_thread[j]==0 )
                     continue;
                 // Save the timer to the file
-                fprintf(timerFile,"%30s  %30s   %4i   %7i    %7i  %8i     %8.3f  %8.3f  %10.3f\n",
+                // Note: we always want one space in front in case the timer starts
+                //    with '<' and is long.
+                fprintf(timerFile," %29s  %30s   %4i   %7i    %7i  %8i     %8.3f  %8.3f  %10.3f\n",
                     results[i].message.c_str(),results[i].file.c_str(),j,results[i].start,
                     results[i].stop,N_thread[j],min_thread[j],max_thread[j],tot_thread[j]);
             }
         }
         // Loop through all of the entries, saving the detailed data and the trace logs
-        fprintf(timerFile,"\n\n");
+        fprintf(timerFile,"\n\n\n");
         fprintf(timerFile,"<N_procs=%i,id=%i",N_procs,rank);
         fprintf(timerFile,",store_trace=%i",d_store_trace_data?1:0);
         fprintf(timerFile,",store_memory=%i",d_store_memory_data?1:0);
@@ -1431,9 +1433,10 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         for (int ii=N_timers-1; ii>=0; ii--) {
             size_t i=id_order[ii];
             // Store the basic timer info
-            fprintf(timerFile,"<timer:id=%s,message=%s,file=%s,path=%s,start=%i,stop=%i>\n",
-                results[i].id.c_str(),results[i].message.c_str(),results[i].file.c_str(),
-                results[i].path.c_str(),results[i].start,results[i].stop);
+            const char e = 0x0E;    // Escape character for printing strings
+            fprintf(timerFile,"<timer:id=%s,message=%c%s%c,file=%c%s%c,path=%c%s%c,start=%i,stop=%i>\n",
+                results[i].id.c_str(),e,results[i].message.c_str(),e,e,results[i].file.c_str(),e,
+                e,results[i].path.c_str(),e,results[i].start,results[i].stop);
             // Store the trace data
             for (size_t j=0; j<results[i].trace.size(); j++) {
                 const TraceResults& trace = results[i].trace[j];
@@ -1551,21 +1554,33 @@ static inline void get_field( const char* line, const char* name, char* data )
         data[i2-i1] = 0;
     }
 }
-static inline void getFieldArray( char *line, std::vector<std::pair<char*,char*> >& data )
+static inline char* getFieldArray( char *line, std::vector<std::pair<char*,char*> >& data )
 {
     // This function parses a line of the form <field=value,field=value>
+    const char e = 0x0E;    // Escape character for printing strings
     ASSERT(*line=='<');
     data.clear();
     line++;
-    while ( *line!=0 ) {
+    while ( *line>=32 ) {
         int j1, j2;
         for (j1=0; line[j1]!='='; j1++) {}
-        for (j2=j1; line[j2]!='>'&&line[j2]!=','; j2++) {}
         line[j1] = 0;
-        line[j2] = 0;
-        data.push_back(std::pair<char*,char*>(line,&line[j1+1]));
+        j1++;
+        if ( line[j1]==e ) {
+            line[j1] = 0;
+            j1++;
+            for (j2=j1; line[j2]!=e; j2++) {}
+            line[j2] = 0;
+            line[j2+1] = 0;
+            j2++;
+        } else {
+            for (j2=j1; line[j2]!='>'&&line[j2]!=','; j2++) {}
+            line[j2] = 0;
+        }
+        data.push_back(std::pair<char*,char*>(line,&line[j1]));
         line += j2+1;
     }
+    return line+1;
 }
 static inline void get_active_ids( const char* active_list, std::vector<id_struct>& ids )
 {
@@ -1683,128 +1698,127 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
     trace_data = false;
     memory_data = false;
     date = std::string();
-    size_t pos = 0;
     std::vector<std::pair<char*,char*> > fields;
     std::vector<id_struct> active;
-    while ( pos<file_length ) {
-        char *line = &buffer[pos];
-        int length = 0;
-        while ( line[length]>=32 )
-            ++length;
-        line[length] = 0;
-        if ( line[0] == '<' ) {
-            getFieldArray(line,fields);
-            if ( strcmp(fields[0].first,"N_procs")==0 ) {
-                // We are loading the header
-                N_procs = atoi(fields[0].second);
-                // Load the remaining fields
-                for (size_t i=1; i<fields.size(); i++) {
-                    if ( strcmp(fields[i].first,"id")==0 || strcmp(fields[i].first,"rank")==0 ) {
-                        // Load the id/rank
-                        rank = atoi(fields[i].second);
-                    } else if ( strcmp(fields[i].first,"store_trace")==0 ) {
-                        // Check if we stored the trace file
-                        trace_data = atoi(fields[i].second)==1;
-                    } else if ( strcmp(fields[i].first,"store_memory")==0 ) {
-                        // Check if we stored the memory file (optional)
-                        memory_data = atoi(fields[i].second)==1;
-                    } else if ( strcmp(fields[i].first,"date")==0 ) {
-                        // Load the date (optional)
-                        date = std::string(fields[i].second);
-                    } else {
-                        ERROR_MSG(std::string("Unknown field (header): ")+fields[i].first);
-                    }
-                }
-            } else if ( strcmp(fields[0].first,"timer:id")==0 ) {
-                // We are loading a timer field
-                id_struct id( fields[0].second );
-                // Find the timer
-                std::map<id_struct,size_t>::iterator it = id_map.find(id);
-                if ( it==id_map.end() ) {
-                    // Create a new timer
-                    size_t k = data.size();
-                    id_map.insert( std::pair<id_struct,size_t>(id,k) );
-                    data.resize(k+1);
-                    TimerResults& timer = data[k];
-                    timer.id = id;
-                    // Load the remaining fields
-                    for (size_t i=1; i<fields.size(); i++) {
-                        if ( strcmp(fields[i].first,"message")==0 ) {
-                            // Load the message
-                            timer.message = std::string(fields[i].second);
-                        } else if ( strcmp(fields[i].first,"file")==0 ) {
-                            // Load the filename
-                            timer.file = std::string(fields[i].second);
-                        } else if ( strcmp(fields[i].first,"path")==0 ) {
-                            // Load the path
-                            timer.path = std::string(fields[i].second);
-                        } else if ( strcmp(fields[i].first,"start")==0 ) {
-                            // Load the start line
-                            timer.start = atoi(fields[i].second);
-                        } else if ( strcmp(fields[i].first,"stop")==0 ) {
-                            // Load the stop line
-                            timer.stop = atoi(fields[i].second);
-                        } else if ( strcmp(fields[i].first,"thread")==0 ||
-                                    strcmp(fields[i].first,"N")==0 ||
-                                    strcmp(fields[i].first,"min")==0 ||
-                                    strcmp(fields[i].first,"max")==0 ||
-                                    strcmp(fields[i].first,"tot")==0 )
-                        {
-                            // Obsolete fields
-                        } else {
-                            ERROR_MSG(std::string("Unknown field (timer): ")+fields[i].first);
-                        }
-                    }
-                }
-            } else if ( strcmp(fields[0].first,"trace:id")==0 ) {
-                // We are loading a trace field
-                id_struct id( fields[0].second );
-                // Find the trace
-                std::map<id_struct,size_t>::iterator it = id_map.find(id);
-                if ( it==id_map.end() )
-                    ERROR_MSG("trace did not find matching timer");
-                size_t index = it->second;
-                data[index].trace.resize(data[index].trace.size()+1);
-                TraceResults& trace = data[index].trace.back();
-                trace.id = id;
-                trace.N_trace = 0;
-                trace.rank = rank;
-                // Load the remaining fields
-                for (size_t i=1; i<fields.size(); i++) {
-                    if ( strcmp(fields[i].first,"thread")==0 ) {
-                        // Load the thread id
-                        trace.thread = atoi(fields[i].second);
-                    } else if ( strcmp(fields[i].first,"rank")==0 ) {
-                        // Load the rank id
-                        trace.rank = atoi(fields[i].second);
-                    } else if ( strcmp(fields[i].first,"N")==0 ) {
-                        // Load N
-                        trace.N = atoi(fields[i].second);
-                    } else if ( strcmp(fields[i].first,"min")==0 ) {
-                        // Load min
-                        trace.min = atof(fields[i].second);
-                    } else if ( strcmp(fields[i].first,"max")==0 ) {
-                        // Load max
-                        trace.max = atof(fields[i].second);
-                    } else if ( strcmp(fields[i].first,"tot")==0 ) {
-                        // Load tot
-                        trace.tot = atof(fields[i].second);
-                    } else if ( strcmp(fields[i].first,"active")==0 ) {
-                        // Load the active timers
-                        get_active_ids(fields[i].second,active);
-                        trace.N_active = active.size();
-                        trace.allocate();
-                        for (size_t j=0; j<active.size(); j++)
-                            trace.active()[j] = active[j];
-                    } else {
-                        ERROR_MSG(std::string("Unknown field (trace): ")+fields[i].first);
-                    }
-                }
-            } else {
-                ERROR_MSG("Unknown data field");
-            }
+    char *line = buffer;
+    while ( line<buffer+file_length ) {
+        // Check if we are reading a dummy (human-readable) line
+        if ( line[0] != '<' ) {
+            while ( *line>=32 ) { line++; }
+            line++;
+            continue;
         }
-        pos += length+1;
+        // Read the next line adn split the fields
+        line = getFieldArray(line,fields);
+        if ( strcmp(fields[0].first,"N_procs")==0 ) {
+            // We are loading the header
+            N_procs = atoi(fields[0].second);
+            // Load the remaining fields
+            for (size_t i=1; i<fields.size(); i++) {
+                if ( strcmp(fields[i].first,"id")==0 || strcmp(fields[i].first,"rank")==0 ) {
+                    // Load the id/rank
+                    rank = atoi(fields[i].second);
+                } else if ( strcmp(fields[i].first,"store_trace")==0 ) {
+                    // Check if we stored the trace file
+                    trace_data = atoi(fields[i].second)==1;
+                } else if ( strcmp(fields[i].first,"store_memory")==0 ) {
+                    // Check if we stored the memory file (optional)
+                    memory_data = atoi(fields[i].second)==1;
+                } else if ( strcmp(fields[i].first,"date")==0 ) {
+                    // Load the date (optional)
+                    date = std::string(fields[i].second);
+                } else {
+                    ERROR_MSG(std::string("Unknown field (header): ")+fields[i].first);
+                }
+            }
+        } else if ( strcmp(fields[0].first,"timer:id")==0 ) {
+            // We are loading a timer field
+            id_struct id( fields[0].second );
+            // Find the timer
+            std::map<id_struct,size_t>::iterator it = id_map.find(id);
+            if ( it==id_map.end() ) {
+                // Create a new timer
+                size_t k = data.size();
+                id_map.insert( std::pair<id_struct,size_t>(id,k) );
+                data.resize(k+1);
+                TimerResults& timer = data[k];
+                timer.id = id;
+                // Load the remaining fields
+                for (size_t i=1; i<fields.size(); i++) {
+                    if ( strcmp(fields[i].first,"message")==0 ) {
+                        // Load the message
+                        timer.message = std::string(fields[i].second);
+                    } else if ( strcmp(fields[i].first,"file")==0 ) {
+                        // Load the filename
+                        timer.file = std::string(fields[i].second);
+                    } else if ( strcmp(fields[i].first,"path")==0 ) {
+                        // Load the path
+                        timer.path = std::string(fields[i].second);
+                    } else if ( strcmp(fields[i].first,"start")==0 ) {
+                        // Load the start line
+                        timer.start = atoi(fields[i].second);
+                    } else if ( strcmp(fields[i].first,"stop")==0 ) {
+                        // Load the stop line
+                        timer.stop = atoi(fields[i].second);
+                    } else if ( strcmp(fields[i].first,"thread")==0 ||
+                                strcmp(fields[i].first,"N")==0 ||
+                                strcmp(fields[i].first,"min")==0 ||
+                                strcmp(fields[i].first,"max")==0 ||
+                                strcmp(fields[i].first,"tot")==0 )
+                    {
+                        // Obsolete fields
+                    } else {
+                        ERROR_MSG(std::string("Unknown field (timer): ")+fields[i].first);
+                    }
+                }
+            }
+        } else if ( strcmp(fields[0].first,"trace:id")==0 ) {
+            // We are loading a trace field
+            id_struct id( fields[0].second );
+            // Find the trace
+            std::map<id_struct,size_t>::iterator it = id_map.find(id);
+            if ( it==id_map.end() )
+                ERROR_MSG("trace did not find matching timer");
+            size_t index = it->second;
+            data[index].trace.resize(data[index].trace.size()+1);
+            TraceResults& trace = data[index].trace.back();
+            trace.id = id;
+            trace.N_trace = 0;
+            trace.rank = rank;
+            // Load the remaining fields
+            for (size_t i=1; i<fields.size(); i++) {
+                if ( strcmp(fields[i].first,"thread")==0 ) {
+                    // Load the thread id
+                    trace.thread = atoi(fields[i].second);
+                } else if ( strcmp(fields[i].first,"rank")==0 ) {
+                    // Load the rank id
+                    trace.rank = atoi(fields[i].second);
+                } else if ( strcmp(fields[i].first,"N")==0 ) {
+                    // Load N
+                    trace.N = atoi(fields[i].second);
+                } else if ( strcmp(fields[i].first,"min")==0 ) {
+                    // Load min
+                    trace.min = atof(fields[i].second);
+                } else if ( strcmp(fields[i].first,"max")==0 ) {
+                    // Load max
+                    trace.max = atof(fields[i].second);
+                } else if ( strcmp(fields[i].first,"tot")==0 ) {
+                    // Load tot
+                    trace.tot = atof(fields[i].second);
+                } else if ( strcmp(fields[i].first,"active")==0 ) {
+                    // Load the active timers
+                    get_active_ids(fields[i].second,active);
+                    trace.N_active = active.size();
+                    trace.allocate();
+                    for (size_t j=0; j<active.size(); j++)
+                        trace.active()[j] = active[j];
+                } else {
+                    ERROR_MSG(std::string("Unknown field (trace): ")+fields[i].first);
+                }
+            }
+        } else {
+            ERROR_MSG("Unknown data field");
+        }
     }
     delete [] buffer;
 }

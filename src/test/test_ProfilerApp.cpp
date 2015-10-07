@@ -144,6 +144,11 @@ int run_tests( bool enable_trace, std::string save_name )
     } catch (... ) {
     }
 
+    // Test a timer with many special characters
+    const char special_char[] = "<>[]{}();:'\",./?\\-_+=`~!@#$%^&*";
+    PROFILE_START(special_char);
+    PROFILE_STOP(special_char);
+
     // Check the performance
     for (int i=0; i<N_it; i++) {
         // Test how long it takes to get the time
