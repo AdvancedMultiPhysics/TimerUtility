@@ -115,7 +115,7 @@ protected:
     int selected_rank;
     bool inclusiveTime;
     bool includeSubfunctions;
-    std::shared_ptr<TraceWindow> traceWindow;
+    mutable std::shared_ptr<TraceWindow> traceWindow;
 
 friend class TraceWindow;
 

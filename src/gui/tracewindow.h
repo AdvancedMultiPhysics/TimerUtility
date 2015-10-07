@@ -14,6 +14,7 @@
 #include <array>
 
 #include "timerwindow.h"
+#include "QSplitterGrid.h"
 
 
 class CurrentTimeLineClass;
@@ -35,6 +36,7 @@ protected:
 
 private slots:
     void reset();
+    void resetZoom();
     void resizeEvent( QResizeEvent *e );
     void resizeDone();
     void selectProcessor( int );
@@ -48,17 +50,17 @@ private:
     void updateTimeline();
     void updateTimers();
     void updateMemory();
+    void resizeMemory();
 
     QLabel *timeline;
-    QGridLayout *timerGrid;
-    QScrollArea *timerArea;
+    QSplitterGrid *timerGrid;
     QWidget *memory;
     QTimer resizeTimer;
     QToolButton *processorButton;
     QToolButton *threadButton;
     QLineEdit *resolutionBox;
-    std::vector<std::shared_ptr<QLabel>> timerLabels;
-    std::vector<std::shared_ptr<QLabelMouse>> timerPlots;
+    std::vector<QLabel*> timerLabels;
+    std::vector<QLabelMouse*> timerPlots;
     std::vector<std::shared_ptr<QPixmap>> timerPixelMap;
 
     std::shared_ptr<CurrentTimeLineClass> timelineBoundaries[2];

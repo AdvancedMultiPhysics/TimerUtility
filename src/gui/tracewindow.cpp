@@ -10,6 +10,8 @@
 #include <QAction>
 #include <QMenuBar>
 #include <QMenu>
+#include <QTextEdit>
+#include <QSplitter>
 
 #include <memory>
 #include <vector>
@@ -180,31 +182,24 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     timeline->setMinimumSize(10,10);
 
     // Create the timer timelines
-    timerGrid = new QGridLayout();
+    timerGrid = new QSplitterGrid();
+    timerGrid->tableSize(0,2);
     timerGrid->setSpacing(0);
-	timerGrid->setVerticalSpacing(0);
-    QWidget *timerGridWidget = new QWidget;
-    timerGridWidget->setLayout(timerGrid);
-    timerLabels.resize(parent->d_data.timers.size());
-    timerPlots.resize(parent->d_data.timers.size());
-    for (size_t i=0; i<timerLabels.size(); i++) {
-        timerLabels[i].reset(new QLabel());
-        timerLabels[i]->setFixedWidth(120);
-        timerPlots[i].reset(new QLabelMouse(this));
-        timerPlots[i]->setScaledContents(true);
-        timerPlots[i]->setMinimumSize(1000,30);
-        timerGrid->addWidget(timerLabels[i].get(),i,0);
-        timerGrid->addWidget(timerPlots[i].get(),i,1);
-    }
-    timerArea = new QScrollArea(this);
-    timerArea->setWidgetResizable(true);
-    timerArea->setWidget(timerGridWidget);
+	timerGrid->setVerticalSpacing(2);
+	timerGrid->setHorizontalSpacing(5);
+	timerGrid->setUniformRowHeight(true);
+	timerGrid->setUniformColumnWidth(false);
+    timerLabels.resize(0);
+    timerPlots.resize(0);
 
     // Create the memory plot
-    if ( !parent->d_data.memory.empty() )
+    if ( !parent->d_data.memory.empty() ) {
         memory = new MemoryPlot( this, parent->d_data.memory );
-    else
+        std::function<void(void)> f = std::bind(&TraceWindow::resizeMemory,this);
+	    timerGrid->registerResizeCallback(f);
+    } else {
         memory = new QWidget( );
+    }
 
     // Create the layout
     QVBoxLayout *layout = new QVBoxLayout;
@@ -212,7 +207,7 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     layout->setContentsMargins(QMargins(0,0,0,0));
     layout->setSpacing(0);
     layout->addWidget(timeline);
-    layout->addWidget(timerArea);
+    layout->addWidget(timerGrid);
     layout->addWidget(memory);
     setCentralWidget(new QWidget);
     centralWidget()->setLayout(layout);
@@ -227,8 +222,8 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     // Plot the data
     timelineBoundaries[0].reset(new CurrentTimeLineClass(timeline,this,t_global,0,t_global[0]));
     timelineBoundaries[1].reset(new CurrentTimeLineClass(timeline,this,t_global,1,t_global[1]));
-    zoomBoundaries[0].reset( new DrawVerticalLineClass(timerArea,0.1,0) );
-    zoomBoundaries[1].reset( new DrawVerticalLineClass(timerArea,0.9,0) );
+    zoomBoundaries[0].reset( new DrawVerticalLineClass(timerGrid,0.1,0) );
+    zoomBoundaries[1].reset( new DrawVerticalLineClass(timerGrid,0.9,0) );
     zoomBoundaries[0]->setVisible(false);
     zoomBoundaries[1]->setVisible(false);
     reset();
@@ -241,6 +236,7 @@ TraceWindow::~TraceWindow()
 void TraceWindow::closeEvent(QCloseEvent *event)
 {
     event->accept();
+    parent->traceWindow.reset();    // Force the deletion of this
 }
 
 
@@ -252,9 +248,20 @@ void TraceWindow::reset()
     PROFILE_START("reset");
     // Reset t_min and t_max
     t_current = t_global;
+    // Reset the column widths
+    timerGrid->setColumnWidth({60,400});
     // Update the data
     updateDisplay( UpdateType::all );
     PROFILE_STOP("reset");
+}
+void TraceWindow::resetZoom()
+{
+    PROFILE_START("resetZoom");
+    // Reset t_min and t_max
+    t_current = t_global;
+    // Update the data
+    updateDisplay( UpdateType::all );
+    PROFILE_STOP("resetZoom");
 }
 
 
@@ -275,8 +282,8 @@ void TraceWindow::updateDisplay( UpdateType update )
     // Regerate the memory plot if time or processors changed
     if ( (update&UpdateType::time)!=0 || (update&UpdateType::proc)!=0 )
         updateMemory();
-    // Run resize to update images
-    resizeDone();
+    // Start the resize timer to update plots
+    resizeTimer.start( 10 );
     PROFILE_STOP("updateDisplay");
 }
 
@@ -323,7 +330,7 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData( const std
                 int64_t m1 = static_cast<int64_t>(ceil((start[k]-t0)/dt));
                 int64_t m2 = static_cast<int64_t>(floor((stop[k]-t0)/dt));
                 if ( start[k] <= t0 ) { m1 = 0; }
-                if ( stop[k]  >= t1 ) { m2 = resolution-1; }
+                if ( stop[k]  >= t[1] ) { m2 = resolution-1; }
                 for (int k2=m1; k2<=m2; k2++)
                     array.set(k2,it,ip);
                 data[i]->tot += std::min(stop[k],t1)-std::max(start[k],t0);
@@ -418,20 +425,28 @@ void TraceWindow::updateTimers()
     // Get the data
     std::vector<std::shared_ptr<TimerTimeline>> data = TraceWindow::getTraceData(t_current);
     // Clear the existing data from the table
-    for (size_t i=0; i<timerLabels.size(); i++) {
-        timerLabels[i]->clear();
-        timerPlots[i]->clear();
-        timerGrid->removeWidget(timerLabels[i].get());
-        timerGrid->removeWidget(timerPlots[i].get());
-    }
+    int rowHeight = 30;
+    if ( !timerGrid->getRowHeight().empty() )
+        rowHeight = timerGrid->getRowHeight()[0];
+    std::vector<int> columnWidth = timerGrid->getColumnWidth();
+    timerGrid->reset();
+    timerLabels.clear();
+    timerPlots.clear();
     timerPixelMap.clear();
     // Add the labels and plots
     const uint64_t rgb0 = jet(-1);
     timerPixelMap.resize(data.size());
     int Np = selected_rank==-1 ? N_procs:1;
     int Nt = selected_thread==-1 ? N_threads:1;
+    timerGrid->tableSize(data.size(),2);
+    timerLabels.resize(data.size());
+    timerPlots.resize(data.size());
+    timerPixelMap.resize(data.size());
     for (size_t i=0; i<data.size(); i++) {
+        timerLabels[i] = new QLabel();
+        timerLabels[i]->setMinimumWidth(30);
         timerLabels[i]->setText(data[i]->message.c_str());
+        timerGrid->addWidget(timerLabels[i],i,0);
         QImage image(resolution,Np*Nt,QImage::Format_RGB32);
         uint64_t rgb = idRgbMap[data[i]->id];
         const BoolArray& active = data[i]->active;
@@ -442,10 +457,14 @@ void TraceWindow::updateTimers()
             }
         }
         timerPixelMap[i].reset( new QPixmap(QPixmap::fromImage(image)) );
+        timerPlots[i] = new QLabelMouse(this);
+        timerPlots[i]->setScaledContents(true);
+        timerPlots[i]->setMinimumSize(200,20);
         timerPlots[i]->setPixmap(*timerPixelMap[i]);
-        timerGrid->addWidget(timerLabels[i].get(),i,0);
-        timerGrid->addWidget(timerPlots[i].get(),i,1);
+        timerGrid->addWidget(timerPlots[i],i,1);
     }
+    timerGrid->setRowHeight(rowHeight);
+    timerGrid->setColumnWidth(columnWidth);
     PROFILE_STOP("updateTimers");
 }
 
@@ -492,14 +511,22 @@ void TraceWindow::resizeDone()
         zoomBoundaries[0]->redraw();
         zoomBoundaries[1]->redraw();
     }
-    // Resize the memory axis to align with the timers
-    MemoryPlot* memplot = dynamic_cast<MemoryPlot*>(memory);
-    if ( memplot != NULL ) {
-        int left = timerPlots[0]->x();
-        int right = left + timerPlots[0]->width();
-        memplot->align(left,right);
-    }
+    // Resize the grid (will call resize on the memory plot automatically)
+    std::vector<int> cw = timerGrid->getColumnWidth();
+    int w2 = timerGrid->geometry().width()-2*timerGrid->getHorizontalSpacing()-20;
+    timerGrid->setColumnWidth({(cw[0]*w2)/(cw[0]+cw[1]),(cw[1]*w2)/(cw[0]+cw[1])});
     PROFILE_STOP("resizeDone");
+}
+void TraceWindow::resizeMemory()
+{
+    PROFILE_START("resizeMemory");
+    MemoryPlot* memplot = dynamic_cast<MemoryPlot*>(memory);
+    QRect pos = timerGrid->getPosition(0,1);
+    int left = pos.x();
+    int right = left + pos.width();
+    memplot->align(left,right);
+    memplot->setFixedHeight(centralWidget()->height()/4);
+    PROFILE_STOP("resizeMemory");
 }
 
 
@@ -583,10 +610,15 @@ void TraceWindow::createToolBars()
 
     toolBar->addSeparator();
     QAction *resetAct = new QAction(QIcon(":/images/refresh.png"), tr("&Reset"), this);
-    resetAct->setShortcuts(QKeySequence::Refresh);
+    //resetAct->setShortcuts(QKeySequence::Refresh);
     resetAct->setStatusTip(tr("Reset the view"));
     connect(resetAct, SIGNAL(triggered()), this, SLOT(reset()));
     toolBar->addAction(resetAct);
+    QAction *zoomResetAct = new QAction(QIcon(":/images/zoom_refresh.png"), tr("&Reset zoom"), this);
+    zoomResetAct->setShortcuts(QKeySequence::Refresh);
+    zoomResetAct->setStatusTip(tr("Reset the zoom"));
+    connect(zoomResetAct, SIGNAL(triggered()), this, SLOT(resetZoom()));
+    toolBar->addAction(zoomResetAct);
 
     // Processor popup
     toolBar->addSeparator();
@@ -662,8 +694,8 @@ void TraceWindow::traceMousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         traceZoomActive = true;
         traceZoomLastPos = event->globalPos().x();
-        int x = timerArea->mapFromGlobal(event->globalPos()).x();
-        double pos = ((double)x-timerArea->rect().left())/timerArea->rect().width();
+        int x = timerGrid->mapFromGlobal(event->globalPos()).x();
+        double pos = ((double)x-timerGrid->rect().left())/timerGrid->rect().width();
         zoomBoundaries[0]->move(pos);
         zoomBoundaries[1]->move(pos);
         zoomBoundaries[0]->setVisible(true);
@@ -680,8 +712,8 @@ void TraceWindow::traceMouseMoveEvent(QMouseEvent *event)
     if ( !traceZoomActive && abs(x0-traceZoomLastPos)<4 )
         return;
     traceZoomLastPos = x0;
-    int x = timerArea->mapFromGlobal(event->globalPos()).x();
-    double pos = ((double)x-timerArea->rect().left())/timerArea->rect().width();
+    int x = timerGrid->mapFromGlobal(event->globalPos()).x();
+    double pos = ((double)x-timerGrid->rect().left())/timerGrid->rect().width();
     zoomBoundaries[1]->move(pos);
 }
 void TraceWindow::traceMouseReleaseEvent(QMouseEvent *event)

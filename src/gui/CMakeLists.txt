@@ -41,8 +41,8 @@ ELSE()
     INSTALL( TARGETS QWT DESTINATION "${TIMER_INSTALL_DIR}/lib" )
     
     # Create the application
-    SET(QtApp_SRCS load_timer.cpp timerwindow.cpp tracewindow.cpp LoadBalance.cpp MemoryPlot.cpp )
-    SET(QtApp_MOCS timerwindow.h tracewindow.h LoadBalance.h MemoryPlot.h )
+    SET(QtApp_SRCS load_timer.cpp timerwindow.cpp tracewindow.cpp LoadBalance.cpp MemoryPlot.cpp QSplitterGrid.cpp )
+    SET(QtApp_MOCS timerwindow.h tracewindow.h LoadBalance.h MemoryPlot.h QSplitterGrid.h )
     SET(QtApp_RCCS application.qrc)
     # generate rules for building source files from the resources
     QT_ADD_RESOURCES(QtApp_RCC_SRCS ${QtApp_RCCS})
