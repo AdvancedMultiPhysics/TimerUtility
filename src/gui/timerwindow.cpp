@@ -265,6 +265,8 @@ void TimerWindow::exit()
 ***********************************************************************/
 void TimerWindow::reset()
 {
+    if ( loadBalance != NULL )
+        loadBalance->plot(std::vector<float>());
     callList.clear();
     inclusiveTime = true;
     includeSubfunctions = true;

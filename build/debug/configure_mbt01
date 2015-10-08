@@ -7,7 +7,7 @@ cmake                                                   \
         -D CFLAGS="-fPIC"                               \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
         -D CXXFLAGS="-fPIC"                             \
-        -D CXX_STD=98                                   \
+        -D CXX_STD=11                                   \
     -D USE_MPI=1                                        \
         -D MPI_COMPILER=1                               \
         -D MPIEXEC=/packages/mpich-3.1/opt/bin/mpiexec  \
@@ -18,7 +18,7 @@ cmake                                                   \
     -D USE_MATLAB=0                                     \
         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
     -D ENABLE_GCOV=0                                    \
-    -D ENABLE_GUI=0                                     \
+    -D ENABLE_GUI=1                                     \
         -D QT_VERSION=4                                 \
         -D QWT_URL=/packages/archives/qwt-6.1.2.tar.bz2 \
     -D DISABLE_NEW_OVERLOAD=0                           \

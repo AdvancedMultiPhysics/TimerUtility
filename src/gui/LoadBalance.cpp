@@ -2,7 +2,6 @@
 #include "ProfilerApp.h"
 #include <qwt_plot.h>
 #include <qwt_plot_renderer.h>
-#include <qwt_plot_canvas.h>
 #include <qwt_plot_barchart.h>
 #include <qwt_column_symbol.h>
 #include <qwt_plot_layout.h>
@@ -10,6 +9,42 @@
 #include <qwt_scale_draw.h>
 #include <qwt_scale_engine.h>
 #include <qwt_scale_widget.h>
+
+
+// Class to draw a box
+class DrawBoxClass : public QWidget
+{
+public:
+    DrawBoxClass( QWidget* parent, QRect pos_, int boarder=0 ):
+        QWidget(parent), d_boarder(boarder), pos(pos_)
+    {
+        move( pos );
+    }
+    // Move to the given position
+    void move( QRect pos_ ) {
+        pos = pos_;
+        const QRect& geom = parentWidget()->geometry();
+        setGeometry(QRect(0,0,geom.width(),geom.height()));
+        this->update();
+    }
+    // Update
+    void redraw( ) {
+        move(pos);
+    }
+    // Draw the rectangle
+    void paintEvent(QPaintEvent *) {
+        QPainter p(this);
+        QPen pen(QColor(60,0,0));
+        pen.setWidth(3);
+        p.setPen(pen);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.drawRect(pos);
+    }
+protected:
+    int d_boarder;
+    QRect pos;
+};
+
 
 
 template<class TYPE>
@@ -31,7 +66,7 @@ inline QwtText qwtText( const QString& string, const QFont& font )
 
 
 LoadBalance::LoadBalance( QWidget *parent ):
-    QwtPlot(parent), barChart(NULL)
+    QwtPlot(parent), canvas(NULL), barChart(NULL), active(false)
 {
     setTitle(qwtText("Load Balance",QFont("Times",12,QFont::Bold)));
     setAutoFillBackground( true );
@@ -45,7 +80,7 @@ LoadBalance::LoadBalance( QWidget *parent ):
         plotLayout()->setCanvasMargin(axis,0);
     }
 
-    QwtPlotCanvas *canvas = new QwtPlotCanvas();
+    canvas = new QwtPlotCanvas();
     canvas->setLineWidth(0);
     canvas->setFrameStyle( QFrame::Box | QFrame::Sunken );
     canvas->setBorderRadius(0);
@@ -54,6 +89,8 @@ LoadBalance::LoadBalance( QWidget *parent ):
     canvas->setPalette( canvasPalette );
     canvas->setContentsMargins(0,0,0,0);
     setCanvas( canvas );
+    zoom_box.reset( new DrawBoxClass(canvas,QRect(0,0,0,0),2) );
+    zoom_box->hide();
 
     // Create the barChart
     barChart = new QwtPlotBarChart("");
@@ -99,9 +136,13 @@ void LoadBalance::plot( const std::vector<float>& time_ )
         PROFILE_STOP2("plot");
         return;
     }
+    std::swap(time,new_time);
+    if ( time.empty() ) {
+        PROFILE_STOP2("plot");
+        return;
+    }
 
     // Copy the data and compute the mean
-    std::swap(time,new_time);
     rank.resize(N_procs);
     for (int i=0; i<N_procs; i++)
         rank[i] = i;
@@ -143,32 +184,45 @@ void LoadBalance::plot( const std::vector<float>& time_ )
     curvePlot[1]->setVisible(1);
     insertLegend( new QwtLegend() );
 
-    // Create the rank ticks
-    QwtScaleDiv xtick(range[0],range[1]);
-    if ( rank.size() < 16 ) {
-        xtick = QwtScaleDiv(range[0],range[1],QList<double>(),QList<double>(),rank.toList());
-    } else {
-        QList<double> ticks;
-        for (int i=0; i<N_procs-1; i+=N_procs/16)
-            ticks.push_back(i);
-        ticks.push_back(N_procs-1);
-        xtick = QwtScaleDiv(range[0],range[1],QList<double>(),QList<double>(),ticks);
-    }
+    // Set the label
+    int xaxis = QwtPlot::xBottom;
+    int yaxis = QwtPlot::yLeft;
+    setAxisTitle(xaxis,qwtText("Rank",QFont("Times",10,QFont::Bold)));
+    setAxisTitle(yaxis,qwtText("Time (s)",QFont("Times",10,QFont::Bold)));
 
-    // Set the axis
+    // Set the axis range
     double max_time = 0;
     for (int i=0; i<time.size(); i++)
         max_time = std::max(max_time,time[i]);
+    global_range = {range[0],range[1],0,1.1*max_time};
+    zoom( global_range );
+    PROFILE_STOP("plot");
+}
+void LoadBalance::zoom( const std::array<double,4>& range )
+{
+    plot_range = range;
+    // Create the rank ticks
+    int proc0 = static_cast<int>(ceil(range[0]));
+    int proc1 = static_cast<int>(floor(range[1]));
+    QwtScaleDiv xtick(range[0],range[1]);
+    if ( proc1-proc0 < 16 ) {
+        xtick = QwtScaleDiv(range[0],range[1],QList<double>(),QList<double>(),rank.toList());
+    } else {
+        QList<double> ticks;
+        for (int i=proc0; i<proc1; i+=(proc1-proc0)/16)
+            ticks.push_back(i);
+        ticks.push_back(proc1);
+        xtick = QwtScaleDiv(range[0],range[1],QList<double>(),QList<double>(),ticks);
+    }
+    // Set the axis
     int xaxis = QwtPlot::xBottom;
     int yaxis = QwtPlot::yLeft;
+    setAxisScale(xaxis,range[0],range[1]);
     setAxisScaleDiv(xaxis,xtick);
-    setAxisScale(yaxis,0,1.1*max_time);
-    setAxisTitle(xaxis,qwtText("Rank",QFont("Times",10,QFont::Bold)));
-    setAxisTitle(yaxis,qwtText("Time (s)",QFont("Times",10,QFont::Bold)));
+    setAxisScale(yaxis,range[2],range[3]);
     setAxisScale(QwtPlot::xTop,0,0);
-
+    updateAxes();
     replot();
-    PROFILE_STOP("plot");
 }
 
 
@@ -177,3 +231,56 @@ void LoadBalance::exportChart()
     QwtPlotRenderer renderer;
     renderer.exportTo( this, "distrowatch.pdf" );
 }
+
+
+/***********************************************************************
+* Mouse events                                                         *
+***********************************************************************/
+void LoadBalance::mousePressEvent(QMouseEvent *event)
+{
+    if ( event->button() == Qt::LeftButton ) {
+        active = true;
+        start = canvas->mapFromGlobal(event->globalPos());
+        last = start;
+        zoom_box->show();
+        zoom_box->move( QRect(start.x(),start.y(),0,0) );
+    } else if ( event->button() == Qt::RightButton ) {
+    }
+}
+void LoadBalance::mouseMoveEvent(QMouseEvent *event)
+{
+    QPoint pos = canvas->mapFromGlobal(event->globalPos());
+    int dist = std::max(abs(last.x()-pos.x()),abs(last.y()-pos.y()));
+    if ( !active || dist<4 )
+        return;
+    last = pos;
+    QRect box(std::min(start.x(),last.x()),std::min(start.y(),last.y()),
+        abs(start.x()-last.x()),abs(start.y()-last.y()));
+    zoom_box->move( box );
+}
+void LoadBalance::mouseReleaseEvent(QMouseEvent *event)
+{
+    if ( event->button() == Qt::LeftButton ) {
+        active = false;
+        zoom_box->hide();
+        QPoint pos = canvas->mapFromGlobal(event->globalPos());
+        if ( abs(start.x()-pos.x())<10 || abs(start.y()-pos.y())<10 )
+            return;
+        QwtScaleMap xmap = canvasMap(QwtPlot::xBottom);
+        QwtScaleMap ymap = canvasMap(QwtPlot::yLeft);
+        double x1 = xmap.invTransform(std::min(start.x(),pos.x()));
+        double x2 = xmap.invTransform(std::max(start.x(),pos.x()));
+        double y1 = ymap.invTransform(std::max(start.y(),pos.y()));
+        double y2 = ymap.invTransform(std::min(start.y(),pos.y()));
+        std::array<double,4> range;
+        range[0] = std::max(x1,global_range[0]);
+        range[1] = std::min(x2,global_range[1]);
+        range[2] = std::max(y1,global_range[2]);
+        range[3] = std::min(y2,global_range[3]);
+        zoom( range );
+    }
+}
+
+
+
+
