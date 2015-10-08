@@ -7,7 +7,7 @@ cmake                                                   \
         -D CFLAGS="-fPIC"                               \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
         -D CXXFLAGS="-fPIC"                             \
-        -D CXX_STD=11                                   \
+        -D CXX_STD=98                                   \
     -D USE_MPI=1                                        \
         -D MPI_COMPILER=1                               \
         -D MPIEXEC=/packages/mpich-3.1/opt/bin/mpiexec  \

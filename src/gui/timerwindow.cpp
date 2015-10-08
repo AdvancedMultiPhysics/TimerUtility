@@ -308,6 +308,7 @@ void TimerWindow::open()
         "Select the timer file", lastPath.c_str(), "*.0.timer *.1.timer" );
     loadFile(filename.toStdString());
 }
+bool compareTrace( const TraceResults& i, const TraceResults& j ) { return (i.id<j.id); }
 void TimerWindow::loadFile( std::string filename, bool showFailure )
 {
     PROFILE_START("loadFile");
@@ -353,6 +354,17 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                     tr("Error loading file"), tr("Caught unknown exception") );
             }
             return;
+        }
+        // Remove traces that don't have any calls
+        for (size_t i=0; i<d_data.timers.size(); i++) {
+            std::vector<TraceResults>& trace = d_data.timers[i].trace;
+            for (int64_t j=trace.size()-1; j>=0; j--) {
+                if ( trace[j].N==0 ) {
+                    std::swap(trace[j],trace[trace.size()-1]);
+                    trace.resize(trace.size()-1);
+                }
+            }
+            std::sort(trace.begin(),trace.end(),compareTrace);
         }
         // Get the number of processors/threads
         N_procs = d_data.N_procs;
@@ -423,6 +435,19 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.threads = std::vector<int>(ids.begin(),ids.end());
         }
         traceToolbar->setVisible(hasTraceData());
+        // Set min for any ranks with zero calls to zero
+        for (size_t i=0; i<d_dataTimer.size(); i++) {
+            for (int k=0; k<N_procs; k++) {
+                if ( d_dataTimer[i].N[k] == 0 )
+                    d_dataTimer[i].min[k] = 0;
+            }
+            for (size_t i=0; i<d_dataTrace.size(); i++) {
+                for (int k=0; k<N_procs; k++) {
+                    if ( d_dataTrace[i]->N[k] == 0 )
+                        d_dataTrace[i]->min[k] = 0;
+                }
+            }
+        }
         // Update the display
         printf("%s loaded successfully\n",filename.c_str());
         if ( N_procs > 1 ) {
