@@ -19,7 +19,7 @@ ELSE()
     IF ( USING_GCC )
         SET( QT_FLAGS "" )
     ELSEIF ( USING_CLANG )
-        SET( QT_FLAGS "-Wno-deprecated-register" )
+        SET( QT_FLAGS "-Wno-deprecated-register -Wno-unused-function -Wno-tautological-constant-out-of-range-compare" )
     ENDIF()
 
     # Set Qt include paths

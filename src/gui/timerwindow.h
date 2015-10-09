@@ -20,7 +20,6 @@
 class QAction;
 class QMenu;
 class QTableView;
-class TimerSummary;
 class TraceWindow;
 
 

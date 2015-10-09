@@ -2,6 +2,7 @@
 #define LoadBalance_H
 
 #include <memory>
+#include <array>
 
 #include <qwt_plot.h>
 #include <qstringlist.h>
