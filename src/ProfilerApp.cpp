@@ -1685,7 +1685,9 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
     size_t result = fread(buffer,1,file_length,fid);
     if (result!=file_length) {
         delete [] buffer;
+        fclose(fid);
         ERROR_MSG("error reading file");
+        return;
     }
     fclose(fid);
     // Create a map of the ids and indicies of the timers (used for searching)

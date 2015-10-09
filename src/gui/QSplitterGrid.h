@@ -122,7 +122,8 @@ class QSplitterGridLineClass : public QWidget
     Q_OBJECT
 public:
     QSplitterGridLineClass( Qt::CursorShape cur, int index_, QWidget* parent, QSplitterGrid* grid_ ): 
-        QWidget(parent), grid(grid_), type(cur), index(index_) { show(); }
+        QWidget(parent), grid(grid_), type(cur), index(index_), active(false),
+        start(0), last(0), w(0), h(0) { show(); }
     virtual ~QSplitterGridLineClass() {}
 protected:
     inline int getPos( QMouseEvent *event ) const {
