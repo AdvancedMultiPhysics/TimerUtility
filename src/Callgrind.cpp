@@ -50,7 +50,7 @@ std::tuple<std::string,std::string> splitFilename( const std::string& filename )
         file = filename;
     }
     return std::make_tuple(path,file);
-};
+}
 
 
 // Structure to hold data about a function

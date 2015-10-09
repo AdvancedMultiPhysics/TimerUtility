@@ -350,8 +350,8 @@ MACRO( SET_WARNINGS )
     # Add gcc specific compiler options
     # Note: adding -Wlogical-op causes a wierd linking error on Titan using the nvcc wrapper:
     #    /usr/bin/ld: cannot find gical-op: No such file or directory
-    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra -Wcast-align") 
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wcast-align")
+    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat -Wcast-align -Woverlength-strings -Wdisabled-optimization") 
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wformat -Wcast-align -Woverlength-strings -Wdisabled-optimization -Wno-virtual-move-assign")
   ELSEIF ( USING_MSVC )
     # Add Microsoft specifc compiler options
     SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0" )
@@ -479,8 +479,10 @@ MACRO( SET_COMPILER_FLAGS )
     ENDIF()
     # Set debug definitions
     IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-        SET( CMAKE_C_FLAGS_DEBUG   " ${CMAKE_C_FLAGS_DEBUG}   -DDEBUG -D_DEBUG" )
-        SET( CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -D_DEBUG" )        
+        IF ( NOT (CMAKE_CXX_FLAGS_DEBUG MATCHES "(DDEBUG)+") )
+            SET( CMAKE_C_FLAGS_DEBUG   " ${CMAKE_C_FLAGS_DEBUG}   -DDEBUG -D_DEBUG" )
+            SET( CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -D_DEBUG" )
+        ENDIF()
     ENDIF()
     # Save the debug/release specific flags to the cache
     SET( CMAKE_C_FLAGS_DEBUG     "${CMAKE_C_FLAGS_DEBUG}"     CACHE STRING "Debug flags"   FORCE)
