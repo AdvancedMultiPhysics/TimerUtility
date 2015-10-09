@@ -59,6 +59,8 @@ private:
     QToolButton *processorButton;
     QToolButton *threadButton;
     QLineEdit *resolutionBox;
+    QMenu *processorButtonMenu;
+    QMenu *threadButtonMenu;
     std::vector<QLabel*> timerLabels;
     std::vector<QLabelMouse*> timerPlots;
     std::vector<std::shared_ptr<QPixmap>> timerPixelMap;

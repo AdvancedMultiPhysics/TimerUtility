@@ -11,6 +11,28 @@
    ...
 }
 {
+   QT_Application_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN19QApplicationPrivate9constructEP9_XDisplaymm
+   fun:_ZN12QApplicationC1ERiPPci
+}
+{
+   QT_Application_leak2
+   Memcheck:Leak
+   ...
+   fun:_ZN12QApplication5styleEv
+   fun:_ZN19QApplicationPrivate10initializeEv
+}
+{
+   QT_Application_leak3
+   Memcheck:Leak
+   ...
+   fun:_ZN19QApplicationPrivateC1ERiPPcN12QApplication4TypeEi
+   fun:_ZN12QApplicationC1ERiPPci
+   ...
+}
+{
    QMenuBar_connectToBus_leak
    Memcheck:Leak
    ...
@@ -212,6 +234,13 @@
    ...
 }
 {
+   libX11_leak
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libX11.so.6.3.0
+   ...
+}
+{
    libexpat_leak
    Memcheck:Leak
    ...
@@ -265,6 +294,15 @@
    Memcheck:Leak
    ...
    obj:/usr/lib/x86_64-linux-gnu/libfreetype.so.6.11.1
+   ...
+}
+{
+   ucol_leak
+   Memcheck:Leak
+   ...
+   fun:ucol_initCollator_52
+   ...
+   fun:ucol_open_internal_52
    ...
 }
 

@@ -230,6 +230,8 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
 }
 TraceWindow::~TraceWindow()
 {
+    delete threadButtonMenu;
+    delete processorButtonMenu;
 }
 void TraceWindow::closeEvent(QCloseEvent *event)
 {
@@ -623,14 +625,14 @@ void TraceWindow::createToolBars()
     processorButton = new QToolButton();
     processorButton->setPopupMode(QToolButton::InstantPopup);
     toolBar->addWidget(processorButton);
-    QMenu *menu = new QMenu();
+    processorButtonMenu = new QMenu();
     QSignalMapper* signalMapper = new QSignalMapper(this);
-    ADD_MENU_ACTION(menu,"All",-1);
+    ADD_MENU_ACTION(processorButtonMenu,"All",-1);
     for (int i=0; i<N_procs; i++)
-        ADD_MENU_ACTION(menu,stringf("Rank %i",i).c_str(),i);
+        ADD_MENU_ACTION(processorButtonMenu,stringf("Rank %i",i).c_str(),i);
     connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(selectProcessor(int)));
     processorButton->setText("Processor: All");
-    processorButton->setMenu(menu);
+    processorButton->setMenu(processorButtonMenu);
     toolBar->addSeparator();
 
     // Thread popup
@@ -638,14 +640,14 @@ void TraceWindow::createToolBars()
     threadButton = new QToolButton();
     threadButton->setPopupMode(QToolButton::InstantPopup);
     toolBar->addWidget(threadButton);
-    menu = new QMenu();
+    threadButtonMenu = new QMenu();
     signalMapper = new QSignalMapper(this);
-    ADD_MENU_ACTION(menu,"All",-1);
+    ADD_MENU_ACTION(threadButtonMenu,"All",-1);
     for (int i=0; i<N_threads; i++)
-        ADD_MENU_ACTION(menu,stringf("Thread %i",i).c_str(),i);
+        ADD_MENU_ACTION(threadButtonMenu,stringf("Thread %i",i).c_str(),i);
     connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(selectThread(int)));
     threadButton->setText("Thread: All");
-    threadButton->setMenu(menu);
+    threadButton->setMenu(threadButtonMenu);
     toolBar->addSeparator();
 
     // Resolution
