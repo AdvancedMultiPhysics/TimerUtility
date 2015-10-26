@@ -7,8 +7,11 @@
 #include <stdint.h>
 #include <iostream>
 #include <vector>
+#include <map>
+
 #include "ProfilerAtomicHelpers.h"
 #include "ProfilerThreadID.h"
+#include "ProfilerDefinitions.h"
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
@@ -629,24 +632,38 @@ public:
     {
         d_id = 0;
         if ( level <= app.get_level( ) ) {
-            int recursive_level = 0;
-            char buffer[16];
-            while ( d_id==0 ) {
-                recursive_level++;
-                sprintf(buffer,"-%i",recursive_level);
-                d_message = msg + std::string(buffer);
-                size_t id2 = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
-                bool test = d_app.active(d_message,d_filename,id2);
-                d_id = test ? 0:id2;
-            }
+            #if defined(ENABLE_THREAD_LOCAL) && defined(ENABLE_STD_TUPLE)
+                auto it = d_level_map.find(msg);
+                if ( it == d_level_map.end() )
+                    std::tie(it,std::ignore) = d_level_map.insert(std::make_pair(msg,0));
+                count = &(it->second);
+                ++(*count);
+                d_message = msg + "-" + std::to_string(*count);
+                d_id = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
+            #else
+                int recursive_level = 0;
+                char buffer[16];
+                while ( d_id==0 ) {
+                    recursive_level++;
+                    sprintf(buffer,"-%i",recursive_level);
+                    d_message = msg + std::string(buffer);
+                    size_t id2 = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
+                    bool test = d_app.active(d_message,d_filename,id2);
+                    d_id = test ? 0:id2;
+                }
+            #endif
             d_app.start(d_message,d_filename,d_line,d_level,d_id);
         }
     }
     ~ScopedTimer()
     {
         // Note: we do not require that d_filename is still in scope since we use the timer id
-        if ( d_id != 0 ) 
+        if ( d_id != 0 )  {
             d_app.stop(d_message,d_filename,-1,d_level,d_id);
+            #if defined(ENABLE_THREAD_LOCAL) && defined(ENABLE_STD_TUPLE)
+                --(*count);
+            #endif
+        }
     }
 protected:
     ScopedTimer(const ScopedTimer&);            // Private copy constructor
@@ -658,6 +675,14 @@ private:
     const int d_line;
     const int d_level;
     size_t d_id;
+    #ifdef ENABLE_THREAD_LOCAL
+        int *count;
+    #endif
+protected:
+    #ifdef ENABLE_THREAD_LOCAL
+        friend ProfilerApp;
+        thread_local static std::map<std::string,int> d_level_map;
+    #endif
 };
 
 

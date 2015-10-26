@@ -143,6 +143,9 @@ extern "C" {
 *       for all threads                                           *
 *           std::string b = a;      // Not thread safe            *
 ******************************************************************/
+#ifdef ENABLE_THREAD_LOCAL
+    thread_local std::map<std::string,int> ScopedTimer::d_level_map;
+#endif
 
 
 /******************************************************************
@@ -1088,6 +1091,10 @@ void ProfilerApp::disable( )
     d_size_memory = NULL;
     d_bytes = sizeof(ProfilerApp);
     RELEASE_LOCK(&lock);
+    // Delete scoped variables
+    #ifdef ENABLE_THREAD_LOCAL
+        ScopedTimer::d_level_map.clear();
+    #endif
 }
 
 
@@ -1529,7 +1536,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
 /***********************************************************************
 * Load the timer and trace data                                        *
 ***********************************************************************/
-static inline void get_field( const char* line, const char* name, char* data )
+static inline void get_field( const char* line, size_t N, const char* name, char* data )
 {
     const char* ptr = strstr( line, name );
     if ( ptr==NULL ) {
@@ -1537,7 +1544,7 @@ static inline void get_field( const char* line, const char* name, char* data )
     } else {
         int i1 = -1;
         int i2 = -1;
-        for (size_t i=0; i<1000; i++) {
+        for (size_t i=0; i<N; i++) {
             if ( ptr[i]<32 )
                 break;
             if ( ptr[i]=='=' )
@@ -1835,17 +1842,20 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
     if (fid==NULL)
         ERROR_MSG("Error opening file: "+filename);
     std::vector<id_struct> active;
-    char line[1024], field[1024];
-    line[sizeof(line)-1] = 0;
+    const size_t MAX_LINE = 0x10000;
+    char *line = new char[MAX_LINE];
+    char *field = new char[MAX_LINE];
+    memset(line,0,MAX_LINE);
+    memset(field,0,MAX_LINE);
     while ( 1 ) {
         // Read the header
-        char *rtn = fgets(line,sizeof(line)-1,fid);
+        char *rtn = fgets(line,MAX_LINE-1,fid);
         if ( rtn==NULL )
             break;
         if ( line[0] <= 10 )
             continue;
         // Get the id and find the appropriate timer
-        get_field(line,"id=",field);
+        get_field(line,MAX_LINE,"id=",field);
         ASSERT(field[0]!=0);
         id_struct id( field );
         std::map<id_struct,size_t>::iterator it = id_map.find(id);
@@ -1853,16 +1863,16 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
             ERROR_MSG("Did not find matching timer");
         TimerResults& timer = data[it->second];
         // Read the remaining trace header data
-        get_field(line,"thread=",field);
+        get_field(line,MAX_LINE,"thread=",field);
         ASSERT(field[0]!=0);
         unsigned int thread = static_cast<unsigned int>(atoi(field));
-        get_field(line,"rank=",field);
+        get_field(line,MAX_LINE,"rank=",field);
         ASSERT(field[0]!=0);
         unsigned int rank = static_cast<unsigned int>(atoi(field));
-        get_field(line,"active=",field);
+        get_field(line,MAX_LINE,"active=",field);
         ASSERT(field[0]!=0);
         get_active_ids(field,active);
-        get_field(line,"N=",field);
+        get_field(line,MAX_LINE,"N=",field);
         ASSERT(field[0]!=0);
         unsigned long int N = strtoul(field,NULL,10);
         // Find the appropriate trace
@@ -1894,6 +1904,8 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
         ASSERT(rtn2==1);
     }
     fclose(fid);
+    delete [] line;
+    delete [] field;
 }
 inline size_t get_scale( const std::string& units )
 {
@@ -1917,11 +1929,14 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
     FILE *fid = fopen(filename.c_str(),"rb");
     if (fid==NULL)
         ERROR_MSG("Error opening file: "+filename);
-    char line[1024], field[1024];
-    line[sizeof(line)-1] = 0;
+    const size_t MAX_LINE = 0x10000;
+    char *line = new char[MAX_LINE];
+    char *field = new char[MAX_LINE];
+    memset(line,0,MAX_LINE);
+    memset(field,0,MAX_LINE);
     while ( 1 ) {
         // Read the header
-        char *rtn = fgets(line,sizeof(line)-1,fid);
+        char *rtn = fgets(line,MAX_LINE-1,fid);
         if ( rtn==NULL )
             break;
         if ( line[0] <= 10 )
@@ -1929,19 +1944,19 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
         data.resize(data.size()+1);
         MemoryResults& memory = data.back();
         // Get the header fields
-        get_field(line,"N=",field);
+        get_field(line,MAX_LINE,"N=",field);
         ASSERT(field[0]!=0);
         unsigned long int N = strtoul(field,NULL,10);
-        get_field(line,"type1=",field);
+        get_field(line,MAX_LINE,"type1=",field);
         ASSERT(field[0]!=0);
         std::string type1(field);
-        get_field(line,"type2=",field);
+        get_field(line,MAX_LINE,"type2=",field);
         ASSERT(field[0]!=0);
         std::string type2(field);
-        get_field(line,"units=",field);
+        get_field(line,MAX_LINE,"units=",field);
         ASSERT(field[0]!=0);
         size_t scale = get_scale(field);
-        get_field(line,"rank=",field);
+        get_field(line,MAX_LINE,"rank=",field);
         ASSERT(field[0]!=0);
         memory.rank = atoi(field);
         // Get the data
@@ -1964,6 +1979,8 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
         }
     }
     fclose(fid);
+    delete [] line;
+    delete [] field;
 }
 
 

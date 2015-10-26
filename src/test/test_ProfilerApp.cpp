@@ -45,15 +45,22 @@ inline int getSize() {
 
 bool call_recursive_scope( int N, int i=0 ) 
 {
-    char name[10];
-    sprintf(name,"scoped-%i",i+1);
-    bool pass = !global_profiler.active(name,__FILE__);
-    PROFILE_SCOPED(timer,"scoped");
-    pass = pass && global_profiler.active(name,__FILE__);
-    if ( N > 0 )
-        pass = pass && call_recursive_scope( --N, ++i );
-    sprintf(name,"scoped-%i",i+2);
-    pass = pass && !global_profiler.active(name,__FILE__);
+    bool pass = true;
+    if ( i < 10 ) {
+        char name[10];
+        sprintf(name,"scoped-%i",i+1);
+        bool pass = !global_profiler.active(name,__FILE__);
+        PROFILE_SCOPED(timer,"scoped");
+        pass = pass && global_profiler.active(name,__FILE__);
+        if ( N > 0 )
+            pass = pass && call_recursive_scope( --N, ++i );
+        sprintf(name,"scoped-%i",i+2);
+        pass = pass && !global_profiler.active(name,__FILE__);
+    } else {
+        PROFILE_SCOPED(timer,"scoped");
+        if ( N > 0 )
+            pass = pass && call_recursive_scope( --N, ++i );
+    }
     return pass;
 }
 
@@ -103,7 +110,7 @@ int run_tests( bool enable_trace, std::string save_name )
     PROFILE_STOP("sleep");
 
     // Test the scoped timer
-    bool pass = call_recursive_scope( 5 );
+    bool pass = call_recursive_scope( 50 );
     if ( !pass ) {
         std::cout << "Scoped timer fails\n";
         N_errors++;
