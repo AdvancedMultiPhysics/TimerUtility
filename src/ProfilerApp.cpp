@@ -1710,7 +1710,7 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
             line++;
             continue;
         }
-        // Read the next line adn split the fields
+        // Read the next line and split the fields
         line = getFieldArray(line,fields);
         if ( strcmp(fields[0].first,"N_procs")==0 ) {
             // We are loading the header
@@ -1835,12 +1835,11 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
     if (fid==NULL)
         ERROR_MSG("Error opening file: "+filename);
     std::vector<id_struct> active;
+    char line[1024], field[1024];
+    line[sizeof(line)-1] = 0;
     while ( 1 ) {
         // Read the header
-        char line[512], field[128];
-        memset(line,0,512);
-        memset(field,0,128);
-        char *rtn = fgets(line,512,fid);
+        char *rtn = fgets(line,sizeof(line)-1,fid);
         if ( rtn==NULL )
             break;
         if ( line[0] <= 10 )
@@ -1918,10 +1917,11 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
     FILE *fid = fopen(filename.c_str(),"rb");
     if (fid==NULL)
         ERROR_MSG("Error opening file: "+filename);
+    char line[1024], field[1024];
+    line[sizeof(line)-1] = 0;
     while ( 1 ) {
         // Read the header
-        char line[512], field[128];
-        char *rtn = fgets(line,512,fid);
+        char *rtn = fgets(line,sizeof(line)-1,fid);
         if ( rtn==NULL )
             break;
         if ( line[0] <= 10 )
