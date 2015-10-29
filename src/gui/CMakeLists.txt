@@ -14,6 +14,9 @@ ELSEIF ( (NOT QWT_URL) AND (NOT QWT_SRC_DIR) )
     MESSAGE("Qwt source is not found, gui will be disabled."
             " Please set either QWT_URL or QWT_SRC_DIR" )
 ELSE()
+    # Strip coverage flags (we want to add them only to our files (not qwt)
+    REMOVE_DEFINITIONS( ${COVERAGE_FLAGS} )
+
     # Set extra compiler flags that are necessary for qt
     SET( QT_FLAGS )
     IF ( USING_GCC )
@@ -65,8 +68,8 @@ ELSE()
     QT_WRAP_CPP(QtApp_MOC_SRCS ${QtApp_MOCS})
     # build sources, moc'd sources, and rcc'd sources
     ADD_EXECUTABLE( load_timer ${QtApp_SRCS} ${QtApp_MOC_SRCS} ${QtApp_RCC_SRCS})
-    SET_TARGET_PROPERTIES( load_timer PROPERTIES COMPILE_FLAGS "${QT_FLAGS}" )
-    TARGET_LINK_LIBRARIES(load_timer QWT ${QT_QTMAIN_LIBRARY} ${QT_LIBRARIES})
+    SET_TARGET_PROPERTIES( load_timer PROPERTIES COMPILE_FLAGS "${QT_FLAGS} ${COVERAGE_FLAGS}" )
+    TARGET_LINK_LIBRARIES(load_timer QWT ${QT_QTMAIN_LIBRARY} ${QT_LIBRARIES} )
     ADD_PROJ_EXE_DEP( load_timer )
     INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/gui )
 
