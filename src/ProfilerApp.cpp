@@ -143,7 +143,7 @@ extern "C" {
 *       for all threads                                           *
 *           std::string b = a;      // Not thread safe            *
 ******************************************************************/
-#ifdef ENABLE_THREAD_LOCAL
+#ifdef TIMER_ENABLE_THREAD_LOCAL
     thread_local std::map<std::string,int> ScopedTimer::d_level_map;
 #endif
 
@@ -1092,7 +1092,7 @@ void ProfilerApp::disable( )
     d_bytes = sizeof(ProfilerApp);
     RELEASE_LOCK(&lock);
     // Delete scoped variables
-    #ifdef ENABLE_THREAD_LOCAL
+    #ifdef TIMER_ENABLE_THREAD_LOCAL
         ScopedTimer::d_level_map.clear();
     #endif
 }

@@ -2,7 +2,7 @@
 
 
 volatile TimerUtility::atomic::int32_atomic TimerUtility::ProfilerThreadIndex::N_threads = 0;
-#ifndef ENABLE_THREAD_LOCAL
+#ifndef TIMER_ENABLE_THREAD_LOCAL
     volatile TimerUtility::atomic::int32_atomic TimerUtility::ProfilerThreadIndex::map[2*ProfilerThreadIndexHashMapSize];
     bool TimerUtility::initialize_map()
     {

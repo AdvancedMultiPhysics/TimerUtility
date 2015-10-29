@@ -147,7 +147,7 @@ private:
     static void* d_base_frame;
 
     // Overload new/delete are friends
-    #ifndef DISABLE_NEW_OVERLOAD
+    #ifndef TIMER_DISABLE_NEW_OVERLOAD
         #if __cplusplus_std==98
             #define __throw_new throw(std::bad_alloc) 
             #define __nothrow_new throw() 

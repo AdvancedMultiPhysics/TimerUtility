@@ -40,7 +40,7 @@ int main(int, char*[])
     }
 
     // Test new/delete
-    #ifdef DISABLE_NEW_OVERLOAD
+    #ifdef TIMER_DISABLE_NEW_OVERLOAD
         std::cout << "Skipping new/delete tests (disabled)" << std::endl;
     #else
         double *tmp = new double();

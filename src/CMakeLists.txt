@@ -71,7 +71,7 @@ ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT Debug TIMER.
 # Check the compile mode and compile flags
 IF ( NOT ONLY_BUILD_DOCS )
     CONFIGURE_SYSTEM()
-    WRITE_COMPILE_FEATURES( "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" )
+    WRITE_COMPILE_FEATURES( "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" TIMER )
 ENDIF()
 
 

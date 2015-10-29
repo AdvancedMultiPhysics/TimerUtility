@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 
-#ifndef ENABLE_THREAD_LOCAL
+#ifndef TIMER_ENABLE_THREAD_LOCAL
     #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
         #define USE_WINDOWS
         #include <windows.h>
@@ -37,7 +37,7 @@ public:
     static inline int getNThreads() { return N_threads; }
 protected:
     static volatile atomic::int32_atomic N_threads;
-    #ifndef ENABLE_THREAD_LOCAL
+    #ifndef TIMER_ENABLE_THREAD_LOCAL
         static volatile atomic::int32_atomic map[2*ProfilerThreadIndexHashMapSize];
         friend bool initialize_map();
     #endif
@@ -51,7 +51,7 @@ private:
 // Get the id for the current thread
 inline int ProfilerThreadIndex::getThreadIndex()
 {
-    #ifdef ENABLE_THREAD_LOCAL
+    #ifdef TIMER_ENABLE_THREAD_LOCAL
         thread_local static int id = atomic::atomic_increment(&N_threads)-1;
         return id;
     #else

@@ -93,7 +93,7 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
 #else
     #error Unknown OS
 #endif
-#ifndef DISABLE_NEW_OVERLOAD
+#ifndef TIMER_DISABLE_NEW_OVERLOAD
     void* operator new(size_t size) __throw_new
     {
         void* ret = malloc(size);

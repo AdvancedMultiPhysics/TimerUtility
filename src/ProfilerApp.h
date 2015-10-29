@@ -632,7 +632,7 @@ public:
     {
         d_id = 0;
         if ( level <= app.get_level( ) ) {
-            #if defined(ENABLE_THREAD_LOCAL) && defined(ENABLE_STD_TUPLE)
+            #if defined(TIMER_ENABLE_THREAD_LOCAL) && defined(TIMER_ENABLE_STD_TUPLE)
                 auto it = d_level_map.find(msg);
                 if ( it == d_level_map.end() )
                     std::tie(it,std::ignore) = d_level_map.insert(std::make_pair(msg,0));
@@ -660,7 +660,7 @@ public:
         // Note: we do not require that d_filename is still in scope since we use the timer id
         if ( d_id != 0 )  {
             d_app.stop(d_message,d_filename,-1,d_level,d_id);
-            #if defined(ENABLE_THREAD_LOCAL) && defined(ENABLE_STD_TUPLE)
+            #if defined(TIMER_ENABLE_THREAD_LOCAL) && defined(TIMER_ENABLE_STD_TUPLE)
                 --(*count);
             #endif
         }
@@ -675,11 +675,11 @@ private:
     const int d_line;
     const int d_level;
     size_t d_id;
-    #ifdef ENABLE_THREAD_LOCAL
+    #ifdef TIMER_ENABLE_THREAD_LOCAL
         int *count;
     #endif
 protected:
-    #ifdef ENABLE_THREAD_LOCAL
+    #ifdef TIMER_ENABLE_THREAD_LOCAL
         friend ProfilerApp;
         thread_local static std::map<std::string,int> d_level_map;
     #endif

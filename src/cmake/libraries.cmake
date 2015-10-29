@@ -190,6 +190,10 @@ ENDMACRO ()
 
 # Macro to configure matlab
 MACRO( CONFIGURE_MATLAB )
+    IF ( NOT DEFINED USE_MATLAB AND DEFINED MATLAB_DIRECTORY )
+        SET( USE_MATLAB 1 )
+    ENDIF()
+    NULL_USE( MATLAB_DIRECTORY )
     CHECK_ENABLE_FLAG( USE_MATLAB 0 )
     SET( LIB_TYPE STATIC )      # By default we want to build static libraries
     IF ( USE_MATLAB )
@@ -281,7 +285,9 @@ MACRO( CONFIGURE_TIMER )
     # Check if we want to enable the traps for new/delete
     CHECK_ENABLE_FLAG( OVERLOAD_NEW 1 )
     IF ( NOT OVERLOAD_NEW OR DISABLE_NEW_OVERLOAD )
-        ADD_DEFINITIONS( -DDISABLE_NEW_OVERLOAD )
+        FILE(APPEND "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_DISABLE_NEW_OVERLOAD\n" )
+    ELSE()
+        FILE(APPEND "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_ENABLE_NEW_OVERLOAD\n" )
     ENDIF()
     # Add flags for MATLAB
     IF ( USE_MATLAB )
