@@ -164,6 +164,9 @@ SET( CTEST_CUSTOM_WARNING_EXCEPTION
     "This object file does not define any previously undefined public symbols"
     "Note: No relevant classes found. No output generated."
 )
+SET( CTEST_CUSTOM_ERROR_EXCEPTION 
+    "Note: No relevant classes found. No output generated."
+)
 
 
 # Set timeouts: 5 minutes for debug, 2 for opt, and 30 minutes for valgrind/weekly
