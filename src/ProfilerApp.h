@@ -57,6 +57,9 @@
 #define TIMER_HASH_SIZE 1024                    // The size of the hash table to store the timers
 
 
+class ScopedTimer;
+
+
 /** \class id_struct
   *
   * Structure to store id string
@@ -588,6 +591,27 @@ private:
     mutable size_t* d_time_memory;  // The times at which we know the memory usage (ns from creation)
     mutable size_t* d_size_memory;  // The memory usage at each time
     mutable volatile TimerUtility::atomic::int64_atomic d_bytes; // The current memory used by the profiler
+
+protected:
+    #ifdef TIMER_ENABLE_THREAD_LOCAL
+        friend ScopedTimer;
+        class RecursiveFunctionMap {
+          public:
+            RecursiveFunctionMap(): state(1) {}
+            ~RecursiveFunctionMap() { state=2; }
+            inline int* get( const std::string& msg ) {
+                auto it = data.find(msg);
+                if ( it == data.end() )
+                    std::tie(it,std::ignore) = data.insert(std::make_pair(msg,0));
+                return &(it->second);
+            }
+            inline void clear() { if ( state==1 ) { data.clear(); } }
+          private:
+            unsigned char state;
+            std::map<std::string,int> data;
+        };
+        thread_local static RecursiveFunctionMap d_level_map;
+    #endif
 };
 
 
@@ -633,10 +657,7 @@ public:
         d_id = 0;
         if ( level <= app.get_level( ) ) {
             #if defined(TIMER_ENABLE_THREAD_LOCAL) && defined(TIMER_ENABLE_STD_TUPLE)
-                auto it = d_level_map.find(msg);
-                if ( it == d_level_map.end() )
-                    std::tie(it,std::ignore) = d_level_map.insert(std::make_pair(msg,0));
-                count = &(it->second);
+                count = app.d_level_map.get(msg);
                 ++(*count);
                 d_message = msg + "-" + std::to_string(*count);
                 d_id = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
@@ -677,11 +698,6 @@ private:
     size_t d_id;
     #ifdef TIMER_ENABLE_THREAD_LOCAL
         int *count;
-    #endif
-protected:
-    #ifdef TIMER_ENABLE_THREAD_LOCAL
-        friend ProfilerApp;
-        thread_local static std::map<std::string,int> d_level_map;
     #endif
 };
 

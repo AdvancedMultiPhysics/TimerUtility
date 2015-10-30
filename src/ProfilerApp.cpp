@@ -28,6 +28,7 @@ inline void ERROR_MSG( const std::string& msg ) {
 #define printp  printf
 
 
+thread_local ProfilerApp::RecursiveFunctionMap ProfilerApp::d_level_map;
 ProfilerApp global_profiler;
 
 extern "C" {
@@ -143,9 +144,6 @@ extern "C" {
 *       for all threads                                           *
 *           std::string b = a;      // Not thread safe            *
 ******************************************************************/
-#ifdef TIMER_ENABLE_THREAD_LOCAL
-    thread_local std::map<std::string,int> ScopedTimer::d_level_map;
-#endif
 
 
 /******************************************************************
@@ -806,6 +804,9 @@ bool TimerMemoryResults::operator==(const TimerMemoryResults& rhs) const
 ***********************************************************************/
 ProfilerApp::ProfilerApp()
 {
+    #ifdef TIMER_ENABLE_THREAD_LOCAL
+        d_level_map = RecursiveFunctionMap();
+    #endif
     get_time(d_construct_time);
     get_frequency(d_frequency);
     if ( 8*sizeof(size_t) != ARCH_SIZE )
@@ -1093,7 +1094,7 @@ void ProfilerApp::disable( )
     RELEASE_LOCK(&lock);
     // Delete scoped variables
     #ifdef TIMER_ENABLE_THREAD_LOCAL
-        ScopedTimer::d_level_map.clear();
+        d_level_map.clear();
     #endif
 }
 
