@@ -1027,7 +1027,7 @@ void TimerWindow::traceFun()
 
 
 /***********************************************************************
-* Helpers to call slots                                                *
+* Helpers for unit tests                                               *
 ***********************************************************************/
 #define callSlot(slot)                                              \
     do {                                                            \
@@ -1043,6 +1043,11 @@ void TimerWindow::traceFun()
         delete action;                                              \
         while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
         std::this_thread::sleep_for(std::chrono::milliseconds(100)); \
+    } while(0)
+#define update()                                                    \
+    do {                                                            \
+        qApp->processEvents();                                      \
+        std::this_thread::sleep_for(std::chrono::milliseconds(50)); \
     } while(0)
 
 
@@ -1070,6 +1075,20 @@ void TimerWindow::callLoadFile( )
 {
     loadFile(unitTestFilename,false);
 }
+void TimerWindow::callSelectCell( )
+{
+    cellSelected(0,0);
+    update();
+    subfunctionFun();
+    update();
+    exclusiveFun();
+    update();
+    subfunctionFun();
+    update();
+    exclusiveFun();
+    update();
+    backButtonPressed();
+}
 int TimerWindow::runUnitTests( const std::string& filename )
 {
     int N_errors = 0;
@@ -1080,7 +1099,8 @@ int TimerWindow::runUnitTests( const std::string& filename )
         printf("   Failed to load file %s\n",filename.c_str());
         N_errors++;
     }
-
+    // Select the first cell
+    callSlot(callSelectCell);
 
     // Run the trace unit tests
     if ( hasTraceData() ) {

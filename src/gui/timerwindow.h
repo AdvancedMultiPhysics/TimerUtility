@@ -127,6 +127,7 @@ private:
 private slots:
     void resetUnitTestRunning( );
     void callLoadFile( );
+    void callSelectCell( );
 };
 
 #endif
