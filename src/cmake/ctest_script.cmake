@@ -45,6 +45,9 @@ SET( QWT_SRC_DIR       "$ENV{QWT_SRC_DIR}"      )
 IF ( CXX_STD )
     SET( PROJ_NAME "${PROJ_NAME}-C++${CXX_STD}" )
 ENDIF()
+IF ( QWT_URL OR QWT_SRC_DIR )
+    SET( PROJ_NAME "${PROJ_NAME}-GUI" )
+ENDIF()
 
 
 # Get the source directory based on the current directory
