@@ -28,13 +28,6 @@ inline void ERROR_MSG( const std::string& msg ) {
 #define printp  printf
 
 
-thread_local ProfilerApp::RecursiveFunctionMap ProfilerApp::d_level_map;
-ProfilerApp global_profiler;
-
-extern "C" {
-    #include "assert.h"
-}
-
 // Include system dependent headers and define some functions
 #ifdef __WORDSIZE
     #define ARCH_SIZE __WORDSIZE
@@ -144,6 +137,15 @@ extern "C" {
 *       for all threads                                           *
 *           std::string b = a;      // Not thread safe            *
 ******************************************************************/
+
+
+/******************************************************************
+* Define global variables                                         *
+******************************************************************/
+#ifdef TIMER_ENABLE_THREAD_LOCAL
+    thread_local ProfilerApp::RecursiveFunctionMap ProfilerApp::d_level_map;
+#endif
+ProfilerApp global_profiler;
 
 
 /******************************************************************
