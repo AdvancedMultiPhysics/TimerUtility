@@ -1077,7 +1077,7 @@ void TimerWindow::callLoadFile( )
 }
 void TimerWindow::callSelectCell( )
 {
-    cellSelected(0,0);
+    cellSelected(0,1);
     update();
     subfunctionFun();
     update();
