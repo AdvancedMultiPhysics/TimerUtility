@@ -43,29 +43,35 @@ int main(int, char*[])
     #ifdef TIMER_DISABLE_NEW_OVERLOAD
         std::cout << "Skipping new/delete tests (disabled)" << std::endl;
     #else
-        double *tmp = new double();
-        check_ptr(tmp);
+        double *tmp1 = new double();
+        double *tmp2 = new (std::nothrow) double();
+        check_ptr(tmp1);
+        check_ptr(tmp2);
         MemoryApp::MemoryStats m2 = MemoryApp::getMemoryStats();
-        delete tmp;
+        delete tmp1;
+        operator delete(tmp2,std::nothrow);
         MemoryApp::MemoryStats m3 = MemoryApp::getMemoryStats();
-        tmp = new double[1000];
-        check_ptr(tmp);
+        tmp1 = new double[1000];
+        tmp2 = new (std::nothrow) double[1000];
+        check_ptr(tmp1);
+        check_ptr(tmp2);
         MemoryApp::MemoryStats m4 = MemoryApp::getMemoryStats();
-        delete tmp;
+        delete [] tmp1;
+        operator delete [](tmp2,std::nothrow);
         MemoryApp::MemoryStats m5 = MemoryApp::getMemoryStats();
-        if ( m2.bytes_new<m1.bytes_new+8 || m2.N_new!=1 ) {
+        if ( m2.bytes_new<m1.bytes_new+16 || m2.N_new!=2 ) {
             std::cout << "Failed new test\n";
             N_errors++;
         }
-        if ( m3.bytes_delete!=m2.bytes_new || m3.N_delete!=1 ) {
+        if ( m3.bytes_delete!=m2.bytes_new || m3.N_delete!=2 ) {
             std::cout << "Failed delete test\n";
             N_errors++;
         }
-        if ( m4.bytes_new<m2.bytes_new+8000 || m4.N_new!=2 ) {
+        if ( m4.bytes_new<m2.bytes_new+2*8000 || m4.N_new!=4 ) {
             std::cout << "Failed new[] test\n";
             N_errors++;
         }
-        if ( m5.bytes_delete!=m4.bytes_new || m5.N_delete!=2 ) {
+        if ( m5.bytes_delete!=m4.bytes_new || m5.N_delete!=4 ) {
             std::cout << "Failed delete[] test\n";
             N_errors++;
         }
