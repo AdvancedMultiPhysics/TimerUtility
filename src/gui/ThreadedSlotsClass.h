@@ -21,6 +21,9 @@ protected:
     virtual ~ThreadedSlotsClass();
     //! Call a function
     void callFun( std::function<void(void)> fun );
+    //! Process queue events
+    void update();
+
 private:
     std::function<void(void)> d_fun;
     QAction* d_callAction;

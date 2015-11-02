@@ -38,12 +38,20 @@ void ThreadedSlotsClass::callFun( std::function<void(void)> fun )
 }
 void ThreadedSlotsClass::callFunMain( )
 {
-    while ( qApp->hasPendingEvents() )
-        qApp->processEvents();
+    qApp->processEvents();
     d_fun();
-    while ( qApp->hasPendingEvents() )
-        qApp->processEvents();
+    qApp->processEvents();
     d_running = false;
+}
+static void nullFunction( ) { }
+void ThreadedSlotsClass::update( )
+{
+    if ( std::this_thread::get_id() == d_id ) {
+        qApp->processEvents();
+    } else {
+        ThreadedSlotsClass::callFun( nullFunction );
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
 }
 
 

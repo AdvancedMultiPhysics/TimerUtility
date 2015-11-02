@@ -123,12 +123,10 @@ public:
     int runUnitTests( const std::string& file );
 private:
     std::string unitTestFilename;
-    volatile bool unitTestRunning;
     void resetUnitTestRunning( );
     void callLoadFile( );
     void callSelectCell( );
     void closeTrace( );
-    void update( );
 };
 
 #endif

@@ -169,7 +169,7 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     timerGrid(NULL), memory(NULL),
     parent(parent_), N_procs(parent_->N_procs), N_threads(parent_->N_threads),
     t_global(getGlobalTime(parent_->d_data.timers)), 
-    resolution(1024), selected_rank(-1), selected_thread(-1), unitTestRunning(false)
+    resolution(1024), selected_rank(-1), selected_thread(-1)
 {
     qApp->processEvents();
     PROFILE_START("TraceWindow");
@@ -745,18 +745,6 @@ void TraceWindow::traceMouseReleaseEvent(QMouseEvent *event)
 /***********************************************************************
 * Run the unit tests                                                   *
 ***********************************************************************/
-void TraceWindow::resetUnitTestRunning( )
-{
-    while ( qApp->hasPendingEvents() )
-        qApp->processEvents();
-    unitTestRunning = false;
-}
-void TraceWindow::update( )
-{
-    while ( qApp->hasPendingEvents() )
-        qApp->processEvents();
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-}
 void TraceWindow::callDefaultTests( )
 {
     selectProcessor(0);

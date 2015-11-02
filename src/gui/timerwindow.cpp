@@ -158,7 +158,7 @@ inline void ERROR_MSG( const std::string& msg ) {
 TimerWindow::TimerWindow():
     ThreadedSlotsClass(),
     mainMenu(NULL), timerTable(NULL), callLineText(NULL), backButton(NULL),
-    processorButton(NULL), unitTestRunning(false)
+    processorButton(NULL)
 {
     PROFILE_START("TimerWindow constructor");
     QWidget::setWindowTitle(QString("load_timer"));
@@ -1044,18 +1044,6 @@ void TimerWindow::runUnitTestsSlot( )
         QMessageBox::information( this, tr("Some tests failed"), tr("Some tests failed") );
     }
 }
-void TimerWindow::resetUnitTestRunning( )
-{
-    while ( qApp->hasPendingEvents() )
-        qApp->processEvents();
-    unitTestRunning = false;
-}
-void TimerWindow::update( )
-{
-    while ( qApp->hasPendingEvents() )
-        qApp->processEvents();
-    std::this_thread::sleep_for(std::chrono::milliseconds(40));
-}
 void TimerWindow::callLoadFile( )
 {
     loadFile(unitTestFilename,false);
@@ -1077,9 +1065,7 @@ void TimerWindow::callSelectCell( )
 }
 void TimerWindow::closeTrace()
 {
-    qApp->processEvents();
     traceWindow->close();
-    qApp->processEvents();
 }
 int TimerWindow::runUnitTests( const std::string& filename )
 {

@@ -101,11 +101,7 @@ friend class QLabelMouse;
 public:
     int runUnitTests( );
 private:
-    volatile bool unitTestRunning;
-private slots:
-    void resetUnitTestRunning( );
     void callDefaultTests( );
-    void update( );
 };
 
 
