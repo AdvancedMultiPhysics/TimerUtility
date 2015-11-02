@@ -14,7 +14,7 @@
 #include "ProfilerApp.h"
 #include "LoadBalance.h"
 #include "GuiTimerStructures.h"
-
+#include "ThreadedSlotsClass.h"
 
 
 class QAction;
@@ -23,7 +23,7 @@ class QTableView;
 class TraceWindow;
 
 
-class TimerWindow : public QMainWindow
+class TimerWindow : public  ThreadedSlotsClass
 {
     Q_OBJECT
 
@@ -124,10 +124,11 @@ public:
 private:
     std::string unitTestFilename;
     volatile bool unitTestRunning;
-private slots:
     void resetUnitTestRunning( );
     void callLoadFile( );
     void callSelectCell( );
+    void closeTrace( );
+    void update( );
 };
 
 #endif

@@ -50,6 +50,27 @@
    fun:_ZN22AppMenuPlatformMenuBar13createMenuBarEv
 }
 {
+   ProcessEvents_leak
+   Memcheck:Leak
+   ...
+   fun:g_main_context_dispatch
+   ...
+   fun:g_main_context_iteration
+   fun:_ZN20QEventDispatcherGlib13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   ...
+   fun:_ZN16QCoreApplication13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   ...
+}
+{
+   QImageReader_leak
+   Memcheck:Leak
+   ...
+   fun:_ZN12QImageReader4readEP6QImage
+   fun:_ZN12QImageReader4readEv
+   fun:_ZN11QPixmapData8fromFileERK7QStringPKc6QFlagsIN2Qt19ImageConversionFlagEE
+   fun:_ZN7QPixmap4loadERK7QStringPKc6QFlagsIN2Qt19ImageConversionFlagEE
+}
+{
    connectToBus_connect_leak
    Memcheck:Leak
    ...

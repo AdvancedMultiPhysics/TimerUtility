@@ -156,6 +156,7 @@ inline void ERROR_MSG( const std::string& msg ) {
 * Constructor/destructor                                               *
 ***********************************************************************/
 TimerWindow::TimerWindow():
+    ThreadedSlotsClass(),
     mainMenu(NULL), timerTable(NULL), callLineText(NULL), backButton(NULL),
     processorButton(NULL), unitTestRunning(false)
 {
@@ -215,6 +216,7 @@ TimerWindow::TimerWindow():
     setUnifiedTitleAndToolBarOnMac(true);
     reset();
     updateDisplay();
+    qApp->processEvents();
     PROFILE_STOP("TimerWindow constructor");
 }
 TimerWindow::~TimerWindow()
@@ -1027,31 +1029,6 @@ void TimerWindow::traceFun()
 
 
 /***********************************************************************
-* Helpers for unit tests                                               *
-***********************************************************************/
-#define callSlot(slot)                                              \
-    do {                                                            \
-        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
-        unitTestRunning = true;                                     \
-        QAction* action = new QAction(NULL);                        \
-        connect(action, SIGNAL(triggered()), this, SLOT(slot()));   \
-        action->activate(QAction::Trigger);                         \
-        delete action;                                              \
-        action = new QAction(NULL);                                 \
-        connect(action, SIGNAL(triggered()), this, SLOT(resetUnitTestRunning())); \
-        action->activate(QAction::Trigger);                         \
-        delete action;                                              \
-        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); \
-    } while(0)
-#define update()                                                    \
-    do {                                                            \
-        qApp->processEvents();                                      \
-        std::this_thread::sleep_for(std::chrono::milliseconds(50)); \
-    } while(0)
-
-
-/***********************************************************************
 * Run the unit tests                                                   *
 ***********************************************************************/
 void TimerWindow::runUnitTestsSlot( )
@@ -1069,11 +1046,20 @@ void TimerWindow::runUnitTestsSlot( )
 }
 void TimerWindow::resetUnitTestRunning( )
 {
+    while ( qApp->hasPendingEvents() )
+        qApp->processEvents();
     unitTestRunning = false;
+}
+void TimerWindow::update( )
+{
+    while ( qApp->hasPendingEvents() )
+        qApp->processEvents();
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
 }
 void TimerWindow::callLoadFile( )
 {
     loadFile(unitTestFilename,false);
+    qApp->processEvents();
 }
 void TimerWindow::callSelectCell( )
 {
@@ -1089,26 +1075,33 @@ void TimerWindow::callSelectCell( )
     update();
     backButtonPressed();
 }
+void TimerWindow::closeTrace()
+{
+    qApp->processEvents();
+    traceWindow->close();
+    qApp->processEvents();
+}
 int TimerWindow::runUnitTests( const std::string& filename )
 {
     int N_errors = 0;
     // Try to load the file
     unitTestFilename = filename;
-    callSlot(callLoadFile);
+    callFun(std::bind(&TimerWindow::callLoadFile,this));
     if ( d_dataTimer.empty() ) {
         printf("   Failed to load file %s\n",filename.c_str());
         N_errors++;
     }
     // Select the first cell
-    callSlot(callSelectCell);
+    callFun(std::bind(&TimerWindow::callSelectCell,this));
 
     // Run the trace unit tests
     if ( hasTraceData() ) {
-        callSlot(traceFun);
+        callFun(std::bind(&TimerWindow::traceFun,this));
         N_errors += traceWindow->runUnitTests();
+        callFun(std::bind(&TimerWindow::closeTrace,this));
     }
     // Try to close the file
-    callSlot(close);
+    callFun(std::bind(&TimerWindow::close,this));
     if ( !d_dataTimer.empty() ) {
         printf("   Failed call to close\n");
         N_errors++;

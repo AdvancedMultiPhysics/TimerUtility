@@ -19,6 +19,7 @@
 #include <array>
 #include <limits>
 #include <sstream>
+#include <thread>
 
 #include "tracewindow.h"
 #include "TableValue.h"
@@ -164,11 +165,13 @@ template<class TYPE> TYPE sum( const std::vector<TYPE>& x )
 * Constructor/destructor                                               *
 ***********************************************************************/
 TraceWindow::TraceWindow( const TimerWindow *parent_ ):
+    ThreadedSlotsClass(),
     timerGrid(NULL), memory(NULL),
     parent(parent_), N_procs(parent_->N_procs), N_threads(parent_->N_threads),
     t_global(getGlobalTime(parent_->d_data.timers)), 
-    resolution(1024), selected_rank(-1), selected_thread(-1)
+    resolution(1024), selected_rank(-1), selected_thread(-1), unitTestRunning(false)
 {
+    qApp->processEvents();
     PROFILE_START("TraceWindow");
     QWidget::setWindowTitle(QString("Trace results: ").append(parent->windowTitle()));
     t_current = t_global;
@@ -226,10 +229,12 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     zoomBoundaries[1]->setVisible(false);
     reset();
 
+    qApp->processEvents();
     PROFILE_STOP("TraceWindow");
 }
 TraceWindow::~TraceWindow()
 {
+    qApp->processEvents();
     delete threadButtonMenu;
     delete processorButtonMenu;
 }
@@ -738,36 +743,38 @@ void TraceWindow::traceMouseReleaseEvent(QMouseEvent *event)
 
 
 /***********************************************************************
-* Helpers to call slots                                                *
-***********************************************************************/
-#define callSlot(slot)                                              \
-    do {                                                            \
-        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
-        unitTestRunning = true;                                     \
-        QAction* action = new QAction(NULL);                        \
-        connect(action, SIGNAL(triggered()), this, SLOT(slot()));   \
-        action->activate(QAction::Trigger);                         \
-        delete action;                                              \
-        action = new QAction(NULL);                                 \
-        connect(action, SIGNAL(triggered()), this, SLOT(resetUnitTestRunning())); \
-        action->activate(QAction::Trigger);                         \
-        delete action;                                              \
-        while ( unitTestRunning ) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); } \
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); \
-    } while(0)
-
-
-/***********************************************************************
 * Run the unit tests                                                   *
 ***********************************************************************/
 void TraceWindow::resetUnitTestRunning( )
 {
+    while ( qApp->hasPendingEvents() )
+        qApp->processEvents();
     unitTestRunning = false;
+}
+void TraceWindow::update( )
+{
+    while ( qApp->hasPendingEvents() )
+        qApp->processEvents();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+}
+void TraceWindow::callDefaultTests( )
+{
+    selectProcessor(0);
+    update();
+    selectThread(0);
+    update();
+    resolutionBox->setText("500");
+    resolutionChanged();
+    update();
+    resizeDone();
+    update();
 }
 int TraceWindow::runUnitTests( )
 {
     int N_errors = 0;
-
+    callFun(std::bind(&TraceWindow::update,this));
+    callFun(std::bind(&TraceWindow::callDefaultTests,this));
+    callFun(std::bind(&TraceWindow::update,this));
     return N_errors;
 }
 

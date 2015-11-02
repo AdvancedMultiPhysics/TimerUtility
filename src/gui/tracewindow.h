@@ -15,6 +15,7 @@
 
 #include "timerwindow.h"
 #include "QSplitterGrid.h"
+#include "ThreadedSlotsClass.h"
 
 
 class CurrentTimeLineClass;
@@ -22,7 +23,7 @@ class DrawVerticalLineClass;
 class QLabelMouse;
 
 
-class TraceWindow : public QMainWindow
+class TraceWindow : public  ThreadedSlotsClass
 {
     Q_OBJECT
 
@@ -103,6 +104,8 @@ private:
     volatile bool unitTestRunning;
 private slots:
     void resetUnitTestRunning( );
+    void callDefaultTests( );
+    void update( );
 };
 
 
