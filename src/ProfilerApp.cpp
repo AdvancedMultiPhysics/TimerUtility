@@ -119,7 +119,18 @@ inline void ERROR_MSG( const std::string& msg ) {
     if ( !(EXP) ) {                                                 \
         std::stringstream stream;                                   \
         stream << "Failed assertion: " << #EXP                      \
-            << " " << __FILE__ << " " << __LINE__;                  \
+            << " " << __FILE__ << " " << __LINE__ << std::endl;     \
+        ERROR_MSG(stream.str());                                    \
+    }                                                               \
+}while(0)
+
+
+#define INSIST(EXP,MSG) do {                                        \
+    if ( !(EXP) ) {                                                 \
+        std::stringstream stream;                                   \
+        stream << "Failed assertion: " << #EXP                      \
+            << " " << __FILE__ << " " << __LINE__ << std::endl;     \
+        stream << "Message: " << #MSG << std::endl;                 \
         ERROR_MSG(stream.str());                                    \
     }                                                               \
 }while(0)
@@ -326,28 +337,37 @@ static inline double comm_max_reduce( const double val )
     double result = val;
     #ifdef USE_MPI
         if ( comm_size() > 1 )
-            MPI_Allreduce((void*)&val,&result,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
+            MPI_Allreduce(&val,&result,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
     #endif
     return result;
 }
-static inline void comm_send1( const void *buf, size_t bytes, int dest, int tag )
+#ifdef USE_MPI
+template<class TYPE> inline MPI_Datatype getType();
+template<> inline MPI_Datatype getType<char>() { return MPI_CHAR; }
+template<> inline MPI_Datatype getType<int>() { return MPI_INT; }
+template<> inline MPI_Datatype getType<unsigned long>() { return MPI_UNSIGNED_LONG; }
+template<> inline MPI_Datatype getType<double>() { return MPI_DOUBLE; }
+#endif
+template<class TYPE>
+static inline void comm_send1( const TYPE *buf, size_t size, int dest, int tag )
 {
     #ifdef USE_MPI
-        int N_send = (bytes+sizeof(double)-1)/sizeof(double);
-        int err = MPI_Send( (void*)buf, N_send, MPI_DOUBLE, dest, tag, MPI_COMM_WORLD );
+        INSIST(size<0x80000000,"We do not support sending/recieving buffers > 2^31 (yet)");
+        int err = MPI_Send( buf, size, getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
     #endif
 }
-static inline void* comm_recv1( int source, int tag )
+template<class TYPE>
+static inline TYPE* comm_recv1( int source, int tag )
 {
     #ifdef USE_MPI
         MPI_Status status;
         int err = MPI_Probe( source, tag, MPI_COMM_WORLD, &status );
         ASSERT(err==MPI_SUCCESS);
         int count;
-        MPI_Get_count( &status, MPI_DOUBLE, &count );
-        double *buf = new double[count];
-        err = MPI_Recv( buf, count, MPI_DOUBLE, source, tag, MPI_COMM_WORLD, &status );
+        MPI_Get_count( &status, getType<TYPE>(), &count );
+        TYPE *buf = new TYPE[count];
+        err = MPI_Recv( buf, count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
         ASSERT(err==MPI_SUCCESS);
         return buf;
     #else
@@ -358,11 +378,7 @@ template<class TYPE>
 static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag )
 {
     #ifdef USE_MPI
-        ASSERT(sizeof(TYPE)==sizeof(double));
-        int count = data.size();
-        const TYPE *ptr = NULL;
-        if ( !data.empty() ) { ptr = &data[0]; }
-        int err = MPI_Send( (void*)ptr, count, MPI_DOUBLE, dest, tag, MPI_COMM_WORLD );
+        int err = MPI_Send( getPtr(data), data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
     #endif
 }
@@ -370,16 +386,13 @@ template<class TYPE>
 static inline std::vector<TYPE> comm_recv2( int source, int tag )
 {
     #ifdef USE_MPI
-        ASSERT(sizeof(TYPE)==sizeof(double));
         MPI_Status status;
         int err = MPI_Probe( source, tag, MPI_COMM_WORLD, &status );
         ASSERT(err==MPI_SUCCESS);
         int count;
-        MPI_Get_count( &status, MPI_DOUBLE, &count );
+        MPI_Get_count( &status, getType<TYPE>(), &count );
         std::vector<TYPE> data(count);
-        TYPE *ptr = NULL;
-        if ( !data.empty() ) { ptr = &data[0]; }
-        err = MPI_Recv( (void*)ptr, count, MPI_DOUBLE, source, tag, MPI_COMM_WORLD, &status );
+        err = MPI_Recv( getPtr(data), count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
         ASSERT(err==MPI_SUCCESS);
         return data;
     #else
@@ -469,10 +482,11 @@ TraceResults::TraceResults( ):
     N_active(0), thread(0), rank(0), N_trace(0), 
     min(1e38), max(0), tot(0), N(0), mem(NULL)
 {
+    STATIC_ASSERT(sizeof(id_struct)==sizeof(double));
 }
 TraceResults::~TraceResults( )
 {
-    delete [] reinterpret_cast<double*>(mem);
+    delete [] mem;
     mem = NULL;
 }
 TraceResults::TraceResults(const TraceResults& rhs):
@@ -481,11 +495,8 @@ TraceResults::TraceResults(const TraceResults& rhs):
     max(rhs.max), tot(rhs.tot), N(rhs.N), mem(NULL)
 {
     allocate();
-    if ( mem!=NULL ) {
-        size_t N_mem = (N_active*sizeof(id_struct))/sizeof(double)+1 + 2*N_trace;
-        size_t N_bytes = N_mem*sizeof(double);
-        memcpy(mem,rhs.mem,N_bytes);
-    }
+    if ( mem!=NULL )
+        memcpy(mem,rhs.mem,(N_active+2*N_trace)*sizeof(double));
 }
 TraceResults& TraceResults::operator=(const TraceResults& rhs)
 {
@@ -501,21 +512,17 @@ TraceResults& TraceResults::operator=(const TraceResults& rhs)
     this->max = rhs.max;
     this->tot = rhs.tot;
     allocate();
-    if ( mem!=NULL ) {
-        size_t N_mem = (this->N_active*sizeof(id_struct))/sizeof(double)+1 + 2*this->N_trace;
-        size_t N_bytes = N_mem*sizeof(double);
-        memcpy(this->mem,rhs.mem,N_bytes);
-    }
+    if ( mem!=NULL )
+        memcpy(this->mem,rhs.mem,(N_active+2*N_trace)*sizeof(double));
     return *this;
 }
 void TraceResults::allocate( )
 {
-    delete [] reinterpret_cast<double*>(mem);
+    delete [] mem;
     mem = NULL;
     if ( N_active>0 || N_trace>0 ) {
-        size_t bytes = N_active*sizeof(id_struct) + 2*N_trace*sizeof(double);
-        mem = new double[bytes/sizeof(double)+1];
-        memset(mem,0,bytes);
+        mem = new double[N_active+2*N_trace];
+        memset(mem,0,(N_active+2*N_trace)*sizeof(double));
     }
 }
 id_struct* TraceResults::active( )
@@ -528,23 +535,19 @@ const id_struct* TraceResults::active( ) const
 }
 double* TraceResults::start( )
 {
-    size_t offset = (N_active*sizeof(id_struct))/sizeof(double)+1;
-    return N_trace>0 ? &reinterpret_cast<double*>(mem)[offset]:NULL;
+    return N_trace>0 ? &mem[N_active]:NULL;
 }
 const double* TraceResults::start( ) const
 {
-    size_t offset = (N_active*sizeof(id_struct))/sizeof(double)+1;
-    return N_trace>0 ? &reinterpret_cast<const double*>(mem)[offset]:NULL;
+    return N_trace>0 ? &mem[N_active]:NULL;
 }
 double* TraceResults::stop( )
 {
-    size_t offset = (N_active*sizeof(id_struct))/sizeof(double)+1 + N_trace;
-    return N_trace>0 ? &reinterpret_cast<double*>(mem)[offset]:NULL;
+    return N_trace>0 ? &mem[N_active+N_trace]:NULL;
 }
 const double* TraceResults::stop( ) const
 {
-    size_t offset = (N_active*sizeof(id_struct))/sizeof(double)+1 + N_trace;
-    return N_trace>0 ? &reinterpret_cast<const double*>(mem)[offset]:NULL;
+    return N_trace>0 ? &mem[N_active+N_trace]:NULL;
 }
 size_t TraceResults::size( bool store_trace ) const
 {
@@ -554,10 +557,9 @@ size_t TraceResults::size( bool store_trace ) const
         bytes += 2*N_trace*sizeof(double);
     return bytes;
 }
-void TraceResults::pack( void* data_out, bool store_trace ) const
+size_t TraceResults::pack( char* data, bool store_trace ) const
 {
     TraceResults *this2 = const_cast<TraceResults*>(this);
-    char *data = reinterpret_cast<char*>(data_out);
     int N_trace2 = N_trace;
     if ( !store_trace ) { this2->N_trace = 0; }
     memcpy(data,this,sizeof(TraceResults));
@@ -571,12 +573,13 @@ void TraceResults::pack( void* data_out, bool store_trace ) const
         memcpy(&data[pos],start(),N_trace*sizeof(double));
         pos += N_trace*sizeof(double);
         memcpy(&data[pos],stop(),N_trace*sizeof(double));
+        pos += N_trace*sizeof(double);
     }
+    return pos;
 }
-void TraceResults::unpack( const void* data_in )
+size_t TraceResults::unpack( const char* data )
 {
-    const char *data = reinterpret_cast<const char*>(data_in);
-    delete [] reinterpret_cast<double*>(mem);
+    delete [] mem;
     memcpy(this,data,sizeof(TraceResults));
     mem = NULL;
     allocate();
@@ -589,7 +592,10 @@ void TraceResults::unpack( const void* data_in )
         memcpy(start(),&data[pos],N_trace*sizeof(double));
         pos += N_trace*sizeof(double);
         memcpy(stop(),&data[pos],N_trace*sizeof(double));
+        pos += N_trace*sizeof(double);
     }
+    return pos;
+
 }
 bool TraceResults::operator==(const TraceResults& rhs) const
 {
@@ -615,60 +621,45 @@ bool TraceResults::operator==(const TraceResults& rhs) const
 ***********************************************************************/
 size_t TimerResults::size( bool store_trace ) const
 {
-    size_t bytes = sizeof(id);              // id
-    bytes += sizeof(int) + message.size();  // message
-    bytes += sizeof(int) + file.size();     // file
-    bytes += sizeof(int) + path.size();     // path
-    bytes += 2*sizeof(int);                 // start/stop
-    bytes += sizeof(int);                   // trace
+    size_t bytes = sizeof(id);
+    bytes += 6*sizeof(int);
+    bytes += message.size();
+    bytes += file.size();
+    bytes += path.size();
     for (size_t i=0; i<trace.size(); i++)
         bytes += trace[i].size(store_trace);
     return bytes;
 }
-void TimerResults::pack( void* data_out, bool store_trace ) const
+size_t TimerResults::pack( char* data, bool store_trace ) const
 {
-    char *data = reinterpret_cast<char*>(data_out);
     memcpy(data,&id,sizeof(id));
     size_t pos = sizeof(id);
-    int *tmp = reinterpret_cast<int*>(&data[pos]);
-    tmp[0] = message.size();
-    tmp[1] = file.size();
-    tmp[2] = path.size();
-    tmp[3] = start;
-    tmp[4] = stop;
-    tmp[5] = trace.size();
-    pos += 6*sizeof(int);
-    memcpy(&data[pos],message.c_str(),tmp[0]);
-    pos += message.size();
-    memcpy(&data[pos],file.c_str(),tmp[1]);
-    pos += file.size();
-    memcpy(&data[pos],path.c_str(),tmp[2]);
-    pos += path.size();
-    for (size_t i=0; i<trace.size(); i++) {
-        trace[i].pack(&data[pos],store_trace);
-        pos += trace[i].size();
-    }
+    const int tmp[6] = { (int)message.size(), (int)file.size(), (int)path.size(), start, stop, (int)trace.size() };
+    memcpy(&data[pos],&tmp,sizeof(tmp));
+    pos += sizeof(tmp);
+    memcpy(&data[pos],message.c_str(),tmp[0]);  pos+=message.size();
+    memcpy(&data[pos],file.c_str(),tmp[1]);     pos+=file.size();
+    memcpy(&data[pos],path.c_str(),tmp[2]);     pos+=path.size();
+    for (size_t i=0; i<trace.size(); i++)
+        pos += trace[i].pack(&data[pos],store_trace);
+    return pos;
 }
-void TimerResults::unpack( const void* data_in )
+size_t TimerResults::unpack( const char* data )
 {
-    const char *data = reinterpret_cast<const char*>(data_in);
     memcpy(&id,data,sizeof(id));
     size_t pos = sizeof(id);
-    const int *tmp = reinterpret_cast<const int*>(&data[pos]);
-    pos += 6*sizeof(int);
-    message = std::string(&data[pos],tmp[0]);
-    pos += message.size();
-    file = std::string(&data[pos],tmp[1]);
-    pos += file.size();
-    path = std::string(&data[pos],tmp[2]);
-    pos += path.size();
+    int tmp[6];
+    memcpy(&tmp,&data[pos],sizeof(tmp));
+    pos += sizeof(tmp);
+    message=std::string(&data[pos],tmp[0]);     pos+=message.size();
+    file=std::string(&data[pos],tmp[1]);        pos+=file.size();
+    path = std::string(&data[pos],tmp[2]);      pos+=path.size();
     start = tmp[3];
     stop  = tmp[4];
     trace.resize(tmp[5]);
-    for (size_t i=0; i<trace.size(); i++) {
-        trace[i].unpack(&data[pos]);
-        pos += trace[i].size();
-    }
+    for (size_t i=0; i<trace.size(); i++)
+        pos += trace[i].unpack(&data[pos]);
+    return pos;
 }
 bool TimerResults::operator==(const TimerResults& rhs) const
 {
@@ -678,9 +669,6 @@ bool TimerResults::operator==(const TimerResults& rhs) const
     equal = equal && path==rhs.path;
     equal = equal && start==rhs.start;
     equal = equal && stop==rhs.stop;
-    equal = equal && trace==rhs.trace;
-    if ( !equal )
-        return false;
     for (size_t i=0; i<trace.size(); i++)
         equal = equal && trace[i]==rhs.trace[i];
     return equal;
@@ -697,33 +685,35 @@ size_t MemoryResults::size( ) const
     N_bytes += bytes.size()*sizeof(size_t);
     return N_bytes;
 }
-void MemoryResults::pack( void* data_out ) const
+size_t MemoryResults::pack( char* data ) const
 {
-    char *data = reinterpret_cast<char*>(data_out);
-    size_t *tmp = reinterpret_cast<size_t*>(data);
-    tmp[0] = static_cast<size_t>(rank);
-    tmp[1] = time.size();
+    const size_t tmp[2] = { (size_t)rank, time.size() };
+    memcpy(data,&tmp,sizeof(tmp));
+    size_t pos = sizeof(tmp);
     if ( !time.empty() ) {
-        size_t pos = 2*sizeof(size_t);
         memcpy(&data[pos],&time[0],tmp[1]*sizeof(double));
         pos += time.size()*sizeof(double);
         memcpy(&data[pos],&bytes[0],tmp[1]*sizeof(size_t));
+        pos += time.size()*sizeof(double);
     }
+    return pos;
 }
-void MemoryResults::unpack( const void* data_in )
+size_t MemoryResults::unpack( const char* data )
 {
-    const char *data = reinterpret_cast<const char*>(data_in);
-    const size_t *tmp = reinterpret_cast<const size_t*>(data);
+    size_t tmp[2];
+    memcpy(&tmp,data,sizeof(tmp));
     rank = static_cast<int>(tmp[0]);
     size_t N = tmp[1];
     time.resize(N);
     bytes.resize(N);
+    size_t pos = sizeof(tmp);
     if ( !time.empty() ) {
-        size_t pos = 2*sizeof(size_t);
         memcpy(&time[0],&data[pos],tmp[1]*sizeof(double));
         pos += time.size()*sizeof(double);
         memcpy(&bytes[0],&data[pos],tmp[1]*sizeof(size_t));
+        pos += time.size()*sizeof(double);
     }
+    return pos;
 }
 bool MemoryResults::operator==(const MemoryResults& rhs) const
 {
@@ -745,46 +735,37 @@ bool MemoryResults::operator==(const MemoryResults& rhs) const
 ***********************************************************************/
 size_t TimerMemoryResults::size() const
 {
-    size_t bytes = 4*sizeof(int);
+    size_t bytes = 3*sizeof(int);
     for (size_t i=0; i<timers.size(); i++)
         bytes += timers[i].size();
     for (size_t i=0; i<memory.size(); i++)
         bytes += memory[i].size();
     return bytes;
 }
-void TimerMemoryResults::pack( void* data_out ) const
+size_t TimerMemoryResults::pack( char* data ) const
 {
-    char *data = reinterpret_cast<char*>(data_out);
-    int *tmp = reinterpret_cast<int*>(data);
-    tmp[0] = N_procs;
-    tmp[1] = timers.size();
-    tmp[2] = memory.size();
-    size_t bytes = 4*sizeof(int);
-    for (size_t i=0; i<timers.size(); i++) {
-        timers[i].pack(&data[bytes]);
-        bytes += timers[i].size();
-    }
-    for (size_t i=0; i<memory.size(); i++) {
-        memory[i].pack(&data[bytes]);
-        bytes += memory[i].size();
-    }
+    const int tmp[3] = { N_procs, (int)timers.size(), (int)memory.size() };
+    memcpy(data,&tmp,sizeof(tmp));
+    size_t pos = sizeof(tmp);
+    for (size_t i=0; i<timers.size(); i++)
+        pos += timers[i].pack(&data[pos]);
+    for (size_t i=0; i<memory.size(); i++)
+        pos += memory[i].pack(&data[pos]);
+    return pos;
 }
-void TimerMemoryResults::unpack( const void* data_in )
+size_t TimerMemoryResults::unpack( const char* data )
 {
-    const char *data = reinterpret_cast<const char*>(data_in);
-    const int *tmp = reinterpret_cast<const int*>(data);
+    int tmp[3];
+    memcpy(&tmp,data,sizeof(tmp));
+    size_t pos = sizeof(tmp);
     N_procs = tmp[0];
     timers.resize(tmp[1]);
     memory.resize(tmp[2]);
-    size_t bytes = 4*sizeof(int);
-    for (size_t i=0; i<timers.size(); i++) {
-        timers[i].unpack(&data[bytes]);
-        bytes += timers[i].size();
-    }
-    for (size_t i=0; i<memory.size(); i++) {
-        memory[i].unpack(&data[bytes]);
-        bytes += memory[i].size();
-    }
+    for (size_t i=0; i<timers.size(); i++)
+        pos += timers[i].unpack(&data[pos]);
+    for (size_t i=0; i<memory.size(); i++)
+        pos += memory[i].unpack(&data[pos]);
+    return pos;
 }
 bool TimerMemoryResults::operator==(const TimerMemoryResults& rhs) const
 {
@@ -1487,9 +1468,11 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             gather_memory( data );
         }
         for (size_t k=0; k<data.size(); k++) {
+            size_t count = data[k].time.size();
+            ASSERT(data[k].bytes.size()==count);
             // Determine a scale factor so we can use unsigned int to store the memory
             size_t max_mem_size = 0;
-            for (size_t i=0; i<data[k].bytes.size(); i++)
+            for (size_t i=0; i<count; i++)
                 max_mem_size = std::max(max_mem_size,data[k].bytes[i]);
             size_t scale;
             std::string units;
@@ -1507,23 +1490,23 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 units = "GB";
             }
             // Copy the time and size to new buffers
-            double *time = new double[data[k].time.size()];
-            unsigned int *size = new unsigned int[data[k].bytes.size()];
-            for (size_t i=0; i<data[k].time.size(); i++) {
+            double *time = new double[count];
+            unsigned int *size = new unsigned int[count];
+            for (size_t i=0; i<count; i++) {
                 time[i] = data[k].time[i];
                 size[i] = static_cast<unsigned int>(data[k].bytes[i]/scale);
             }
             // Save the results
+            // Note: Visual studio has an issue with type %zi
             ASSERT(sizeof(unsigned int)==4);
             fprintf(memoryFile,"<N=%li,type1=%s,type2=%s,units=%s,rank=%i>\n",
-                static_cast<long int>(data[k].time.size()),
-                "double","uint32",units.c_str(),rank);  // Visual studio has an issue with type %zi
-            size_t N1 = fwrite(time,sizeof(double),d_N_memory_steps,memoryFile);
-            size_t N2 = fwrite(size,sizeof(unsigned int),d_N_memory_steps,memoryFile);
+                static_cast<long int>(count),"double","uint32",units.c_str(),rank);
+            size_t N1 = fwrite(time,sizeof(double),count,memoryFile);
+            size_t N2 = fwrite(size,sizeof(unsigned int),count,memoryFile);
             fprintf(memoryFile,"\n");
             delete [] time;
             delete [] size;
-            if ( N1!=(size_t)d_N_memory_steps || N2!=(size_t)d_N_memory_steps )
+            if ( N1!=(size_t)count || N2!=(size_t)count )
                 ERROR_MSG("Failed to write memory results\n");
         }
         fclose(memoryFile);
@@ -2194,32 +2177,35 @@ void ProfilerApp::gather_timers( std::vector<TimerResults>& timers )
     int N_procs = comm_size();
     if ( rank==0 ) {
         for (int r=1; r<N_procs; r++) {
-            const char *buffer = reinterpret_cast<const char*>(comm_recv1(r,0));
-            const size_t *tmp = reinterpret_cast<const size_t*>(buffer);
-            size_t N_timers = tmp[0];
+            char *buffer = comm_recv1<char>(r,0);
+            size_t pos = 0;
+            size_t N_timers = 0;
+            memcpy(&N_timers,&buffer[pos],sizeof(N_timers));
+            pos += sizeof(N_timers);
             ASSERT(N_timers<0x100000);
             std::vector<TimerResults> add(N_timers);
-            size_t pos = sizeof(size_t);
             for (size_t i=0; i<add.size(); i++) {
                 add[i].unpack(&buffer[pos]);
                 pos += add[i].size();
             }
             add_timers( timers, add );
-            delete [] reinterpret_cast<const char*>(buffer);
+            delete [] buffer;
         }
     } else {
         size_t N_bytes = sizeof(size_t);
         for (size_t i=0; i<timers.size(); i++)
             N_bytes += timers[i].size();
-        char *buffer = new char[N_bytes+8];
-        size_t *tmp = reinterpret_cast<size_t*>(buffer);
-        tmp[0] = timers.size();
-        size_t pos = sizeof(size_t);
+        char *buffer = new char[N_bytes];
+        size_t pos = 0;
+        size_t N_timers = timers.size();
+        memcpy(&buffer[pos],&N_timers,sizeof(N_timers));
+        pos += sizeof(N_timers);
         for (size_t i=0; i<timers.size(); i++) {
             timers[i].pack(&buffer[pos]);
             pos += timers[i].size();
         }
-        comm_send1( buffer, N_bytes, 0, 0 );
+        ASSERT(pos==N_bytes);
+        comm_send1<char>( buffer, N_bytes, 0, 0 );
         delete [] buffer;
         timers.clear();
     }
@@ -2571,6 +2557,7 @@ extern "C" {
         global_profiler.save(name,global!=0);
     }
 }
+
 
 
 

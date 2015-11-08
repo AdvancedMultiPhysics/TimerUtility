@@ -192,11 +192,25 @@
 /*! \def PROFILE_DISABLE_MEMORY()
  *  \brief Disable the memory trace
  *  \details This will disable the monitoring of the memory usage within
+
  *      the application. 
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
 #define PROFILE_DISABLE_MEMORY() \
     global_profiler.set_store_memory(false)
+
+
+/*! \def STATIC_ASSERT(EXP)
+ *  \brief static assert
+ *  \details This will perform a static assert if possible, otherwise it will have no effect.
+ */
+#if defined(ENABLE_STATIC_ASSERT) || defined(TIMER_ENABLE_STATIC_ASSERT)
+    #define STATIC_ASSERT(EXP) \
+        static_assert( EXP, "Failed static assert: " #EXP )
+#else
+    #define STATIC_ASSERT(EXP) \
+        do {} while(0)
+#endif
 
 
 /*! @} */

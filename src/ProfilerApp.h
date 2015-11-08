@@ -115,12 +115,12 @@ struct TraceResults {
     TraceResults& operator=(const TraceResults&); //! Assignment operator
     void allocate();                    //!<  Allocate the data
     size_t size(bool store_trace=true) const; //!< The number of bytes needed to pack the trace
-    void pack( void* data, bool store_trace=true ) const;  //!<  Pack the data to a buffer
-    void unpack( const void* data );    //!<  Unpack the data from a buffer
+    size_t pack( char* data, bool store_trace=true ) const;  //!<  Pack the data to a buffer
+    size_t unpack( const char* data );    //!<  Unpack the data from a buffer
     bool operator==(const TraceResults& rhs) const;  //! Comparison operator
     inline bool operator!=(const TraceResults& rhs) const { return !(this->operator==(rhs)); }
 private:
-    void *mem;
+    double *mem;                        // Internal memory
 };
 
 
@@ -137,8 +137,8 @@ struct TimerResults {
     int stop;                           //!<  Timer stop line (-1: never defined)
     std::vector<TraceResults> trace;    //!< Trace data
     size_t size(bool store_trace=true) const; //!< The number of bytes needed to pack the trace
-    void pack( void* data, bool store_trace=true ) const;  //!<  Pack the data to a buffer
-    void unpack( const void* data );    //!<  Unpack the data from a buffer
+    size_t pack( char* data, bool store_trace=true ) const;  //!<  Pack the data to a buffer
+    size_t unpack( const char* data );    //!<  Unpack the data from a buffer
     bool operator==(const TimerResults& rhs) const;  //! Comparison operator
     inline bool operator!=(const TimerResults& rhs) const { return !(this->operator==(rhs)); }
 };
@@ -153,8 +153,8 @@ struct MemoryResults{
     std::vector<double> time;           //!<  Time
     std::vector<size_t> bytes;          //!<  Memory in use
     size_t size() const;                //!< The number of bytes needed to pack the trace
-    void pack( void* data ) const;      //!<  Pack the data to a buffer
-    void unpack( const void* data );    //!<  Unpack the data from a buffer
+    size_t pack( char* data ) const;    //!<  Pack the data to a buffer
+    size_t unpack( const char* data );  //!<  Unpack the data from a buffer
     bool operator==(const MemoryResults& rhs) const;  //! Comparison operator
     inline bool operator!=(const MemoryResults& rhs) const { return !(this->operator==(rhs)); }
 };
@@ -169,8 +169,8 @@ struct TimerMemoryResults {
     std::vector<TimerResults> timers;
     std::vector<MemoryResults> memory;
     size_t size() const;                //!< The number of bytes needed to pack the trace
-    void pack( void* data ) const;      //!<  Pack the data to a buffer
-    void unpack( const void* data );    //!<  Unpack the data from a buffer
+    size_t pack( char* data ) const;    //!<  Pack the data to a buffer
+    size_t unpack( const char* data );  //!<  Unpack the data from a buffer
     TimerMemoryResults(): N_procs(0) {}
     bool operator==(const TimerMemoryResults& rhs) const;  //! Comparison operator
     inline bool operator!=(const TimerMemoryResults& rhs) const { return !(this->operator==(rhs)); }

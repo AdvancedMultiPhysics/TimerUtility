@@ -70,6 +70,13 @@ FUNCTION( WRITE_COMPILE_FEATURES FILENAME ${ARGN} )
 	        return 0;
 	     }"
     )
+    TEST_FEATURE( STATIC_ASSERT ${FILENAME} ${PREFIX}
+	    "#include <iostream>
+	     int main() {
+            static_assert(true,\"test\");
+	        return 0;
+	     }"
+    )
 ENDFUNCTION()
 
 

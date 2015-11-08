@@ -43,7 +43,7 @@ SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
 SET( PROJ TIMER )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake" )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake" )
-INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteCompilerFeatures.cmake" )
+INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteCompilerFeatures.cmake" TIMER )
 
 
 # Check if we are only compiling docs
