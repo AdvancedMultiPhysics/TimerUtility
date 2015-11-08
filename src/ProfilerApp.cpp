@@ -1367,7 +1367,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             for (int j=0; j<N_threads; j++)
                 total_time[i] = std::max(total_time[i],time_thread[j]);
         }
-        quicksort2(N_timers,&total_time[0],&id_order[0]);
+        quicksort2(results.size(),&total_time[0],&id_order[0]);
         // Open the file(s) for writing
         FILE *timerFile = fopen(filename_timer,"wb");
         if ( timerFile == NULL ) {
@@ -1389,8 +1389,8 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         fprintf(timerFile,"---------------------------------------------------------------");
         fprintf(timerFile,"------------------------------------------------------------------------\n");
         // Loop through the list of timers, storing the most expensive first
-        for (int ii=N_timers-1; ii>=0; ii--) {
-            size_t i=id_order[ii];
+        for (int ii=static_cast<int>(results.size())-1; ii>=0; ii--) {
+            size_t i = id_order[ii];
             int N_threads = TimerUtility::ProfilerThreadIndex::getNThreads();
             std::vector<int> N_thread(N_threads,0);
             std::vector<float> min_thread(N_threads,1e38);
@@ -1421,7 +1421,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         fprintf(timerFile,",store_memory=%i",d_store_memory_data?1:0);
         fprintf(timerFile,",date='%s'>\n",getDateString().c_str());
         // Loop through the list of timers, storing the most expensive first
-        for (int ii=N_timers-1; ii>=0; ii--) {
+        for (int ii=static_cast<int>(results.size())-1; ii>=0; ii--) {
             size_t i=id_order[ii];
             // Store the basic timer info
             const char e = 0x0E;    // Escape character for printing strings
