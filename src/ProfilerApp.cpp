@@ -122,7 +122,7 @@ inline void ERROR_MSG( const std::string& msg ) {
             << " " << __FILE__ << " " << __LINE__ << std::endl;     \
         ERROR_MSG(stream.str());                                    \
     }                                                               \
-}while(0)
+}while(false)
 
 
 #define INSIST(EXP,MSG) do {                                        \
@@ -133,7 +133,7 @@ inline void ERROR_MSG( const std::string& msg ) {
         stream << "Message: " << #MSG << std::endl;                 \
         ERROR_MSG(stream.str());                                    \
     }                                                               \
-}while(0)
+}while(false)
 
 
 /******************************************************************
@@ -346,6 +346,14 @@ template<class TYPE> inline MPI_Datatype getType();
 template<> inline MPI_Datatype getType<char>() { return MPI_CHAR; }
 template<> inline MPI_Datatype getType<int>() { return MPI_INT; }
 template<> inline MPI_Datatype getType<unsigned long>() { return MPI_UNSIGNED_LONG; }
+template<> inline MPI_Datatype getType<uint64_t>() {
+    if ( sizeof(uint64_t)==sizeof(unsigned long) )
+        return MPI_UNSIGNED_LONG;
+    if ( sizeof(uint64_t)==sizeof(double) )
+        return MPI_DOUBLE;
+    ERROR_MSG("Invalid MPI type");
+    return MPI_UNDEFINED;
+}
 template<> inline MPI_Datatype getType<double>() { return MPI_DOUBLE; }
 #endif
 template<class TYPE>
@@ -353,7 +361,7 @@ static inline void comm_send1( const TYPE *buf, size_t size, int dest, int tag )
 {
     #ifdef USE_MPI
         INSIST(size<0x80000000,"We do not support sending/recieving buffers > 2^31 (yet)");
-        int err = MPI_Send( buf, size, getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
+        int err = MPI_Send( buf, (int) size, getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
     #endif
 }
@@ -378,7 +386,7 @@ template<class TYPE>
 static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag )
 {
     #ifdef USE_MPI
-        int err = MPI_Send( getPtr(data), data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
+        int err = MPI_Send( getPtr(data), (int) data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
     #endif
 }
@@ -480,7 +488,7 @@ id_struct id_struct::create_id( size_t id )
 ***********************************************************************/
 TraceResults::TraceResults( ):
     N_active(0), thread(0), rank(0), N_trace(0), 
-    min(1e38), max(0), tot(0), N(0), mem(NULL)
+    min(1e38f), max(0.0f), tot(0.0f), N(0), mem(NULL)
 {
     STATIC_ASSERT(sizeof(id_struct)==sizeof(double));
 }
@@ -1181,11 +1189,11 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
                 results[i].trace[k].thread = thread_id;
                 results[i].trace[k].rank = rank;
                 results[i].trace[k].N = trace->N_calls;
-                results[i].trace[k].N_active = list.size();
-                results[i].trace[k].N_trace = N_stored_trace;
-                results[i].trace[k].min = trace->min_time;
-                results[i].trace[k].max = trace->max_time;
-                results[i].trace[k].tot = trace->total_time;
+                results[i].trace[k].N_active = static_cast<unsigned short>(list.size());
+                results[i].trace[k].N_trace = static_cast<unsigned int>(N_stored_trace);
+                results[i].trace[k].min = static_cast<float>(trace->min_time);
+                results[i].trace[k].max = static_cast<float>(trace->max_time);
+                results[i].trace[k].tot = static_cast<float>(trace->total_time);
                 results[i].trace[k].allocate();
                 for (size_t j=0; j<list.size(); j++)
                     results[i].trace[k].active()[j] = list[j];
@@ -1194,7 +1202,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
                     if ( trace_id == trace->id ) {
                         results[i].trace[k].min = std::min<float>(results[i].trace[k].min,time);
                         results[i].trace[k].max = std::max<float>(results[i].trace[k].max,time);
-                        results[i].trace[k].tot += time;
+                        results[i].trace[k].tot += static_cast<float>(time);
                         add_trace = false;
                     }
                 }
@@ -1220,11 +1228,11 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
                 results[i].trace[k].thread = thread_id;
                 results[i].trace[k].rank = rank;
                 results[i].trace[k].N = 1;
-                results[i].trace[k].N_active = list.size();
-                results[i].trace[k].N_trace = N_stored_trace;
-                results[i].trace[k].min = time;
-                results[i].trace[k].max = time;
-                results[i].trace[k].tot = time;
+                results[i].trace[k].N_active = static_cast<unsigned short>(list.size());
+                results[i].trace[k].N_trace = static_cast<unsigned int>(N_stored_trace);
+                results[i].trace[k].min = static_cast<float>(time);
+                results[i].trace[k].max = static_cast<float>(time);
+                results[i].trace[k].tot = static_cast<float>(time);
                 results[i].trace[k].allocate();
                 for (size_t j=0; j<list.size(); j++)
                     results[i].trace[k].active()[j] = list[j];
@@ -1367,7 +1375,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             for (int j=0; j<N_threads; j++)
                 total_time[i] = std::max(total_time[i],time_thread[j]);
         }
-        quicksort2(results.size(),&total_time[0],&id_order[0]);
+        quicksort2((int)results.size(),&total_time[0],&id_order[0]);
         // Open the file(s) for writing
         FILE *timerFile = fopen(filename_timer,"wb");
         if ( timerFile == NULL ) {
@@ -1393,12 +1401,12 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             size_t i = id_order[ii];
             int N_threads = TimerUtility::ProfilerThreadIndex::getNThreads();
             std::vector<int> N_thread(N_threads,0);
-            std::vector<float> min_thread(N_threads,1e38);
-            std::vector<float> max_thread(N_threads,0);
-            std::vector<double> tot_thread(N_threads,0);
+            std::vector<float> min_thread(N_threads,1e38f);
+            std::vector<float> max_thread(N_threads,0.0f);
+            std::vector<double> tot_thread(N_threads,0.0);
             for (size_t j=0; j<results[i].trace.size(); j++) {
                 int k = results[i].trace[j].thread;
-                N_thread[k] += results[i].trace[j].N;
+                N_thread[k] += static_cast<int>(results[i].trace[j].N);
                 min_thread[k] = std::min(min_thread[k],results[i].trace[j].min);
                 max_thread[k] = std::max(max_thread[k],results[i].trace[j].max);
                 tot_thread[k] += results[i].trace[j].tot;
@@ -1530,7 +1538,7 @@ static inline void get_field( const char* line, size_t N, const char* name, char
     } else {
         int i1 = -1;
         int i2 = -1;
-        for (size_t i=0; i<N; i++) {
+        for (int i=0; i<(int)N; i++) {
             if ( ptr[i]<32 )
                 break;
             if ( ptr[i]=='=' )
@@ -1793,17 +1801,17 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
                     trace.N = atoi(fields[i].second);
                 } else if ( strcmp(fields[i].first,"min")==0 ) {
                     // Load min
-                    trace.min = atof(fields[i].second);
+                    trace.min = static_cast<float>(atof(fields[i].second));
                 } else if ( strcmp(fields[i].first,"max")==0 ) {
                     // Load max
-                    trace.max = atof(fields[i].second);
+                    trace.max = static_cast<float>(atof(fields[i].second));
                 } else if ( strcmp(fields[i].first,"tot")==0 ) {
                     // Load tot
-                    trace.tot = atof(fields[i].second);
+                    trace.tot = static_cast<float>(atof(fields[i].second));
                 } else if ( strcmp(fields[i].first,"active")==0 ) {
                     // Load the active timers
                     get_active_ids(fields[i].second,active);
-                    trace.N_active = active.size();
+                    trace.N_active = static_cast<unsigned short>(active.size());
                     trace.allocate();
                     for (size_t j=0; j<active.size(); j++)
                         trace.active()[j] = active[j];
@@ -2538,11 +2546,11 @@ extern "C" {
     }
     void global_profiler_set_store_trace( int flag )
     {
-        global_profiler.set_store_trace(flag);
+        global_profiler.set_store_trace(flag!=0);
     }
     void global_profiler_set_store_memory( int flag )
     {
-        global_profiler.set_store_memory(flag);
+        global_profiler.set_store_memory(flag!=0);
     }
     void global_profiler_start( const char* name, const char* file, int line, int level )
     {

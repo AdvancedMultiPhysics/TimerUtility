@@ -40,7 +40,7 @@ std::tuple<std::string,std::string> splitFilename( const std::string& filename )
     int k = -1;
     for (size_t i=0; i<filename.size(); i++) {
         if ( filename[i]==47 || filename[i]==92 )
-            k = i;
+            k = static_cast<int>(i);
     }
     std::string file, path;
     if ( k >= 0 ) {
@@ -175,7 +175,7 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
             function_structure data;
             int fn = -1;
             std::tie(fn,data) = getData(line,fid,results.name_map);
-            fun_index = functions.size();
+            fun_index = static_cast<int>(functions.size());
             functions.resize(fun_index+1);
             functions[fun_index].id = getID(ob,fl,fn,id_struct_map);
             functions[fun_index].obj = ob;
@@ -320,7 +320,7 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
         std::sort(tmp.begin(),tmp.end(),sort_fun);
         if ( tmp.rbegin()->second.empty() ) {
             // Go through the entries that do not have a parent
-            for (int i=tmp.size()-1; i>=0&&tmp[i].second.empty(); i--) {
+            for (int i=static_cast<int>(tmp.size())-1; i>=0&&tmp[i].second.empty(); i--) {
                 // The current id is a new trace
                 id_struct id = tmp[i].first;
                 tmp.resize(i);
@@ -335,7 +335,7 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
                     trace.id = id;
                     trace.min = 0.0;
                     trace.max = 0.0;
-                    trace.tot = time;
+                    trace.tot = static_cast<float>(time);
                     trace.N = 1;
                     timers[index].trace.push_back(trace);
                 }

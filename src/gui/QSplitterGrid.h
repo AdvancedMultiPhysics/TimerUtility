@@ -9,6 +9,7 @@
 #include <QCoreApplication>
 
 #include <map>
+#include <functional>
 
 
 class QSplitterGridLineClass;
