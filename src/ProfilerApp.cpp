@@ -344,13 +344,22 @@ static inline double comm_max_reduce( const double val )
 #ifdef USE_MPI
 template<class TYPE> inline MPI_Datatype getType();
 template<> inline MPI_Datatype getType<char>() { return MPI_CHAR; }
-template<> inline MPI_Datatype getType<int>() { return MPI_INT; }
-template<> inline MPI_Datatype getType<unsigned long>() { return MPI_UNSIGNED_LONG; }
+template<> inline MPI_Datatype getType<unsigned char>() { return MPI_UNSIGNED_CHAR; }
+template<> inline MPI_Datatype getType<int32_t>() { return MPI_INT; }
+template<> inline MPI_Datatype getType<uint32_t>() { return MPI_UNSIGNED; }
+template<> inline MPI_Datatype getType<int64_t>() {
+    if ( sizeof(uint64_t)==sizeof(long) )
+        return MPI_LONG;
+    if ( sizeof(uint64_t)==sizeof(long long) )
+        return MPI_LONG_LONG;
+    ERROR_MSG("Invalid MPI type");
+    return MPI_UNDEFINED;
+}
 template<> inline MPI_Datatype getType<uint64_t>() {
     if ( sizeof(uint64_t)==sizeof(unsigned long) )
         return MPI_UNSIGNED_LONG;
-    if ( sizeof(uint64_t)==sizeof(double) )
-        return MPI_DOUBLE;
+    if ( sizeof(uint64_t)==sizeof(long long) )
+        return MPI_UNSIGNED_LONG_LONG;
     ERROR_MSG("Invalid MPI type");
     return MPI_UNDEFINED;
 }
