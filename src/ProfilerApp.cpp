@@ -235,7 +235,7 @@ void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max,
         memset(data1_new,0,size_new*sizeof(type1));
         memset(data2_new,0,size_new*sizeof(type2));
         if ( size_old != 0 ) {
-            size_t N_copy = std::min(size_old,size_new);
+            size_t N_copy = std::min<size_t>(size_old,size_new);
             memcpy(data1_new,*data1,N_copy*sizeof(type1));
             memcpy(data2_new,*data2,N_copy*sizeof(type2));
             delete [] *data1;
@@ -464,7 +464,7 @@ static inline id_struct convert_timer_id( size_t key )
         sprintf(id,"%04x",static_cast<unsigned int>(id2));
     } else {
         // We will store the id use the 64 character set { 0-9 a-z A-Z & $ }
-        int N = std::max(4,(N_bits+5)/6);    // The number of digits we need to use
+        int N = std::max<int>(4,(N_bits+5)/6);    // The number of digits we need to use
         size_t tmp1 = id2;
         for (int i=N-1; i>=0; i--) {
             unsigned char tmp2 = tmp1%64;
@@ -1016,12 +1016,12 @@ void ProfilerApp::stop( const std::string& message, const char* filename,
         trace->end_time[trace->N_calls]   = get_diff(d_construct_time,end_time,d_frequency);
     }
     // Save the minimum, maximum, and total times
-    timer->max_time = std::max(timer->max_time,time);
-    timer->min_time = std::min(timer->min_time,time);
+    timer->max_time = std::max<double>(timer->max_time,time);
+    timer->min_time = std::min<double>(timer->min_time,time);
     timer->total_time += time;
     // Save the new time info to the trace
-    trace->max_time = std::max(trace->max_time,time);
-    trace->min_time = std::min(trace->min_time,time);
+    trace->max_time = std::max<double>(trace->max_time,time);
+    trace->min_time = std::min<double>(trace->min_time,time);
     trace->total_time += time;
     trace->N_calls++;
     // Get the memory usage
@@ -1192,7 +1192,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
                 // Get the running times of the trace
                 size_t N_stored_trace = 0;
                 if ( d_store_trace_data ) 
-                    N_stored_trace = std::min(trace->N_calls,static_cast<size_t>(MAX_TRACE_TRACE));
+                    N_stored_trace = std::min<size_t>(trace->N_calls,static_cast<size_t>(MAX_TRACE_TRACE));
                 std::vector<id_struct> list = get_active_list( trace->trace, timer->trace_index, thread_data );
                 results[i].trace[k].id = results[i].id;
                 results[i].trace[k].thread = thread_id;
@@ -1325,7 +1325,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
         d_size_memory[i] = d_size_memory[d_N_memory_steps-1];
         d_N_memory_steps = i+1;
     }
-    d_max_trace_remaining = std::max((size_t)MAX_TRACE_MEMORY-d_N_memory_steps,(size_t)0);
+    d_max_trace_remaining = std::max<size_t>((size_t)MAX_TRACE_MEMORY-d_N_memory_steps,0);
     bytes_changed += (d_N_memory_steps-N_memory_steps_old)*(sizeof(double)+sizeof(size_t));
     TimerUtility::atomic::atomic_add(&d_bytes,bytes_changed);
     // Copy the results to the output vector
@@ -1382,7 +1382,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             for (size_t j=0; j<results[i].trace.size(); j++)
                 time_thread[results[i].trace[j].thread] += results[i].trace[j].tot;
             for (int j=0; j<N_threads; j++)
-                total_time[i] = std::max(total_time[i],time_thread[j]);
+                total_time[i] = std::max<double>(total_time[i],time_thread[j]);
         }
         quicksort2((int)results.size(),&total_time[0],&id_order[0]);
         // Open the file(s) for writing
@@ -1416,8 +1416,8 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             for (size_t j=0; j<results[i].trace.size(); j++) {
                 int k = results[i].trace[j].thread;
                 N_thread[k] += static_cast<int>(results[i].trace[j].N);
-                min_thread[k] = std::min(min_thread[k],results[i].trace[j].min);
-                max_thread[k] = std::max(max_thread[k],results[i].trace[j].max);
+                min_thread[k] = std::min<float>(min_thread[k],results[i].trace[j].min);
+                max_thread[k] = std::max<float>(max_thread[k],results[i].trace[j].max);
                 tot_thread[k] += results[i].trace[j].tot;
             }
             for (int j=0; j<N_threads; j++) {
@@ -1490,7 +1490,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             // Determine a scale factor so we can use unsigned int to store the memory
             size_t max_mem_size = 0;
             for (size_t i=0; i<count; i++)
-                max_mem_size = std::max(max_mem_size,data[k].bytes[i]);
+                max_mem_size = std::max<uint64_t>(max_mem_size,data[k].bytes[i]);
             size_t scale;
             std::string units;
             if ( max_mem_size < 0xFFFFFFFF ) {
