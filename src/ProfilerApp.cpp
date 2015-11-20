@@ -2239,12 +2239,12 @@ void ProfilerApp::gather_memory( std::vector<MemoryResults>& memory )
         for (int r=1; r<N_procs; r++) {
             memory[r].rank = r;
             memory[r].time = comm_recv2<double>(r,1);
-            memory[r].bytes = comm_recv2<size_t>(r,2);
+            memory[r].bytes = comm_recv2<uint64_t>(r,2);
         }
     } else {
         ASSERT(memory[0].time.size()==memory[0].bytes.size());
-        comm_send2( memory[0].time,  0, 1 );
-        comm_send2( memory[0].bytes, 0, 2 );
+        comm_send2<double>( memory[0].time,  0, 1 );
+        comm_send2<uint64_t>( memory[0].bytes, 0, 2 );
         memory.clear();
     }
     comm_barrier();
