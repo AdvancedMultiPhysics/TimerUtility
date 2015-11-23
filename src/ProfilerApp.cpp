@@ -353,7 +353,7 @@ template<> inline MPI_Datatype getType<int64_t>() {
     if ( sizeof(uint64_t)==sizeof(long long) )
         return MPI_LONG_LONG;
     ERROR_MSG("Invalid MPI type");
-    return MPI_UNDEFINED;
+    return MPI_BYTE;
 }
 template<> inline MPI_Datatype getType<uint64_t>() {
     if ( sizeof(uint64_t)==sizeof(unsigned long) )
@@ -361,7 +361,7 @@ template<> inline MPI_Datatype getType<uint64_t>() {
     if ( sizeof(uint64_t)==sizeof(long long) )
         return MPI_UNSIGNED_LONG_LONG;
     ERROR_MSG("Invalid MPI type");
-    return MPI_UNDEFINED;
+    return MPI_BYTE;
 }
 template<> inline MPI_Datatype getType<double>() { return MPI_DOUBLE; }
 #endif
