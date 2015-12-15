@@ -25,7 +25,11 @@ MACRO( FindQt )
     ENDIF()
     # Check for Qt5
     IF ( ("${QtVersion}" STREQUAL "5") OR ("${QtVersion}" STREQUAL "-1") )
-        SET( QT5_SEARCH_PATHS "C:\\Qt\\5.5\\msvc2013_64" )
+        SET( QT5_SEARCH_PATHS 
+            "${QT_DIRECTORY}"
+            "${QT5_DIRECTORY}"
+            "C:\\Qt\\5.5\\msvc2013_64" 
+            "D:\\Programs\\Qt\\5.5\\msvc2013_64" )
         SET( QT5_REQUIRED_COMPONENTS Core Widgets Gui Sql OpenGL Concurrent PrintSupport Svg )
         SET( QT5_OPTIONAL_COMPONENTS )
         SET( CMAKE_AUTOMOC ON )
