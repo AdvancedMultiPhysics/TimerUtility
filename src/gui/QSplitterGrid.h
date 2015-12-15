@@ -23,7 +23,7 @@ class QSplitterGrid : public QScrollArea
 public:
     
     //! Default constructor
-    QSplitterGrid( QWidget* parent=NULL );
+    explicit QSplitterGrid( QWidget* parent=NULL );
     
     //! Destructor
     virtual ~QSplitterGrid( );

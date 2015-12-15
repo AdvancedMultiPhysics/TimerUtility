@@ -337,7 +337,7 @@ static inline double comm_max_reduce( const double val )
     double result = val;
     #ifdef USE_MPI
         if ( comm_size() > 1 )
-            MPI_Allreduce(&val,&result,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
+            MPI_Allreduce((double*)&val,&result,1,MPI_DOUBLE,MPI_MAX,MPI_COMM_WORLD);
     #endif
     return result;
 }

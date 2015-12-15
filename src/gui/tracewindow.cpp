@@ -130,7 +130,7 @@ private:
 class QLabelMouse : public QLabel
 {
 public:
-	QLabelMouse( TraceWindow *trace ):
+	explicit QLabelMouse( TraceWindow *trace ):
         QLabel(NULL), d_trace(trace) {}
 	void mousePressEvent( QMouseEvent * event ) { d_trace->traceMousePressEvent(event); }
 	void mouseMoveEvent( QMouseEvent * event  ) { d_trace->traceMouseMoveEvent(event);  }

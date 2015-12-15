@@ -1,6 +1,7 @@
 #include "MemoryPlot.h"
 #include "ProfilerApp.h"
 #include "colormap.h"
+#include <algorithm>
 #include <qwt_plot.h>
 #include <qwt_plot_renderer.h>
 #include <qwt_plot_canvas.h>
@@ -180,8 +181,8 @@ std::array<size_t,2> MemoryPlot::updateRankData( int rank )
         d_time[rank].push_back(time[i+1]);
         d_size[rank].push_back(size[i]);
         d_size[rank].push_back(size[i]);
-        range[0] = std::min(range[0],size[i]);
-        range[1] = std::max(range[1],size[i]);
+        range[0] = std::min<size_t>(range[0],size[i]);
+        range[1] = std::max<size_t>(range[1],size[i]);
     }
     d_time[rank].push_back(time[i2]);
     d_size[rank].push_back(size[i2]);

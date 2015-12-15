@@ -1,6 +1,7 @@
 #include "MemoryApp.h"
 #include "ProfilerAtomicHelpers.h"
 #include <cmath>
+#include <algorithm>
 
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)

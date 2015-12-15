@@ -68,8 +68,8 @@ struct id_struct {
     id_struct( ) { data.u64=0; }
     id_struct(const id_struct& rhs) { data.u64=rhs.data.u64; }
     id_struct& operator=(const id_struct& rhs) { this->data.u64=rhs.data.u64; return *this; }
-    id_struct(const std::string& rhs) { data.u64=0; rhs.copy(data.str,8); }
-    id_struct(const char* rhs) { data.u64=0; for (int i=0; i<8&&rhs[i]>0; i++) data.str[i]=rhs[i]; }
+    explicit id_struct(const std::string& rhs) { data.u64=0; rhs.copy(data.str,8); }
+    explicit id_struct(const char* rhs) { data.u64=0; for (int i=0; i<8&&rhs[i]>0; i++) data.str[i]=rhs[i]; }
     inline const char* c_str( ) const { return data.str; }
     inline const std::string string( ) const { return std::string(data.str,0,8); }
     inline bool operator==(const id_struct& rhs ) const { return data.u64==rhs.data.u64; }
@@ -479,7 +479,7 @@ private:
         // Constructor used to initialize key values
         store_timer(): is_active(false), trace_index(0), N_calls(0), id(0), 
             min_time(0), max_time(0), total_time(0), trace_head(NULL),
-            next(NULL), timer_data(NULL)
+            next(NULL), timer_data(NULL), start_time(TIME_TYPE())
         {
             memset(trace,0,sizeof(trace));
         }
@@ -504,9 +504,11 @@ private:
         size_t* time_memory;                // The times at which we know the memory usage (ns from start)
         size_t* size_memory;                // The memory usage at each time
         // Constructor used to initialize key values
-        thread_info( int id_ ) {
-            memset(this,0,sizeof(thread_info));
-            id = id_;
+        explicit thread_info( int id_ ): id(id_), N_timers(0), 
+            N_memory_steps(0), N_memory_alloc(0), time_memory(NULL), size_memory(NULL)
+        {
+            for (int i=0; i<TIMER_HASH_SIZE; i++)
+                head[i] = NULL;
         }
         // Destructor
         ~thread_info() {

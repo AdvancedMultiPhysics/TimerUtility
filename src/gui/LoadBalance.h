@@ -20,7 +20,7 @@ class LoadBalance: public QwtPlot
     Q_OBJECT
 
 public:
-    LoadBalance( QWidget * = NULL );
+    explicit LoadBalance( QWidget * = NULL );
     virtual ~LoadBalance();
     void plot( const std::vector<float>& time );
 

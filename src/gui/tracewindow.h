@@ -28,7 +28,7 @@ class TraceWindow : public  ThreadedSlotsClass
     Q_OBJECT
 
 public:
-    TraceWindow( const TimerWindow *parent );
+    explicit TraceWindow( const TimerWindow *parent );
     virtual ~TraceWindow();
 
 protected:
