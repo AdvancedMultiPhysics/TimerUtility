@@ -151,7 +151,7 @@ struct TimerResults {
 struct MemoryResults{
     int rank;                           //!<  Rank
     std::vector<double> time;           //!<  Time
-    std::vector<size_t> bytes;          //!<  Memory in use
+    std::vector<uint64_t> bytes;        //!<  Memory in use
     size_t size() const;                //!< The number of bytes needed to pack the trace
     size_t pack( char* data ) const;    //!<  Pack the data to a buffer
     size_t unpack( const char* data );  //!<  Unpack the data from a buffer

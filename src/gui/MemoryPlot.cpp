@@ -162,8 +162,8 @@ void MemoryPlot::plot( std::array<double,2> t_in, int rank )
 
 std::array<size_t,2> MemoryPlot::updateRankData( int rank )
 {
-    const std::vector<double>& time = d_memory->operator[](rank).time;
-    const std::vector<size_t>& size = d_memory->operator[](rank).bytes;
+    const auto& time = d_memory->operator[](rank).time;
+    const auto& size = d_memory->operator[](rank).bytes;
     size_t i1 = findfirst(time,d_t[0]);
     size_t i2 = findfirst(time,d_t[1]);
     i1 = i1==0 ? 0:i1-1;
