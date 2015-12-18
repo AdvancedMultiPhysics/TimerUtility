@@ -507,6 +507,8 @@ private:
         explicit thread_info( int id_ ): id(id_), N_timers(0), 
             N_memory_steps(0), N_memory_alloc(0), time_memory(NULL), size_memory(NULL)
         {
+            for (int i=0; i<TRACE_SIZE; i++)
+                active[i] = 0;
             for (int i=0; i<TIMER_HASH_SIZE; i++)
                 head[i] = NULL;
         }
