@@ -14,6 +14,10 @@
 #include "ProfilerDefinitions.h"
 
 
+// Disale RecursiveFunctionMap, there seems to be issues with non-trivial types on gcc
+#undef TIMER_ENABLE_THREAD_LOCAL
+
+
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     #define USE_WINDOWS
 #elif defined(__APPLE__)
