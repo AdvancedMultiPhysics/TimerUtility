@@ -358,26 +358,26 @@ MACRO( SET_WARNINGS )
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0" )
   ELSEIF ( USING_ICC )
     # Add Intel specifc compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall" )
+    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall" )
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall" )
   ELSEIF ( USING_CRAY )
     # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS}")
+    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS}" )
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
   ELSEIF ( USING_PGCC )
     # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -lpthread")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number")
+    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -lpthread")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number")
     # Suppress unreachable code warning, it causes non-useful warnings with some tests/templates
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185")
   ELSEIF ( USING_CLANG )
     # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -Wno-missing-braces")
+    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-missing-braces -Wno-mismatched-new-delete")
   ELSEIF ( USING_DEFAULT )
     # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS}")
+    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS}")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   ENDIF()
 ENDMACRO()
 
