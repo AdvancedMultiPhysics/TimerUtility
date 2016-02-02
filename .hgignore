@@ -8,6 +8,11 @@ syntax: glob
 # Ignore mex files
 *.mexa64
 
+# Ignore MAC files
+.DS_Store
+*/.DS_Store
+
+
 # Ignore build files
 build/*/TimerUtilitiy.cmake
 build/*/include/*
@@ -43,5 +48,4 @@ build/*/timerutility.lib
 build/*/timerutility.dir
 build/*/TIMER.*
 build/*/QWT/*
-
 
