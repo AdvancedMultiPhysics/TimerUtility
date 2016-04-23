@@ -326,7 +326,7 @@ MACRO( IDENTIFY_COMPILER )
     ENDIF()
     # SET the Fortran++ compiler
     IF ( CMAKE_Fortran_COMPILER_WORKS )
-        IF( CMAKE_COMPILE_IS_GFORTRAN OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU") )
+        IF( CMAKE_COMPILER_IS_GNUG77 OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU") )
             SET( USING_GFORTRAN TRUE )
             MESSAGE("Using gfortran")
         ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "Intel") ) 
