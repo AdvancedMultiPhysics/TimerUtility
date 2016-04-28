@@ -283,7 +283,7 @@ ENDIF()
 
 # Submit the results to oblivion
 SET( CTEST_DROP_METHOD "http" )
-SET( CTEST_DROP_SITE "mberrill.myqnapcloud.com" )
+SET( CTEST_DROP_SITE "vayu.ornl.gov" )
 SET( CTEST_DROP_LOCATION "/CDash/submit.php?project=AMR-MHD" )
 SET( CTEST_DROP_SITE_CDASH TRUE )
 SET( DROP_SITE_CDASH TRUE )
