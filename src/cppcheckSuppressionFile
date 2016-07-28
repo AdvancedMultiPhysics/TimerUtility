@@ -12,5 +12,9 @@ unusedFunction
 // Supress same expression messages
 duplicateExpression:*/src/test/test_ProfilerApp.cpp
 
+// Supress known expression messages
+knownConditionTrueFalse:*/src/test/test_Callgrind.cpp
+knownConditionTrueFalse:*/src/test/test_Load.cpp
+
 
 
