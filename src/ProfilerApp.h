@@ -50,8 +50,10 @@
 #endif
 
 
+#define TRACE_TYPE uint64_t
+#define TRACE_TYPE_size 64
 #define TRACE_SIZE 64                           // The maximum number of timers that will be checked for the trace logs
-                                                // The actual number of timers is TRACE_SIZE * number of bits of size_t
+                                                // The actual number of timers is TRACE_SIZE * number of bits of TRACE_TYPE
                                                 // Note: this only affects the trace logs, the number of timers is unlimited
 #define MAX_TRACE_TRACE 1e6                     // The maximum number of stored start and stop times per trace
                                                 // Note: this is only used if store_trace is set, and should be a power of 2
@@ -59,6 +61,16 @@
 #define MAX_TRACE_MEMORY 0x6000000              // The maximum number of times to store the memory usage
 #define MAX_THREADS 1024                        // The maximum number of threads supported (also change ProfilerThreadIndexHashMapSize in ProfilerThreadID.h)
 #define TIMER_HASH_SIZE 1024                    // The size of the hash table to store the timers
+
+
+/*#ifdef CXX_STD
+    #if CXX_STD == 14
+        #define CONSTEXPR_TIMER constexpr
+    #endif
+#endif*/
+#ifndef CONSTEXPR_TIMER
+    #define CONSTEXPR_TIMER 
+#endif
 
 
 class ScopedTimer;
@@ -82,7 +94,7 @@ struct id_struct {
     inline bool operator> (const id_struct& rhs ) const { return data.u64> rhs.data.u64; }
     inline bool operator< (const id_struct& rhs ) const { return data.u64< rhs.data.u64; }
     inline bool operator<=(const id_struct& rhs ) const { return data.u64<=rhs.data.u64; }
-    static id_struct create_id( size_t id );
+    static id_struct create_id( uint64_t id );
 private:
     union {
         uint64_t u64;
@@ -257,6 +269,7 @@ struct TimerMemoryResults {
   */
 class ProfilerApp {
 public:
+
     //! Constructor
     ProfilerApp( );
 
@@ -276,7 +289,27 @@ public:
      *                      Only timers whos level is <= the level of the specified by enable will be included.
      * @param id            Optional id for the timer (helps improve performance).  See get_timer_id for more info.
      */
-    void start( const std::string& message, const char* filename, const int line, const int level=0, const size_t id=0 );
+    void start( const char* message, const char* filename, int line, int level=0, uint64_t id=0 );
+
+    /*!
+     * \brief  Function to start profiling a block of code
+     * \details  This function starts profiling a block of code until a corresponding stop is called.
+     *   It is recommended to use PROFILE_START(message) to call this routine.  It will 
+
+     *   automatically fill in the file name and the line number.  
+     * @param message       Message to uniquely identify the block of code being profiled.
+     *                      It must be a unique message to all start called within the same file.
+     * @param filename      Name of the file containing the code
+     * @param line          Line number containing the start command
+
+     * @param level         Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level of the specified by enable will be included.
+     * @param id            Optional id for the timer (helps improve performance).  See get_timer_id for more info.
+     */
+    inline void start( const std::string& message, const char* filename, int line, int level=0, uint64_t id=0 )
+    {
+        start( message.c_str(), filename, line, level, id );
+    }
 
     /*!
      * \brief  Function to stop profiling a block of code
@@ -292,7 +325,26 @@ public:
      *                      Note: this must match the level in start
      * @param id            Optional id for the timer (helps improve performance).  See get_timer_id for more info.
      */
-    void stop( const std::string& message, const char* filename, const int line, const int level=0, const size_t id=0 );
+    void stop( const char* message, const char* filename, int line, int level=0, uint64_t id=0 );
+
+    /*!
+     * \brief  Function to stop profiling a block of code
+     * \details  This function stop profiling a block of code until a corresponding stop is called.
+     *   It is recommended to use PROFILE_STOP(message) to call this routine.  It will 
+     *   automatically fill in the file name and the line number.  
+     * @param message       Message to uniquely identify the block of code being profiled.
+     *                      It must match a start call.
+     * @param filename      Name of the file containing the code
+     * @param line          Line number containing the stop command
+     * @param level         Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level of the specified by enable will be included.
+     *                      Note: this must match the level in start
+     * @param id            Optional id for the timer (helps improve performance).  See get_timer_id for more info.
+     */
+    void stop( const std::string& message, const char* filename, int line, int level=0, uint64_t id=0 )
+    {
+        stop( message.c_str(), filename, line, level, id );
+    }
 
     /*!
      * \brief  Function to check if a timer is active
@@ -300,9 +352,24 @@ public:
      * @param message       Message to uniquely identify the block of code being profiled.
      *                      It must match a start call.
      * @param filename      Name of the file containing the code
-     * @param id            Optional id for the timer (helps improve performance).  See get_timer_id for more info.
      */
-    bool active( const std::string& message, const char* filename, const size_t id=0 );
+    inline bool active( const std::string& message, const char* filename )
+    {
+        auto id = get_timer_id(message.c_str(),filename);
+        store_timer* timer = get_block(get_thread_data(),id);
+        return !timer ? false:timer->is_active;
+    }
+
+    /*!
+     * \brief  Function to check if a timer is active
+     * \details  This function checks if a given timer is active on the current thread.
+     * @param id            ID for the timer (helps improve performance).  See get_timer_id for more info.
+     */
+    inline bool active( uint64_t id )
+    {
+        store_timer* timer = get_block(get_thread_data(),id);
+        return !timer ? false:timer->is_active;
+    }
 
     /*!
      * \brief  Function to save the profiling info
@@ -382,18 +449,29 @@ public:
 
     /*!
      * \brief  Function to get the timer id
-     * \details  This function returns the timer id given the message and filename
+     * \details  This function returns the timer id given the message and filename.
+     *     Internally all timers are stored using this id for faster searching.
+     *     Many routines can take the timer id directly to imrove performance by
+     *     avoiding the hashing function.
      * @param message     The timer message
      * @param filename    The filename
      */
-    static size_t get_timer_id( const char* message, const char* filename );
+    CONSTEXPR_TIMER static inline uint64_t get_timer_id( const char* message, const char* filename );
 
     /*!
      * \brief  Function to return the current timer results
      * \details  This function will return a vector containing the 
-     *   current timing results for all threads.
+     *      current timing results for all threads.
      */
     std::vector<TimerResults> getTimerResults() const;
+
+    /*!
+     * \brief  Function to return the current timer results
+     * \details  This function will return a vector containing the 
+     *      current timing results for all threads.
+     * @param id        ID of the timer we want
+     */
+    TimerResults getTimerResults( uint64_t id ) const;
 
     /*!
      * \brief  Function to return the memory usage as a function of time
@@ -417,8 +495,8 @@ private:
     // Structure to store the info for a trace log
     struct store_trace {
         size_t N_calls;             // Number of calls to this block
-        size_t id;                  // This is a (hopefully) unique id that we can use for comparison
-        size_t trace[TRACE_SIZE];   // Store the trace
+        uint64_t id;                // This is a (hopefully) unique id that we can use for comparison
+        TRACE_TYPE trace[TRACE_SIZE]; // Store the trace
         store_trace *next;          // Pointer to the next entry in the list
         double min_time;            // Store the minimum time spent in the given block (seconds)
         double max_time;            // Store the maximum time spent in the given block (seconds)
@@ -429,7 +507,7 @@ private:
         // Constructor
         store_trace(): N_calls(0), id(0), next(NULL), min_time(1e100), max_time(0), 
             total_time(0), N_trace_alloc(0), start_time(NULL), end_time(NULL) {
-            memset(trace,0,TRACE_SIZE*sizeof(size_t));
+            memset(trace,0,TRACE_SIZE*sizeof(TRACE_TYPE));
         }
         // Destructor
         ~store_trace() {
@@ -449,7 +527,7 @@ private:
     struct store_timer_data_info {
         int start_line;                     // The starting line for the timer
         int stop_line;                      // The ending line for the timer
-        size_t id;                          // A unique id for each timer
+        uint64_t id;                        // A unique id for each timer
         std::string message;                // The message to identify the block of code
         std::string filename;               // The file containing the block of code to be timed
         std::string path;                   // The path to the file (if availible)
@@ -471,8 +549,8 @@ private:
         bool is_active;                     // Are we currently running a timer
         unsigned int trace_index;           // The index of the current timer in the trace
         int N_calls;                        // Number of calls to this block
-        size_t id;                          // A unique id for each timer
-        size_t trace[TRACE_SIZE];           // Store the current trace
+        uint64_t id;                        // A unique id for each timer
+        TRACE_TYPE trace[TRACE_SIZE];       // Store the current trace
         double min_time;                    // Store the minimum time spent in the given block (seconds)
         double max_time;                    // Store the maximum time spent in the given block (seconds)
         double total_time;                  // Store the total time spent in the given block (seconds)
@@ -501,7 +579,7 @@ private:
     struct thread_info {
         int id;                             // The id of the thread
         unsigned int N_timers;              // The number of timers seen by the current thread
-        size_t active[TRACE_SIZE];          // Store the current active traces
+        TRACE_TYPE active[TRACE_SIZE];      // Store the current active traces
         store_timer *head[TIMER_HASH_SIZE]; // Store the timers in a hash table
         size_t N_memory_steps;              // The number of steps we have for the memory usage
         size_t N_memory_alloc;              // The size of the arrays allocated for time_memory and size_memory
@@ -549,18 +627,22 @@ private:
 
     // Function to return a pointer to the global timer info (or create it if necessary)
     // Note: this function may block for thread safety
-    store_timer_data_info* get_timer_data( size_t id, 
+    store_timer_data_info* get_timer_data( uint64_t id, 
         const char* message, const char* filename, int start, int stop );
 
     // Function to return the appropriate timer block
-    inline store_timer* get_block( thread_info *thread_data, const char* message, 
-        const char* filename, size_t timer_id, const int start, const int stop );
+    inline store_timer* get_block( thread_info *thread_data, uint64_t id, bool create=false,
+        const char* message=nullptr, const char* filename=nullptr, const int start=-1, const int stop=-1 );
+
+    // Function to get the timer results
+    inline void getTimerResultsID( uint64_t id, std::vector<const thread_info*>& threads,
+        int rank, const TIME_TYPE& end_time, TimerResults& results ) const;
 
     // Function to return a hopefully unique id based on the active bit array
-    static inline size_t get_trace_id( const size_t *trace );
+    static inline uint64_t get_trace_id( const TRACE_TYPE *trace );
 
     // Function to return the string of active timers
-    static std::vector<id_struct> get_active_list( size_t *active, unsigned int myIndex, const thread_info *head );
+    static std::vector<id_struct> get_active_list( TRACE_TYPE *active, unsigned int myIndex, const thread_info *head );
 
     // Function to get the current memory usage
     static inline size_t get_memory_usage();
@@ -677,7 +759,7 @@ public:
                     sprintf(buffer,"-%i",recursive_level);
                     d_message = msg + std::string(buffer);
                     size_t id2 = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
-                    bool test = d_app.active(d_message,d_filename,id2);
+                    bool test = d_app.active(id2);
                     d_id = test ? 0:id2;
                 }
             #endif
@@ -710,6 +792,7 @@ private:
 };
 
 
+#include "ProfilerApp.hpp"
 #include "ProfilerAppMacros.h"
 
 

@@ -91,7 +91,7 @@ int run_tests( bool enable_trace, std::string save_name )
     PROFILE_START("MAIN");
 
     const int N_it = 100;
-    const int N_timers = 1000;
+    const int N_timers = 500;
     int N_errors = 0;
     const int rank = getRank();
     const int N_proc = getSize();
@@ -118,11 +118,13 @@ int run_tests( bool enable_trace, std::string save_name )
 
     // Get a list of timer names
     std::vector<std::string> names(N_timers);
+    std::vector<std::string> names2(N_timers);
     std::vector<size_t> ids(N_timers);
     for (int i=0; i<N_timers; i++) {
         char tmp[16];
         sprintf(tmp,"%04i",i);
         names[i] = std::string(tmp);
+        names2[i] = std::string(tmp) + "_";
         ids[i] = ProfilerApp::get_timer_id(names[i].c_str(),__FILE__);
     }
 
@@ -165,6 +167,18 @@ int run_tests( bool enable_trace, std::string save_name )
             get_time(&time1);
         PROFILE_STOP("gettime");
         // Test how long it takes to start/stop the timers
+        PROFILE_START("static");
+        for (int j=0; j<N_timers; j++) {
+            PROFILE_START( "static_name" );
+            PROFILE_STOP(  "static_name" );
+        }
+        PROFILE_STOP("static");
+        PROFILE_START("dynamic");
+        for (int j=0; j<N_timers; j++) {
+            PROFILE_START( names2[j] );
+            PROFILE_STOP(  names2[j] );
+        }
+        PROFILE_STOP("dynamic");
         PROFILE_START("level 0");
         for (int j=0; j<N_timers; j++) {
             global_profiler.start( names[j], __FILE__, __LINE__, 0, ids[j] );
@@ -177,6 +191,21 @@ int run_tests( bool enable_trace, std::string save_name )
             global_profiler.stop(  names[j], __FILE__, __LINE__, 1, ids[j] );
         }
         PROFILE_STOP("level 1");
+        PROFILE_START("level 2");
+        for (int j=0; j<N_timers; j++) {
+            PROFILE_START( names[j], 2 );
+            PROFILE_STOP( names[j], 2 );
+        }
+        PROFILE_STOP("level 2");
+        // Test the two forms of active
+        PROFILE_START("active 1");
+        for (int j=0; j<N_timers; j++)
+            global_profiler.active( names[j], __FILE__ );
+        PROFILE_STOP("active 1");
+        PROFILE_START("active 2");
+        for (int j=0; j<N_timers; j++)
+            global_profiler.active( ids[j] );
+        PROFILE_STOP("active 2");
         // Test the memory around allocations
         PROFILE_START("allocate1");
         PROFILE_START("allocate2");
@@ -190,6 +219,28 @@ int run_tests( bool enable_trace, std::string save_name )
         PROFILE_STOP("allocate3");
         delete [] tmp;
         PROFILE_STOP("allocate1");
+    }
+    size_t tid1 = global_profiler.get_timer_id( "static", __FILE__ );
+    size_t tid2 = global_profiler.get_timer_id( "dynamic", __FILE__ );
+    size_t tid3 = global_profiler.get_timer_id( "level 0", __FILE__ );
+    size_t tid4 = global_profiler.get_timer_id( "level 1", __FILE__ );
+    size_t tid5 = global_profiler.get_timer_id( "level 2", __FILE__ );
+    size_t aid1 = global_profiler.get_timer_id( "active 1", __FILE__ );
+    size_t aid2 = global_profiler.get_timer_id( "active 2", __FILE__ );
+    auto t1 = global_profiler.getTimerResults( tid1 ).trace[0].tot;
+    auto t2 = global_profiler.getTimerResults( tid2 ).trace[0].tot;
+    auto t3 = global_profiler.getTimerResults( tid3 ).trace[0].tot;
+    auto t4 = global_profiler.getTimerResults( tid4 ).trace[0].tot;
+    auto t5 = global_profiler.getTimerResults( tid5 ).trace[0].tot;
+    auto a1 = global_profiler.getTimerResults( aid1 ).trace[0].tot;
+    auto a2 = global_profiler.getTimerResults( aid2 ).trace[0].tot;
+    if ( rank == 0 ) {
+        printf( "\nProfiler overhead: %i ns, %i ns, %i ns, %i ns, %i ns\n",
+            int(t1*1e9/(N_it*N_timers)), int(t2*1e9/(N_it*N_timers)),
+            int(t3*1e9/(N_it*N_timers)), int(t4*1e9/(N_it*N_timers)),
+            int(t5*1e9/(N_it*N_timers)) );
+        printf( "active() overhead: %i ns, %i ns\n\n",
+            int(a1*1e9/(N_it*N_timers)), int(a2*1e9/(N_it*N_timers)) );
     }
 
     // Profile the save
