@@ -63,11 +63,12 @@
 #define TIMER_HASH_SIZE 1024                    // The size of the hash table to store the timers
 
 
-/*#ifdef CXX_STD
-    #if CXX_STD == 14
-        #define CONSTEXPR_TIMER constexpr
-    #endif
-#endif*/
+#if CXX_STD == 98
+    #define nullptr NULL
+#elif CXX_STD == 11
+#elif CXX_STD == 14
+    //#define CONSTEXPR_TIMER constexpr
+#endif
 #ifndef CONSTEXPR_TIMER
     #define CONSTEXPR_TIMER 
 #endif
@@ -355,7 +356,7 @@ public:
      */
     inline bool active( const std::string& message, const char* filename )
     {
-        auto id = get_timer_id(message.c_str(),filename);
+        uint64_t id = get_timer_id(message.c_str(),filename);
         store_timer* timer = get_block(get_thread_data(),id);
         return !timer ? false:timer->is_active;
     }

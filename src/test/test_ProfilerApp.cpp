@@ -227,13 +227,13 @@ int run_tests( bool enable_trace, std::string save_name )
     size_t tid5 = global_profiler.get_timer_id( "level 2", __FILE__ );
     size_t aid1 = global_profiler.get_timer_id( "active 1", __FILE__ );
     size_t aid2 = global_profiler.get_timer_id( "active 2", __FILE__ );
-    auto t1 = global_profiler.getTimerResults( tid1 ).trace[0].tot;
-    auto t2 = global_profiler.getTimerResults( tid2 ).trace[0].tot;
-    auto t3 = global_profiler.getTimerResults( tid3 ).trace[0].tot;
-    auto t4 = global_profiler.getTimerResults( tid4 ).trace[0].tot;
-    auto t5 = global_profiler.getTimerResults( tid5 ).trace[0].tot;
-    auto a1 = global_profiler.getTimerResults( aid1 ).trace[0].tot;
-    auto a2 = global_profiler.getTimerResults( aid2 ).trace[0].tot;
+    float t1 = global_profiler.getTimerResults( tid1 ).trace[0].tot;
+    float t2 = global_profiler.getTimerResults( tid2 ).trace[0].tot;
+    float t3 = global_profiler.getTimerResults( tid3 ).trace[0].tot;
+    float t4 = global_profiler.getTimerResults( tid4 ).trace[0].tot;
+    float t5 = global_profiler.getTimerResults( tid5 ).trace[0].tot;
+    float a1 = global_profiler.getTimerResults( aid1 ).trace[0].tot;
+    float a2 = global_profiler.getTimerResults( aid2 ).trace[0].tot;
     if ( rank == 0 ) {
         printf( "\nProfiler overhead: %i ns, %i ns, %i ns, %i ns, %i ns\n",
             int(t1*1e9/(N_it*N_timers)), int(t2*1e9/(N_it*N_timers)),
