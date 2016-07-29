@@ -64,6 +64,9 @@
 
 
 #if CXX_STD == 98
+    #ifndef nullptr
+        #define nullptr NULL
+    #endif
     #define nullptr NULL
 #elif CXX_STD == 11
 #elif CXX_STD == 14
