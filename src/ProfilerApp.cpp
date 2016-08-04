@@ -431,7 +431,7 @@ static inline id_struct convert_timer_id( size_t key )
     }
     return id_struct(id);
 }
-id_struct id_struct::create_id( size_t id )
+id_struct id_struct::create_id( uint64_t id )
 {
     return convert_timer_id(id);
 }
@@ -825,7 +825,7 @@ void ProfilerApp::synchronize()
 * Function to start profiling a block of code                          *
 ***********************************************************************/
 void ProfilerApp::start( const char* message, const char* filename, 
-    int line, int level, size_t timer_id ) 
+    int line, int level, uint64_t timer_id ) 
 {
     if ( level<0 || level>=128 )
         ERROR_MSG("level must be in the range 0-127");
@@ -879,7 +879,7 @@ void ProfilerApp::start( const char* message, const char* filename,
 * Function to stop profiling a block of code                           *
 ***********************************************************************/
 void ProfilerApp::stop( const char* message, const char* filename, 
-    int line, int level, size_t timer_id ) 
+    int line, int level, uint64_t timer_id ) 
 {
     if ( level<0 || level>=128 )
         ERROR_MSG("level must be in the range 0-127");
@@ -1020,7 +1020,7 @@ void ProfilerApp::disable( )
 /***********************************************************************
 * Function to return the profiling info                                *
 ***********************************************************************/
-inline void ProfilerApp::getTimerResultsID( size_t id, std::vector<const thread_info*>& thread_list,
+inline void ProfilerApp::getTimerResultsID( uint64_t id, std::vector<const thread_info*>& thread_list,
     int rank, const TIME_TYPE& end_time, TimerResults& results ) const
 {
     const size_t key = GET_TIMER_HASH( id );
@@ -1177,7 +1177,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
     RELEASE_LOCK(&lock);
     return results;
 }
-TimerResults ProfilerApp::getTimerResults( size_t id ) const
+TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
 {
     // Get the current time in case we need to "stop" and timers
     TIME_TYPE end_time;
@@ -1966,7 +1966,7 @@ std::vector<id_struct> ProfilerApp::get_active_list( TRACE_TYPE *active, unsigne
 *    may not be thread safe (see Note 1).                              *
 ***********************************************************************/
 ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data( 
-    size_t id, const char* message, const char* filename, int start, int stop )
+    uint64_t id, const char* message, const char* filename, int start, int stop )
 {
     size_t key = GET_TIMER_HASH( id );    // Get the hash index
     if ( timer_table[key]==NULL ) {
