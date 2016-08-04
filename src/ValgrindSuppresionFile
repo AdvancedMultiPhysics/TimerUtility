@@ -430,6 +430,17 @@
    fun:_dl_catch_error
    ...
 }
+{
+   expand_dynamic_string_token
+   Memcheck:Cond
+   fun:index
+   fun:expand_dynamic_string_token
+   ...
+   fun:dl_main
+   fun:_dl_sysdep_start
+   fun:_dl_start
+   ...
+}
 
 
 # pthread errors

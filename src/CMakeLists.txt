@@ -45,6 +45,9 @@ SET( PROJ TIMER )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake" )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake" )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteCompilerFeatures.cmake" TIMER )
+IF ( CMAKE_Fortran_COMPILER )
+    ENABLE_LANGUAGE( Fortran )
+ENDIF()
 
 
 # Check if we are only compiling docs
@@ -137,6 +140,9 @@ ENDMACRO()
 # Add the src directories
 IF ( NOT ONLY_BUILD_DOCS )
     BEGIN_PACKAGE_CONFIG( timerutility )
+    IF ( CMAKE_Fortran_COMPILER )
+        ADD_PACKAGE_SUBDIRECTORY( fortran )
+    ENDIF()
     INSTALL_TIMER_TARGET( timerutility )
     ADD_SUBDIRECTORY( test )
     ADD_SUBDIRECTORY( matlab )

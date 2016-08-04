@@ -64,7 +64,9 @@
 
 
 #if CXX_STD == 98
-    #define nullptr NULL
+    #ifndef nullptr
+        #define nullptr NULL
+    #endif
 #elif CXX_STD == 11
 #elif CXX_STD == 14
     //#define CONSTEXPR_TIMER constexpr

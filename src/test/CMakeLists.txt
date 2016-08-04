@@ -8,6 +8,9 @@ ADD_TIMER_TEST( test_Load set1.1.timer )
 IF ( ( ${CXX_STD} STREQUAL "11" ) OR ( ${CXX_STD} STREQUAL "14" ) )
     ADD_TIMER_PROVISIONAL_TEST( test_Callgrind )
 ENDIF()
+IF ( CMAKE_Fortran_COMPILER )
+    ADD_TIMER_TEST( test_ProfilerApp_Fortran.F )
+ENDIF()
 
 
 # Regression test for ProfilerApp to ensure we can continue to load the data from older versions
