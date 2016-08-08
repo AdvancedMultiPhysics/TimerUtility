@@ -2,7 +2,7 @@
         use iso_c_binding, only: C_CHAR, C_NULL_CHAR
         contains
         ! Function to start the timer
-        subroutine GLOBAL_PROFILE_START( timer_name, file_name, line, level )
+        subroutine GLOBAL_PROFILE_START(timer_name,file_name,line,level)
           character(*), intent(in), optional :: timer_name, file_name
           integer, intent(in), optional :: line, level
           interface
@@ -18,7 +18,7 @@
      &        file_name//C_NULL_CHAR, line, level )
         end subroutine
         ! Function to stop the timer
-        subroutine GLOBAL_PROFILE_STOP( timer_name, file_name, line, level )
+        subroutine GLOBAL_PROFILE_STOP(timer_name,file_name,line,level)
           character(*), intent(in), optional :: timer_name, file_name
           integer, intent(in), optional :: line, level
           interface

@@ -352,7 +352,6 @@ MACRO( SET_WARNINGS )
     #    /usr/bin/ld: cannot find gical-op: No such file or directory
     SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat -Wcast-align -Woverlength-strings -Wdisabled-optimization") 
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wformat -Wcast-align -Woverlength-strings -Wdisabled-optimization -Wno-virtual-move-assign -Wno-strict-overflow")
-    SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffixed-line-length-none" )
   ELSEIF ( USING_MSVC )
     # Add Microsoft specifc compiler options
     SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0" )
