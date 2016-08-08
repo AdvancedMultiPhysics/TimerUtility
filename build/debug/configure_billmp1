@@ -10,6 +10,7 @@ cmake                                                   \
     -D CMAKE_CXX_COMPILER:PATH=${MPI_PATH}/mpic++       \
         -D CXXFLAGS="-fPIC"                             \
         -D CXX_STD=11                                   \
+    -D CMAKE_Fortran_COMPILER:PATH=${MPI_PATH}/mpif90   \
     -D USE_MPI=1                                        \
         -D MPI_COMPILER=1                               \
         -D MPIEXEC=${MPI_PATH}/mpirun                   \

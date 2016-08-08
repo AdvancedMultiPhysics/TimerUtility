@@ -11,8 +11,8 @@ ENDIF()
 IF ( CMAKE_Fortran_COMPILER )
     IF ( USING_GCC )
         SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffixed-line-length-none" )
+        ADD_TIMER_TEST( test_ProfilerApp_Fortran.F )
     ENDIF()
-    ADD_TIMER_TEST( test_ProfilerApp_Fortran.F )
 ENDIF()
 
 
