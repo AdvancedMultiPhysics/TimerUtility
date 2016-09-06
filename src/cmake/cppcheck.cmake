@@ -4,9 +4,10 @@ FIND_PROGRAM( CPPCHECK
     PATHS "${CPPCHECK_DIRECTORY}" "C:/Program Files/Cppcheck" "C:/Program Files (x86)/Cppcheck" 
 )
 IF ( CPPCHECK )
-    MESSAGE("Using cppcheck")
+    EXECUTE_PROCESS( COMMAND ${CPPCHECK} --version OUTPUT_VARIABLE CPPCHECK_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE )
+    MESSAGE( STATUS "Using cppcheck: ${CPPCHECK_VERSION}")
 ELSE()
-    MESSAGE("cppcheck not found")
+    MESSAGE( STATUS "cppcheck not found")
 ENDIF()
 
 # Set the options for cppcheck
@@ -16,6 +17,7 @@ ENDIF()
 IF( NOT DEFINED CPPCHECK_INCLUDE )
     SET( CPPCHECK_INCLUDE )
     GET_PROPERTY( dirs DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY INCLUDE_DIRECTORIES )
+    LIST( REMOVE_DUPLICATES dirs )
     FOREACH(dir ${dirs})
         SET( CPPCHECK_INCLUDE ${CPPCHECK_INCLUDE} "-I${dir}" )
     ENDFOREACH()
