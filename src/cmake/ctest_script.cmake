@@ -7,7 +7,6 @@
 
 # Set the Project variables
 SET( PROJ TIMER )
-SET( PROJ_NAME Profiler )
 
 
 # Set platform specific variables
@@ -43,10 +42,10 @@ SET( QWT_SRC_DIR       "$ENV{QWT_SRC_DIR}"      )
 
 # Add the C++ version to the project name
 IF ( CXX_STD )
-    SET( PROJ_NAME "${PROJ_NAME}-C++${CXX_STD}" )
+    SET( PROJ "${PROJ}-C++${CXX_STD}" )
 ENDIF()
 IF ( QWT_URL OR QWT_SRC_DIR )
-    SET( PROJ_NAME "${PROJ_NAME}-GUI" )
+    SET( PROJ "${PROJ}-GUI" )
 ENDIF()
 
 
@@ -64,21 +63,21 @@ SET( RUN_WEEKLY FALSE )
 IF( NOT CTEST_SCRIPT_ARG )
     MESSAGE(FATAL_ERROR "No build specified: ctest -S /path/to/script,build (debug/optimized/valgrind")
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "debug" )
-    SET( CTEST_BUILD_NAME "${PROJ_NAME}-debug" )
+    SET( CTEST_BUILD_NAME "${PROJ}-debug" )
     SET( CMAKE_BUILD_TYPE "Debug" )
     SET( CTEST_COVERAGE_COMMAND ${COVERAGE_COMMAND} )
     SET( ENABLE_GCOV "true" )
     SET( USE_VALGRIND FALSE )
     SET( USE_VALGRIND_MATLAB FALSE )
 ELSEIF( (${CTEST_SCRIPT_ARG} STREQUAL "optimized") OR (${CTEST_SCRIPT_ARG} STREQUAL "opt") )
-    SET( CTEST_BUILD_NAME "${PROJ_NAME}-opt" )
+    SET( CTEST_BUILD_NAME "${PROJ}-opt" )
     SET( CMAKE_BUILD_TYPE "Release" )
     SET( CTEST_COVERAGE_COMMAND )
     SET( ENABLE_GCOV "false" )
     SET( USE_VALGRIND FALSE )
     SET( USE_VALGRIND_MATLAB FALSE )
 ELSEIF( (${CTEST_SCRIPT_ARG} STREQUAL "weekly") )
-    SET( CTEST_BUILD_NAME "${PROJ_NAME}-Weekly" )
+    SET( CTEST_BUILD_NAME "${PROJ}-Weekly" )
     SET( CMAKE_BUILD_TYPE "Release" )
     SET( CTEST_COVERAGE_COMMAND )
     SET( ENABLE_GCOV "false" )
@@ -86,7 +85,7 @@ ELSEIF( (${CTEST_SCRIPT_ARG} STREQUAL "weekly") )
     SET( USE_VALGRIND_MATLAB FALSE )
     SET( RUN_WEEKLY TRUE )
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "valgrind" )
-    SET( CTEST_BUILD_NAME "${PROJ_NAME}-valgrind" )
+    SET( CTEST_BUILD_NAME "${PROJ}-valgrind" )
     SET( CMAKE_BUILD_TYPE "Debug" )
     SET( CTEST_COVERAGE_COMMAND )
     SET( ENABLE_GCOV "false" )
@@ -94,14 +93,14 @@ ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "valgrind" )
     SET( USE_VALGRIND_MATLAB FALSE )
     SET( USE_MATLAB 0 )
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "valgrind-matlab" )
-    SET( CTEST_BUILD_NAME "${PROJ_NAME}-valgrind-matlab" )
+    SET( CTEST_BUILD_NAME "${PROJ}-valgrind-matlab" )
     SET( CMAKE_BUILD_TYPE "Debug" )
     SET( CTEST_COVERAGE_COMMAND )
     SET( ENABLE_GCOV "false" )
     SET( USE_VALGRIND FALSE )
     SET( USE_VALGRIND_MATLAB TRUE )
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "doc" )
-    SET( CTEST_BUILD_NAME "${PROJ_NAME}-doc" )
+    SET( CTEST_BUILD_NAME "${PROJ}-doc" )
     SET( CMAKE_BUILD_TYPE "Release" )
     SET( BUILD_ONLY_DOCS "true" )
 ELSE()
@@ -142,6 +141,16 @@ IF( NOT DEFINED N_PROCS )
 ENDIF()
 
 
+# Set the nightly start time
+# This controls the version of a checkout from cvs/svn (ignored for mecurial/git)
+# This does not control the start of the day displayed on CDash, that is controled by the CDash project settings
+SET( NIGHTLY_START_TIME "$ENV{NIGHTLY_START_TIME}" )
+IF ( NOT NIGHTLY_START_TIME )
+    SET( NIGHTLY_START_TIME "18:00:00 EST" )
+ENDIF()
+SET( CTEST_NIGHTLY_START_TIME ${NIGHTLY_START_TIME} )
+
+
 # Set basic variables
 SET( CTEST_PROJECT_NAME "${PROJ}" )
 SET( CTEST_SOURCE_DIRECTORY "${${PROJ}_SOURCE_DIR}" )
@@ -151,8 +160,6 @@ SET( CTEST_CUSTOM_MAXIMUM_NUMBER_OF_ERRORS 500 )
 SET( CTEST_CUSTOM_MAXIMUM_NUMBER_OF_WARNINGS 500 )
 SET( CTEST_CUSTOM_MAXIMUM_PASSED_TEST_OUTPUT_SIZE 10000 )
 SET( CTEST_CUSTOM_MAXIMUM_FAILED_TEST_OUTPUT_SIZE 10000 )
-SET( NIGHTLY_START_TIME "18:00:00 EST" )
-SET( CTEST_NIGHTLY_START_TIME "22:00:00 EST" )
 SET( CTEST_COMMAND "\"${CTEST_EXECUTABLE_NAME}\" -D ${CTEST_DASHBOARD}" )
 IF ( BUILD_SERIAL )
     SET( CTEST_BUILD_COMMAND "${CMAKE_MAKE_PROGRAM} -i install" )
@@ -281,12 +288,12 @@ IF( CTEST_COVERAGE_COMMAND )
 ENDIF()
 
 
-# Submit the results to oblivion
+# Submit the results to CDash
 SET( CTEST_DROP_METHOD "http" )
-SET( CTEST_DROP_SITE "vayu.ornl.gov" )
 SET( CTEST_DROP_LOCATION "/CDash/submit.php?project=AMR-MHD" )
 SET( CTEST_DROP_SITE_CDASH TRUE )
 SET( DROP_SITE_CDASH TRUE )
+SET( CTEST_DROP_SITE "vayu.ornl.gov" )
 CTEST_SUBMIT()
 
 
