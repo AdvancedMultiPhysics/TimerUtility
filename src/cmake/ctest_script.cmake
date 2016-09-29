@@ -6,7 +6,7 @@
 
 
 # Set the Project variables
-SET( PROJ TIMER )
+SET( PROJ Profiler )
 
 
 # Set platform specific variables
