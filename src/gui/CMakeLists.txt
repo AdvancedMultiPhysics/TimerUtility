@@ -71,7 +71,11 @@ ELSE()
     SET_TARGET_PROPERTIES( load_timer PROPERTIES COMPILE_FLAGS "${QT_FLAGS} ${COVERAGE_FLAGS}" )
     TARGET_LINK_LIBRARIES(load_timer QWT ${QT_QTMAIN_LIBRARY} ${QT_LIBRARIES} )
     ADD_PROJ_EXE_DEP( load_timer )
-    INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/gui )
+    GET_TARGET_PROPERTY( tmp load_timer LOCATION)
+    STRING(REGEX REPLACE "//" "/" tmp "${tmp}" )
+    IF ( NOT "${tmp}" MATCHES "${${PROJ}_INSTALL_DIR}/gui/load_timer" )
+        INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/gui )
+    ENDIF()
 
     # Add the tests
     SET( COPY_LIST  set1.1.timer  set1.2.timer  set1.3.timer  set1.4.timer

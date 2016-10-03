@@ -3,8 +3,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 CMAKE_POLICY(SET CMP0014 OLD)
 IF ( ${CMAKE_MAJOR_VERSION} EQUAL 3 )
     CMAKE_POLICY(SET CMP0026 OLD)
-    CMAKE_POLICY(SET CMP0020 NEW)
-    CMAKE_POLICY(SET CMP0053 NEW)
 ENDIF()
 
 
@@ -13,14 +11,33 @@ MESSAGE( "Configuring Timer Utility"   )
 MESSAGE( "===========================" )
 
 
+
+# Set the project name
+SET( PROJ TIMER )              # Set the project name for CMake
+SET( TIMER_LIB timerlibrary )  # Set the final library name
+SET( TIMER_INC )               # Set an optional subfolder for includes (e.g. include/name/...)
+
+
+# Initialize the project (should disable langagues that the TPL builder will enable)
+PROJECT( ${PROJ} LANGUAGES C CXX )
+
+
 # Prevent users from building in place
 IF ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}" )
     MESSAGE( FATAL_ERROR "Building code in place is a bad idea" )
 ENDIF()
 
 
-# Set the project name
-PROJECT( TIMER )
+# Set source/install paths
+SET( ${PROJ}_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}" )
+SET( ${PROJ}_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}" )
+IF( ${PROJ}_INSTALL_DIR )
+    SET( ${PROJ}_INSTALL_DIR "${${PROJ}_INSTALL_DIR}" )
+ELSEIF( NOT ${PROJ}_INSTALL_DIR )
+    SET( ${PROJ}_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}" )
+ENDIF()
+INCLUDE_DIRECTORIES( "${${PROJ}_INSTALL_DIR}/include" )
+SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
 
 
 # Set the default C++ standard
@@ -29,23 +46,7 @@ IF ( NOT CXX_STD )
 ENDIF()
 
 
-# Set some common paths
-SET( TIMER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
-SET( TIMER_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR} )
-IF( TIMER_INSTALL_PREFIX )
-    SET( TIMER_INSTALL_DIR ${TIMER_INSTALL_PREFIX} )
-ELSEIF( NOT TIMER_INSTALL_DIR )
-    IF ( PREFIX )
-        SET( TIMER_INSTALL_DIR ${PREFIX} )
-    ELSE()
-        SET( TIMER_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR} )
-    ENDIF()
-ENDIF()
-SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
-
-
 # Include macros
-SET( PROJ TIMER )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake" )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake" )
 INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteCompilerFeatures.cmake" TIMER )
@@ -69,13 +70,6 @@ ENABLE_TESTING()
 INCLUDE( CTest )
 
 
-# Create custom targets for build-test, check, and distclean
-ADD_CUSTOM_TARGET( doc )
-ADD_CUSTOM_TARGET( latex_docs )
-ADD_CUSTOM_TARGET( build-test )
-ADD_CUSTOM_TARGET( check COMMAND  make test  )
-ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT Debug TIMER.build TIMER.xcodeproj )
-
 
 # Check the compile mode and compile flags
 IF ( NOT ONLY_BUILD_DOCS )
@@ -88,7 +82,9 @@ ENDIF()
 INCLUDE_DIRECTORIES( "${TIMER_INSTALL_DIR}/include" )
 
 
-# Set doxygen info
+# Create the target for documentation
+ADD_CUSTOM_TARGET( doc )
+ADD_CUSTOM_TARGET( latex_docs )
 CHECK_ENABLE_FLAG( USE_DOXYGEN 1 )
 CHECK_ENABLE_FLAG( USE_LATEX 1 )
 FILE( MAKE_DIRECTORY "${${PROJ}_INSTALL_DIR}/doc" )
@@ -113,6 +109,14 @@ IF ( USE_DOXYGEN )
 ENDIF()
 
 
+# Create custom targets for build-test, check, and distclean
+SET( EXCLUDE_TESTS_FROM_ALL 0 )
+ADD_CUSTOM_TARGET( build-test )
+ADD_CUSTOM_TARGET( build-examples )
+ADD_CUSTOM_TARGET( check COMMAND  make test  )
+ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT Debug TIMER.build TIMER.xcodeproj )
+
+
 # Get the mercurial revision
 WRITE_REPO_VERSION( "${${PROJ}_INSTALL_DIR}/include/TimerUtilityVersion.h" )
 
@@ -130,10 +134,6 @@ IF ( NOT ONLY_BUILD_DOCS )
 ENDIF()
 
 
-# Configure internal libraries (order matters)
-SET( TIMER_LIBS  timerutility )
-
-
 # Macro to create 1,2,4 processor tests
 MACRO( ADD_TIMER_TEST_1_2_4 EXENAME ${ARGN} )
     ADD_TIMER_TEST( ${EXENAME} ${ARGN} )
@@ -144,14 +144,15 @@ ENDMACRO()
 
 # Add the src directories
 IF ( NOT ONLY_BUILD_DOCS )
-    BEGIN_PACKAGE_CONFIG( timerutility )
+    BEGIN_PACKAGE_CONFIG( timerutility_library )
     IF ( CMAKE_Fortran_COMPILER )
         ADD_PACKAGE_SUBDIRECTORY( fortran )
     ENDIF()
-    INSTALL_TIMER_TARGET( timerutility )
+    INSTALL_TIMER_TARGET( timerutility_library )
     ADD_SUBDIRECTORY( test )
     ADD_SUBDIRECTORY( matlab )
     ADD_SUBDIRECTORY( gui )
+    INSTALL_PROJ_LIB()
 ENDIF()
 IF ( USE_LATEX )
     ADD_SUBDIRECTORY(latex_docs)
@@ -169,7 +170,14 @@ ELSEIF ( CXX_STD STREQUAL 11 )
 ELSEIF ( CXX_STD STREQUAL 14 )
     SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --std=c11 --std=c++11 --std=posix )
 ENDIF()
-INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cppcheck.cmake" )
+SET( CPPCHECK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}" )
+FIND_PACKAGE( Cppcheck )
 
 
-
+# Add the cppclean tests
+SET( CPPCLEAN_OPTIONS )
+SET( CPPCLEAN_EXCLUDE AtomicModel.h interp.h )
+SET( CPPCLEAN_SUPPRESSIONS )
+SET( CPPCLEAN_FAIL_ON_WARNINGS 1 )
+SET( CPPCLEAN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}" )
+FIND_PACKAGE( Cppclean )
