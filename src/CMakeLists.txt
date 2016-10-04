@@ -14,7 +14,7 @@ MESSAGE( "===========================" )
 
 # Set the project name
 SET( PROJ TIMER )              # Set the project name for CMake
-SET( TIMER_LIB timerlibrary )  # Set the final library name
+SET( TIMER_LIB timerutility )  # Set the final library name
 SET( TIMER_INC )               # Set an optional subfolder for includes (e.g. include/name/...)
 
 
