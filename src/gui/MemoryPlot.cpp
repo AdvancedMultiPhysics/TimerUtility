@@ -113,7 +113,9 @@ void MemoryPlot::plot( std::array<double,2> t_in, int rank )
         d_curvePlot[i]->setVisible(0);
     }
     std::array<double,2> range = {1e100,0};
-    if ( rank==-1 ) {
+    if ( d_N_procs==0 ) {
+        // Dummy plot
+    } else if ( rank==-1 ) {
         for (int i=0; i<d_N_procs; i++) {
             std::array<size_t,2> tmp = updateRankData(i);
             range[0] = std::min<double>(range[0],tmp[0]);
@@ -126,35 +128,56 @@ void MemoryPlot::plot( std::array<double,2> t_in, int rank )
     }
 
     // Scale and plot the data for each rank
-    double scale = 1.0;
-    std::string label;
-    if (range[1] < 1e6 ) {
-       scale = 1.0/1024.0;
-       label = "Memory (kB)";
-    } else if (range[1] < 1e9 ) {
-       scale = 1.0/(1024.0*1024.0);
-       label = "Memory (MB)";
+    double xscale = 1.0, yscale = 1.0;
+    std::string xlabel, ylabel;
+    if ( range[1] < 1e6 ) {
+        yscale = 1.0/1024.0;
+        ylabel = "Memory (kB)";
+    } else if ( range[1] < 1e9 ) {
+        yscale = 1.0/(1024.0*1024.0);
+        ylabel = "Memory (MB)";
     } else {
-       scale = 1.0/(1024.0*1024.0*1024.0);
-       label = "Memory (GB)";
+        yscale = 1.0/(1024.0*1024.0*1024.0);
+        ylabel = "Memory (GB)";
     }
-    range[0] *= scale;
-    range[1] *= scale;
-    if ( rank==-1 ) {
-        for (int i=0; i<d_N_procs; i++)
-            plotRank(i,scale);
+    double xoffset = 0.0;
+    if ( fabs(d_t[1]-d_t[0]) < 10e-3 ) {
+        xoffset = 1e-3*floor(d_t[0]*1e3);
+        std::string offset_label = " (offset = " + std::to_string(static_cast<uint64_t>(1e3*xoffset)) + " ms)";
+        if ( fabs(d_t[1]-d_t[0]) < 50e-6 ) {
+            xscale = 1e6;
+            xlabel = "Time (us)" + offset_label;
+        } else {
+            xscale = 1e3;
+            xlabel = "Time (ms)" + offset_label;
+        }
     } else {
-        plotRank(rank,scale);
+        xscale = 1.0;
+        xlabel = "Time (s)";
+    }
+    range[0] *= yscale;
+    range[1] *= yscale;
+    if ( d_N_procs==0 ) {
+        // Dummy plot
+    } else if ( rank==-1 ) {
+        for (int i=0; i<d_N_procs; i++)
+            plotRank(i,yscale);
+    } else {
+        plotRank(rank,yscale);
     }
     insertLegend( new QwtLegend() );
 
     // Set the axis
     int xaxis = QwtPlot::xBottom;
     int yaxis = QwtPlot::yLeft;
-    setAxisScale(xaxis,d_t[0],d_t[1]);
-    setAxisScale(yaxis,0.95*range[0],1.05*range[1]);
-    setAxisTitle(xaxis,qwtText("Time (s)",QFont("Times",10,QFont::Bold)));
-    setAxisTitle(yaxis,qwtText(label.c_str(),QFont("Times",10,QFont::Bold)));
+    setAxisScale(xaxis,xscale*(d_t[0]-xoffset),xscale*(d_t[1]-xoffset));
+    setAxisTitle(xaxis,qwtText(xlabel.c_str(),QFont("Times",10,QFont::Bold)));
+    if ( range[1] > 0 ) {
+        setAxisScale(yaxis,0.95*range[0],1.05*range[1]);
+        setAxisTitle(yaxis,qwtText(ylabel.c_str(),QFont("Times",10,QFont::Bold)));
+    } else {
+        setAxisScale(yaxis,0,0);
+    }
     setAxisScale(QwtPlot::xTop,0,0);
     replot();
     PROFILE_STOP("plot");
@@ -192,7 +215,7 @@ void MemoryPlot::plotRank( int rank, double scale )
 {
     for (size_t i=0; i<d_size[rank].size(); i++)
         d_size[rank][i] *= scale;
-    d_curvePlot[rank]->setSamples( &d_time[rank][0], &d_size[rank][0], d_time[rank].size() );
+    d_curvePlot[rank]->setSamples( d_time[rank].data(), d_size[rank].data(), d_time[rank].size() );
     d_curvePlot[rank]->attach(this);
     d_curvePlot[rank]->setVisible(1);
     uint32_t color = jet(0);

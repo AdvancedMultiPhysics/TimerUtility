@@ -42,7 +42,11 @@ SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
 
 # Set the default C++ standard
 IF ( NOT CXX_STD )
-    SET( CXX_STD 98 )
+    MESSAGE( WARNING "CXX_STD not set, defaulting to c++11" )
+    SET( CXX_STD 11 )
+ENDIF()
+IF ( "${CXX_STD}" STREQUAL "98" )
+    MESSAGE( FATAL_ERROR "c++11 or higher is required" )
 ENDIF()
 
 

@@ -27,58 +27,6 @@ inline void ERROR_MSG( const std::string& msg ) {
 #define printp  printf
 
 
-// Include system dependent headers and define some functions
-#ifdef USE_WINDOWS
-    #include <windows.h>
-    #include <stdio.h>   
-    #include <tchar.h>
-    #include <Psapi.h>
-    #define get_frequency( f ) QueryPerformanceFrequency(&f)
-    #define get_time( t ) QueryPerformanceCounter(&t)
-    #define get_diff(start,end,f) \
-        static_cast<double>(end.QuadPart-start.QuadPart)/static_cast<double>(f.QuadPart)
-    #define get_diff_ns(start,end,f) \
-        (0x3B9ACA00*static_cast<int64_t>(end.QuadPart-start.QuadPart))/static_cast<int64_t>(f.QuadPart)
-#elif defined(USE_LINUX)
-    #include <signal.h>
-    #include <execinfo.h>
-    #include <dlfcn.h>
-    #include <malloc.h>
-    #define get_frequency( f ) do { f.tv_sec=0; f.tv_usec=0; } while(0)
-    #define get_time( t ) gettimeofday(&t,NULL)
-    #define get_diff(start,end,f) 1e-6*static_cast<double>( \
-        0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
-                (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
-    #define get_diff_ns(start,end,f) 0x3E8*( \
-        0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
-                (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
-#elif defined(USE_MAC)
-    #include <signal.h>
-    #include <execinfo.h>
-    #include <dlfcn.h>
-    #include <mach/mach.h>
-    #include <libkern/OSAtomic.h>
-    #include <sys/time.h>
-    #include <execinfo.h>
-    #include <sys/time.h>
-    #include <cxxabi.h>
-    #include <stdint.h>
-    #include <sys/types.h>
-    #include <sys/sysctl.h>
-    #include <unistd.h>
-    #define get_frequency( f ) do { f.tv_sec=0; f.tv_usec=0; } while(0)
-    #define get_time( t ) gettimeofday(&t,NULL)
-    #define get_diff(start,end,f) 1e-6*static_cast<double>( \
-        0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
-                (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
-    #define get_diff_ns(start,end,f) 0x3E8*( \
-        0xF4240*(static_cast<int64_t>(end.tv_sec)-static_cast<int64_t>(start.tv_sec)) + \
-                (static_cast<int64_t>(end.tv_usec)-static_cast<int64_t>(start.tv_usec)) )
-#else
-    #error Unknown OS
-#endif
-
-
 // Check the limits of the define variables
 #if MAX_TRACE_MEMORY > 0xFFFFFFFF
     #error MAX_TRACE_MEMORY must be < 2^32
@@ -752,8 +700,7 @@ ProfilerApp::ProfilerApp()
     #ifdef TIMER_ENABLE_THREAD_LOCAL
         d_level_map = RecursiveFunctionMap();
     #endif
-    get_time(d_construct_time);
-    get_frequency(d_frequency);
+    d_construct_time = now();
     if ( sizeof(id_struct)!=8 )
         ERROR_MSG("id_struct is an unexpected size\n");
     #ifdef USE_WINDOWS
@@ -769,7 +716,7 @@ ProfilerApp::ProfilerApp()
         timer_table[i] = NULL;
     N_timers = 0;
     d_level = 0;
-    d_shift = 0.0;
+    d_shift = d_shift.zero();
     d_store_trace_data = false;
     d_store_memory_data = false;
     d_disable_timer_error = false;
@@ -812,11 +759,10 @@ void ProfilerApp::synchronize()
 {
     GET_LOCK(&lock);
 	comm_barrier();
-    TIME_TYPE sync_time_local;
-    get_time(sync_time_local);
-    double current_time = get_diff(d_construct_time,sync_time_local,d_frequency);
-    double max_current_time = comm_max_reduce(current_time);
-    d_shift = max_current_time - current_time;
+    auto sync_time_local = now();
+    auto current_time = sync_time_local - d_construct_time;
+    double max_current_time = comm_max_reduce(current_time.count());
+    d_shift = duration(max_current_time) - current_time;
     RELEASE_LOCK(&lock);
 }
 
@@ -865,11 +811,11 @@ void ProfilerApp::start( const char* message, const char* filename,
     timer->is_active = true;
     timer->N_calls++;
     set_trace_bit(timer->trace_index,TRACE_SIZE,thread_data->active);
-    get_time(timer->start_time);
+    timer->start_time = now();
     // Record the time of the memory usage
     if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
-        thread_data->time_memory[thread_data->N_memory_steps] = 
-            get_diff_ns(d_construct_time,timer->start_time,d_frequency);
+        std::chrono::duration<double> tmp = timer->start_time-d_construct_time;
+        thread_data->time_memory[thread_data->N_memory_steps] = 1e9*tmp.count();
         thread_data->N_memory_steps++;
     }
 }
@@ -886,8 +832,7 @@ void ProfilerApp::stop( const char* message, const char* filename,
     if ( this->d_level<level )
         return;
     // Use the current time (minimize the effects of the overhead of the timer)
-    TIME_TYPE end_time;
-    get_time(end_time);
+    auto end_time = now();
     // Get the thread data
     thread_info* thread_data = get_thread_data();
     // Get the appropriate timer
@@ -898,7 +843,8 @@ void ProfilerApp::stop( const char* message, const char* filename,
         if ( d_disable_timer_error ) {
             // Start the timer before starting
             this->start( message, filename, -1, level, timer_id );
-            get_time(end_time);  // Use the current time as the new stop
+            // Use the current time as the new stop
+            end_time = now();
         } else {
             std::stringstream msg;
             msg << "Timer is not active, did you forget to call start? (" << 
@@ -937,7 +883,7 @@ void ProfilerApp::stop( const char* message, const char* filename,
         }
     }
     // Calculate the time elapsed since start was called
-    double time = get_diff(timer->start_time,end_time,d_frequency);
+    ProfilerApp::duration time = end_time - timer->start_time;
     // Save the starting and ending time if we are storing the detailed traces
     if ( d_store_trace_data && trace->N_calls<MAX_TRACE_TRACE) {
         // Check if we need to allocate more memory to store the times
@@ -946,16 +892,16 @@ void ProfilerApp::stop( const char* message, const char* filename,
         size_t N_max = static_cast<size_t>(MAX_TRACE_TRACE);
         check_allocate_arrays(N_alloc,N_size,N_max,&trace->start_time,&trace->end_time,&d_bytes);
         // Calculate the time elapsed since the profiler was created
-        trace->start_time[trace->N_calls] = get_diff(d_construct_time,timer->start_time,d_frequency);
-        trace->end_time[trace->N_calls]   = get_diff(d_construct_time,end_time,d_frequency);
+        trace->start_time[trace->N_calls] = timer->start_time - d_construct_time;
+        trace->end_time[trace->N_calls]   = end_time - d_construct_time;
     }
     // Save the minimum, maximum, and total times
-    timer->max_time = std::max<double>(timer->max_time,time);
-    timer->min_time = std::min<double>(timer->min_time,time);
+    timer->max_time = std::max(timer->max_time,time);
+    timer->min_time = std::min(timer->min_time,time);
     timer->total_time += time;
     // Save the new time info to the trace
-    trace->max_time = std::max<double>(trace->max_time,time);
-    trace->min_time = std::min<double>(trace->min_time,time);
+    trace->max_time = std::max(trace->max_time,time);
+    trace->min_time = std::min(trace->min_time,time);
     trace->total_time += time;
     trace->N_calls++;
     // Get the memory usage
@@ -966,7 +912,8 @@ void ProfilerApp::stop( const char* message, const char* filename,
         // Check the memory allocation
         check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
-        thread_data->time_memory[N_size] = get_diff_ns(d_construct_time,end_time,d_frequency);
+        std::chrono::duration<double> tmp = end_time - d_construct_time;
+        thread_data->time_memory[N_size] = 1e9*tmp.count();
         thread_data->size_memory[N_size] = MemoryApp::getTotalMemoryUsage()-d_bytes;
         thread_data->N_memory_steps++;
     }
@@ -1021,7 +968,7 @@ void ProfilerApp::disable( )
 * Function to return the profiling info                                *
 ***********************************************************************/
 inline void ProfilerApp::getTimerResultsID( uint64_t id, std::vector<const thread_info*>& thread_list,
-    int rank, const TIME_TYPE& end_time, TimerResults& results ) const
+    int rank, const time_point& end_time, TimerResults& results ) const
 {
     const size_t key = GET_TIMER_HASH( id );
     results.id = convert_timer_id(id);
@@ -1061,12 +1008,12 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id, std::vector<const threa
         }
         // If the timer is still running, add the current processing time to the totals
         bool add_trace = false;
-        double time = 0.0;
+        ProfilerApp::duration time = ProfilerApp::duration::zero();
         size_t trace_id = 0;
         TRACE_TYPE active[TRACE_SIZE];
         if ( timer->is_active ) {
             add_trace = true;
-            time = get_diff(timer->start_time,end_time,d_frequency);
+            time = end_time - timer->start_time;
             // The timer is only a calling timer if it was active before and after the current timer
             for (size_t i=0; i<TRACE_SIZE; i++)
                 active[i] = thread_data->active[i] & timer->trace[i];
@@ -1089,18 +1036,18 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id, std::vector<const threa
             results.trace[k].N = trace->N_calls;
             results.trace[k].N_active = static_cast<unsigned short>(list.size());
             results.trace[k].N_trace = static_cast<unsigned int>(N_stored_trace);
-            results.trace[k].min = static_cast<float>(trace->min_time);
-            results.trace[k].max = static_cast<float>(trace->max_time);
-            results.trace[k].tot = static_cast<float>(trace->total_time);
+            results.trace[k].min = static_cast<float>(trace->min_time.count());
+            results.trace[k].max = static_cast<float>(trace->max_time.count());
+            results.trace[k].tot = static_cast<float>(trace->total_time.count());
             results.trace[k].allocate();
             for (size_t j=0; j<list.size(); j++)
                 results.trace[k].active()[j] = list[j];
             // Determine if we need to add the running trace
             if ( add_trace ) {
                 if ( trace_id == trace->id ) {
-                    results.trace[k].min = std::min<float>(results.trace[k].min,time);
-                    results.trace[k].max = std::max<float>(results.trace[k].max,time);
-                    results.trace[k].tot += static_cast<float>(time);
+                    results.trace[k].min = std::min<float>(results.trace[k].min,time.count());
+                    results.trace[k].max = std::max<float>(results.trace[k].max,time.count());
+                    results.trace[k].tot += static_cast<float>(time.count());
                     add_trace = false;
                 }
             }
@@ -1108,8 +1055,8 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id, std::vector<const threa
             double *start = results.trace[k].start();
             double *stop  = results.trace[k].stop();
             for (size_t m=0; m<N_stored_trace; m++) {
-                start[m] = trace->start_time[m] + d_shift;
-                stop[m]  = trace->end_time[m]   + d_shift;
+                start[m] = ( trace->start_time[m] + d_shift ).count();
+                stop[m]  = ( trace->end_time[m]   + d_shift ).count();
             }
             // Advance to the next trace
             trace = trace->next;
@@ -1128,17 +1075,17 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id, std::vector<const threa
             results.trace[k].N = 1;
             results.trace[k].N_active = static_cast<unsigned short>(list.size());
             results.trace[k].N_trace = static_cast<unsigned int>(N_stored_trace);
-            results.trace[k].min = static_cast<float>(time);
-            results.trace[k].max = static_cast<float>(time);
-            results.trace[k].tot = static_cast<float>(time);
+            results.trace[k].min = static_cast<float>(time.count());
+            results.trace[k].max = static_cast<float>(time.count());
+            results.trace[k].tot = static_cast<float>(time.count());
             results.trace[k].allocate();
             for (size_t j=0; j<list.size(); j++)
                 results.trace[k].active()[j] = list[j];
             if ( d_store_trace_data ) { 
                 double *start = results.trace[k].start();
                 double *stop  = results.trace[k].stop();
-                start[0] = get_diff(d_construct_time,timer->start_time,d_frequency) + d_shift;
-                stop[0]  = get_diff(d_construct_time,end_time,d_frequency) + d_shift;
+                *start = ( timer->start_time - d_construct_time + d_shift ).count();
+                *stop  = (          end_time - d_construct_time + d_shift ).count();
             }
         }
     }
@@ -1146,8 +1093,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id, std::vector<const threa
 std::vector<TimerResults> ProfilerApp::getTimerResults() const
 {
     // Get the current time in case we need to "stop" and timers
-    TIME_TYPE end_time;
-    get_time(end_time);
+    auto end_time = now();
     int rank = comm_rank();
     // Get a lock
     GET_LOCK(&lock);
@@ -1180,8 +1126,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
 TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
 {
     // Get the current time in case we need to "stop" and timers
-    TIME_TYPE end_time;
-    get_time(end_time);
+    auto end_time = now();
     int rank = comm_rank();
     // Get a lock
     GET_LOCK(&lock);

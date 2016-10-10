@@ -194,13 +194,9 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ ):
     timerPlots.resize(0);
 
     // Create the memory plot
-    if ( !parent->d_data.memory.empty() ) {
-        memory = new MemoryPlot( this, parent->d_data.memory );
-        std::function<void(void)> f = std::bind(&TraceWindow::resizeMemory,this);
-	    timerGrid->registerResizeCallback(f);
-    } else {
-        memory = new QWidget( );
-    }
+    memory = new MemoryPlot( this, parent->d_data.memory );
+    std::function<void(void)> f = std::bind(&TraceWindow::resizeMemory,this);
+    timerGrid->registerResizeCallback(f);
 
     // Create the layout
     QVBoxLayout *layout = new QVBoxLayout;
@@ -478,10 +474,7 @@ void TraceWindow::updateTimers()
 ***********************************************************************/
 void TraceWindow::updateMemory()
 {
-    if ( parent->d_data.memory.empty() ) {
-        memory->setVisible(false);
-        return;
-    }
+    memory->setVisible(true);
     PROFILE_START("updateMemory");
     dynamic_cast<MemoryPlot*>(memory)->plot( t_current, selected_rank );
     PROFILE_STOP("updateMemory");
@@ -530,7 +523,10 @@ void TraceWindow::resizeMemory()
     int left = pos.x();
     int right = left + pos.width();
     memplot->align(left,right);
-    memplot->setFixedHeight(centralWidget()->height()/4);
+    if ( parent->d_data.memory.empty() )
+        memplot->setFixedHeight(45);
+    else
+        memplot->setFixedHeight(centralWidget()->height()/4);
     PROFILE_STOP("resizeMemory");
 }
 

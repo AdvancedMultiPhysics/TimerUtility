@@ -9,24 +9,6 @@
     #include <mpi.h>
 #endif
 
-#ifdef USE_WINDOWS
-    #include <windows.h>
-    #define TIME_TYPE LARGE_INTEGER
-    #define get_time(x) QueryPerformanceCounter(x)
-    #define get_diff(start,end,f) (((double)(end.QuadPart-start.QuadPart))/((double)f.QuadPart))
-    #define get_frequency(f) QueryPerformanceFrequency(f)
-    inline unsigned int sleep(unsigned int seconds) { Sleep(1000*seconds); return 0; }
-#elif defined(USE_LINUX) || defined(USE_MAC)
-    #include <unistd.h>
-    #define TIME_TYPE timeval
-    #define get_time(x) gettimeofday(x,NULL);
-    #define get_diff(start,end,f) (((double)end.tv_sec-start.tv_sec)+1e-6*((double)end.tv_usec-start.tv_usec))
-    #define get_frequency(f) (*f=timeval())
-#else
-    #error Unknown OS
-#endif
-
-
 inline int getRank() {
     int rank = 0;
     #ifdef USE_MPI
@@ -162,9 +144,9 @@ int run_tests( bool enable_trace, std::string save_name )
     for (int i=0; i<N_it; i++) {
         // Test how long it takes to get the time
         PROFILE_START("gettime");
-        TIME_TYPE time1;
+        ProfilerApp::time_point time1;
         for (int j=0; j<N_timers; j++)
-            get_time(&time1);
+            time1 = ProfilerApp::now();
         PROFILE_STOP("gettime");
         // Test how long it takes to start/stop the timers
         PROFILE_START("static");

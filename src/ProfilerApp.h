@@ -5,9 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string>
 #include <iostream>
 #include <vector>
 #include <map>
+#include <chrono>
+#include <cstring>
 
 #include "ProfilerAtomicHelpers.h"
 #include "ProfilerThreadID.h"
@@ -16,38 +19,6 @@
 
 // Disale RecursiveFunctionMap, there seems to be issues with non-trivial types on gcc
 #undef TIMER_ENABLE_THREAD_LOCAL
-
-
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-    #define USE_WINDOWS
-#elif defined(__APPLE__)
-    #define USE_MAC
-#else
-    #define USE_LINUX
-#endif
-
-
-#ifdef USE_WINDOWS
-    // Windows
-    #define NOMINMAX                    // Supress min max from being defined
-    #include <windows.h>
-    #include <string>
-    #define TIME_TYPE LARGE_INTEGER
-#elif defined(USE_MAC)
-    // Mac
-    #include <sys/time.h>
-    #include <pthread.h>
-    #include <string.h>
-    #define TIME_TYPE timeval
-#elif defined(USE_LINUX)
-    // Linux
-    #include <sys/time.h>
-    #include <pthread.h>
-    #include <string.h>
-    #define TIME_TYPE timeval
-#else
-    #error Unknown OS
-#endif
 
 
 #define TRACE_TYPE uint64_t
@@ -61,19 +32,7 @@
 #define MAX_TRACE_MEMORY 0x6000000              // The maximum number of times to store the memory usage
 #define MAX_THREADS 1024                        // The maximum number of threads supported (also change ProfilerThreadIndexHashMapSize in ProfilerThreadID.h)
 #define TIMER_HASH_SIZE 1024                    // The size of the hash table to store the timers
-
-
-#if CXX_STD == 98
-    #ifndef nullptr
-        #define nullptr NULL
-    #endif
-#elif CXX_STD == 11
-#elif CXX_STD == 14
-    //#define CONSTEXPR_TIMER constexpr
-#endif
-#ifndef CONSTEXPR_TIMER
-    #define CONSTEXPR_TIMER 
-#endif
+#define CONSTEXPR_TIMER
 
 
 class ScopedTimer;
@@ -272,6 +231,16 @@ struct TimerMemoryResults {
   */
 class ProfilerApp {
 public:
+
+    //! Convience typedef for storing a point in time
+    typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+    //! Convience typedef for storing a time interval
+    typedef std::chrono::duration<double> duration;
+
+    //! Return the current time
+    static inline time_point now() { return std::chrono::steady_clock::now(); }
+
 
     //! Constructor
     ProfilerApp( );
@@ -501,12 +470,12 @@ private:
         uint64_t id;                // This is a (hopefully) unique id that we can use for comparison
         TRACE_TYPE trace[TRACE_SIZE]; // Store the trace
         store_trace *next;          // Pointer to the next entry in the list
-        double min_time;            // Store the minimum time spent in the given block (seconds)
-        double max_time;            // Store the maximum time spent in the given block (seconds)
-        double total_time;          // Store the total time spent in the given block (seconds)
+        duration min_time;          // Store the minimum time spent in the given block (seconds)
+        duration max_time;          // Store the maximum time spent in the given block (seconds)
+        duration total_time;        // Store the total time spent in the given block (seconds)
         size_t N_trace_alloc;       // The size of the arrays for start_time and stop_time
-        double *start_time;         // Store when start was called for the given trace (seconds from constructor call)
-        double *end_time;           // Store when stop was called for the given trace (seconds from constructor call)
+        duration *start_time;       // Store when start was called for the given trace (seconds from constructor call)
+        duration *end_time;         // Store when stop was called for the given trace (seconds from constructor call)
         // Constructor
         store_trace(): N_calls(0), id(0), next(NULL), min_time(1e100), max_time(0), 
             total_time(0), N_trace_alloc(0), start_time(NULL), end_time(NULL) {
@@ -554,17 +523,17 @@ private:
         int N_calls;                        // Number of calls to this block
         uint64_t id;                        // A unique id for each timer
         TRACE_TYPE trace[TRACE_SIZE];       // Store the current trace
-        double min_time;                    // Store the minimum time spent in the given block (seconds)
-        double max_time;                    // Store the maximum time spent in the given block (seconds)
-        double total_time;                  // Store the total time spent in the given block (seconds)
+        duration min_time;                  // Store the minimum time spent in the given block (seconds)
+        duration max_time;                  // Store the maximum time spent in the given block (seconds)
+        duration total_time;                // Store the total time spent in the given block (seconds)
         store_trace *trace_head;            // Head of the trace-log list
         store_timer *next;                  // Pointer to the next entry in the list
         store_timer_data_info *timer_data;  // Pointer to the timer data
-        TIME_TYPE start_time;               // Store when start was called for the given block
+        time_point start_time;              // Store when start was called for the given block
         // Constructor used to initialize key values
         store_timer(): is_active(false), trace_index(0), N_calls(0), id(0), 
             min_time(0), max_time(0), total_time(0), trace_head(NULL),
-            next(NULL), timer_data(NULL), start_time(TIME_TYPE())
+            next(NULL), timer_data(NULL), start_time(time_point())
         {
             memset(trace,0,sizeof(trace));
         }
@@ -639,7 +608,7 @@ private:
 
     // Function to get the timer results
     inline void getTimerResultsID( uint64_t id, std::vector<const thread_info*>& threads,
-        int rank, const TIME_TYPE& end_time, TimerResults& results ) const;
+        int rank, const time_point& end_time, TimerResults& results ) const;
 
     // Function to return a hopefully unique id based on the active bit array
     static inline uint64_t get_trace_id( const TRACE_TYPE *trace );
@@ -676,9 +645,8 @@ private:
     bool d_store_memory_data;       // Do we want to store memory information
     bool d_disable_timer_error;     // Do we want to disable the timer errors for start/stop
     char d_level;                   // Level of timing to use (default is 0, -1 is disabled)
-    TIME_TYPE d_construct_time;     // Store when the constructor was called
-    TIME_TYPE d_frequency;          // Clock frequency (only used for windows)
-    double d_shift;                 // Offset to add to all trace times when saving (used to synchronize the trace data)
+    time_point d_construct_time;    // Store when the constructor was called
+    duration d_shift;               // Offset to add to all trace times when saving (used to synchronize the trace data)
     mutable size_t d_max_trace_remaining; // The number of traces remaining to store for each thread
     mutable size_t d_N_memory_steps; // The number of steps we have for the memory usage
     mutable size_t* d_time_memory;  // The times at which we know the memory usage (ns from creation)
