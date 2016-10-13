@@ -9,6 +9,13 @@
     #include <mpi.h>
 #endif
 
+
+// Define NULL_USE
+#define NULL_USE(variable) do {                         \
+    if(0) {char *temp = (char *)&variable; temp++;}     \
+}while(0)
+
+
 inline int getRank() {
     int rank = 0;
     #ifdef USE_MPI
@@ -361,6 +368,9 @@ int main(int argc, char* argv[])
     // Initialize MPI
     #ifdef USE_MPI
         MPI_Init(&argc,&argv);
+    #else
+        NULL_USE(argc);
+        NULL_USE(argv);
     #endif
     
     int N_errors=0;

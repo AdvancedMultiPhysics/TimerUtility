@@ -54,6 +54,12 @@ inline void ERROR_MSG( const std::string& msg ) {
 }while(false)
 
 
+#define NULL_USE(variable) do {                         \
+    if(0) {char *temp = (char *)&variable; temp++;}     \
+}while(0)
+
+
+
 /******************************************************************
 * Special Notes                                                   *
 * Note 1: When using std::string in parallel, prior to C++11      *
@@ -265,6 +271,11 @@ static inline void comm_send1( const TYPE *buf, size_t size, int dest, int tag )
         INSIST(size<0x80000000,"We do not support sending/recieving buffers > 2^31 (yet)");
         int err = MPI_Send( buf, (int) size, getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
+    #else
+        NULL_USE(buf);
+        NULL_USE(size);
+        NULL_USE(dest);
+        NULL_USE(tag);
     #endif
 }
 template<class TYPE>
@@ -281,6 +292,8 @@ static inline TYPE* comm_recv1( int source, int tag )
         ASSERT(err==MPI_SUCCESS);
         return buf;
     #else
+        NULL_USE(source);
+        NULL_USE(tag);
         return NULL;
     #endif
 }
@@ -290,6 +303,10 @@ static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag 
     #ifdef USE_MPI
         int err = MPI_Send( getPtr(data), (int) data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
         ASSERT(err==MPI_SUCCESS);
+    #else
+        NULL_USE(data);
+        NULL_USE(dest);
+        NULL_USE(tag);
     #endif
 }
 template<class TYPE>
@@ -306,6 +323,8 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
         ASSERT(err==MPI_SUCCESS);
         return data;
     #else
+        NULL_USE(source);
+        NULL_USE(tag);
         return std::vector<TYPE>();
     #endif
 }
