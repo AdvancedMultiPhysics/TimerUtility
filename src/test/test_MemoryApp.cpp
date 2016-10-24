@@ -1,13 +1,9 @@
 #include "MemoryApp.h"
+#include "test_Helpers.h"
 #include <iostream>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-
-
-#define NULL_USE(variable) do {                         \
-    if(0) {char *temp = (char *)&variable; temp++;}     \
-}while(0)
 
 
 inline void check_ptr( double *tmp ) 
@@ -17,15 +13,6 @@ inline void check_ptr( double *tmp )
     if ( tmp[0]==0 )
         std::cout << "Error in test" << std::endl;
 }
-
-#define ASSERT(EXP) do {                                \
-    if ( !(EXP) ) {                                     \
-        std::stringstream tboxos;                       \
-        tboxos << "Failed assertion: " << #EXP << std::ends; \
-        delete [] tmp;                                  \
-        throw std::logic_error(tboxos.str());           \
-    }                                                   \
-}while(0)
 
 
 int main(int, char*[])
@@ -56,7 +43,9 @@ int main(int, char*[])
         check_ptr(tmp1);
         check_ptr(tmp2);
         MemoryApp::MemoryStats m4 = MemoryApp::getMemoryStats();
+        DISABLE_WARNINGS
         delete [] tmp1;
+        ENABLE_WARNINGS
         operator delete [](tmp2,std::nothrow);
         MemoryApp::MemoryStats m5 = MemoryApp::getMemoryStats();
         if ( m2.bytes_new<m1.bytes_new+16 || m2.N_new!=2 ) {

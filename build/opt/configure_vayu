@@ -1,0 +1,13 @@
+rm -rf CMake*
+
+cmake                                                   \
+    -G "Unix Makefiles"                                 \
+    -D CMAKE_BUILD_TYPE=Release                         \
+    -D CMAKE_C_COMPILER:PATH=mpicc                      \
+    -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
+    -D USE_MPI=1                                        \
+        -D MPI_COMPILER=1                               \
+    ../../src/
+
+
+
