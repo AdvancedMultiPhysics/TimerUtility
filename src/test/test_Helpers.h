@@ -204,16 +204,16 @@ inline size_t getMemoryUsage( )
     #define DISABLE_WARNINGS                                                \
         _Pragma( "GCC diagnostic push" ) _Pragma( "GCC diagnostic ignored \"-Wall\"" ) \
         _Pragma( "GCC diagnostic ignored \"-Wextra\"" )                     \
+        _Pragma( "GCC diagnostic ignored \"-Wpragmas\"" )                   \
         _Pragma( "GCC diagnostic ignored \"-Wunused-local-typedefs\"" )     \
         _Pragma( "GCC diagnostic ignored \"-Woverloaded-virtual\"" )        \
-        _Pragma( "GCC diagnostic ignored \"-Wunused-parameter\"" )
-
+        _Pragma( "GCC diagnostic ignored \"-Wunused-parameter\"" )          \
+        _Pragma( "GCC diagnostic ignored \"-Wsized-deallocation\"" )
 #define ENABLE_WARNINGS _Pragma( "GCC diagnostic pop" )
 #else
 #define DISABLE_WARNINGS
 #define ENABLE_WARNINGS
 #endif
 // clang-format on
-
 
 
