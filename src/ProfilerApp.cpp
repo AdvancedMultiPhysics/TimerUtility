@@ -276,6 +276,7 @@ static inline void comm_send1( const TYPE *buf, size_t size, int dest, int tag )
         NULL_USE(size);
         NULL_USE(dest);
         NULL_USE(tag);
+        ERROR_MSG("Calling MPI routine in no-mpi build");
     #endif
 }
 template<class TYPE>
@@ -294,6 +295,7 @@ static inline TYPE* comm_recv1( int source, int tag )
     #else
         NULL_USE(source);
         NULL_USE(tag);
+        ERROR_MSG("Calling MPI routine in no-mpi build");
         return NULL;
     #endif
 }
@@ -307,6 +309,7 @@ static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag 
         NULL_USE(data);
         NULL_USE(dest);
         NULL_USE(tag);
+        ERROR_MSG("Calling MPI routine in no-mpi build");
     #endif
 }
 template<class TYPE>
@@ -325,6 +328,7 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
     #else
         NULL_USE(source);
         NULL_USE(tag);
+        ERROR_MSG("Calling MPI routine in no-mpi build");
         return std::vector<TYPE>();
     #endif
 }
@@ -822,8 +826,9 @@ void ProfilerApp::start( const char* message, const char* filename,
         // Check the memory allocation
         check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
         // Get the current memroy usage
+        size_t memory = MemoryApp::getTotalMemoryUsage();
         thread_data->time_memory[N_size] = 0;
-        thread_data->size_memory[N_size] = MemoryApp::getTotalMemoryUsage()-d_bytes;
+        thread_data->size_memory[N_size] = memory-d_bytes;
     }
     // Start the timer 
     memcpy(timer->trace,thread_data->active,TRACE_SIZE*sizeof(TRACE_TYPE));
@@ -930,10 +935,11 @@ void ProfilerApp::stop( const char* message, const char* filename,
         size_t N_max = d_max_trace_remaining;
         // Check the memory allocation
         check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
-        // Get the current memroy usage
+        // Get the current memory usage
         std::chrono::duration<double> tmp = end_time - d_construct_time;
+        size_t memory = MemoryApp::getTotalMemoryUsage();
         thread_data->time_memory[N_size] = 1e9*tmp.count();
-        thread_data->size_memory[N_size] = MemoryApp::getTotalMemoryUsage()-d_bytes;
+        thread_data->size_memory[N_size] = memory-d_bytes;
         thread_data->N_memory_steps++;
     }
 }
@@ -974,7 +980,8 @@ void ProfilerApp::disable( )
     delete [] d_size_memory;
     d_time_memory = NULL;
     d_size_memory = NULL;
-    d_bytes = sizeof(ProfilerApp);
+    //d_bytes = sizeof(ProfilerApp);
+    d_bytes = 0;
     RELEASE_LOCK(&lock);
     // Delete scoped variables
     #ifdef TIMER_ENABLE_THREAD_LOCAL

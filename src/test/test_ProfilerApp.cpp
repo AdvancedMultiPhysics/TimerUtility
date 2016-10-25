@@ -69,6 +69,18 @@ size_t getStackSize2()
 }
 
 
+// Perform a sanity check of the memory results
+bool check( const MemoryResults& memory )
+{
+    bool pass = true;
+    for (size_t i=1; i<memory.time.size(); i++)
+        pass = pass && memory.time[i]>=memory.time[i-1];
+    for (size_t i=0; i<memory.time.size(); i++)
+        pass = pass && static_cast<double>(memory.bytes[i])<10e9;
+    return pass;
+}
+
+
 int run_tests( bool enable_trace, std::string save_name ) 
 {
     PROFILE_ENABLE();
@@ -246,6 +258,10 @@ int run_tests( bool enable_trace, std::string save_name )
     // Get the timers (sorting based on the timer ids)
     std::vector<TimerResults> data1 = global_profiler.getTimerResults();
     MemoryResults memory1 = global_profiler.getMemoryResults();
+    if ( !check( memory1 ) ) {
+        std::cout << "Memory results do not make sense\n";
+        N_errors++;
+    }
     size_t bytes1[2]={0,0};
     std::vector<id_struct> id1(data1.size());
     for (size_t i=0; i<data1.size(); i++) {
