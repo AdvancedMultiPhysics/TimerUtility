@@ -229,7 +229,7 @@ struct TimerMemoryResults {
   * which may be rounded to boundaries by the system.  This overhead is NOT accounted for,
   * and may cause a slight variation in the reported memory usage. 
   */
-class ProfilerApp {
+class ProfilerApp final {
 public:
 
     //! Convience typedef for storing a point in time

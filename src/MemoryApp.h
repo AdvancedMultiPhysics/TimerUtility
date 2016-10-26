@@ -62,7 +62,7 @@
   * This class works by overloading the C++ new and delete operators to include memory statistics.
   * It does not monitor direct calls to malloc.  All functions are thread-safe.
   */
-class MemoryApp {
+class MemoryApp final {
 public:
 
     
