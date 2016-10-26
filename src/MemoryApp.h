@@ -170,8 +170,8 @@ private:
         friend void operator delete(void* data, const std::nothrow_t&) __nothrow_delete;
         friend void operator delete[] (void* data, const std::nothrow_t&) __nothrow_delete;
         #if CXX_STD==14
-        friend void operator delete( void* data, std::size_t );
-        friend void operator delete[]( void* data, std::size_t );
+        friend void operator delete( void* data, std::size_t ) __throw_delete;
+        friend void operator delete[]( void* data, std::size_t ) __throw_delete;
         #endif
     #endif
 };
