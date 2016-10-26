@@ -169,6 +169,10 @@ private:
         friend void* operator new[] (size_t size, const std::nothrow_t&) __nothrow_new;
         friend void operator delete(void* data, const std::nothrow_t&) __nothrow_delete;
         friend void operator delete[] (void* data, const std::nothrow_t&) __nothrow_delete;
+        #if CXX_STD==14
+        friend void operator delete( void* data, std::size_t );
+        friend void operator delete[]( void* data, std::size_t );
+        #endif
     #endif
 };
 

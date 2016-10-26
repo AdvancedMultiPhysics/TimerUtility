@@ -167,6 +167,26 @@ size_t MemoryApp::d_physical_memory = getPhysicalMemory();
             TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
         }
     }
+#if CXX_STD==14
+    void operator delete( void* data, std::size_t )
+    {
+        if ( data != NULL ) {
+            const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
+            free(data);
+            TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
+        }
+    }
+    void operator delete[]( void* data, std::size_t )
+    {
+        if ( data != NULL ) {
+            const TimerUtility::atomic::int64_atomic block_size = get_malloc_size(data);
+            free(data);
+            TimerUtility::atomic::atomic_add(&MemoryApp::d_bytes_deallocated,block_size);
+            TimerUtility::atomic::atomic_increment(&MemoryApp::d_calls_delete);
+        }
+    }
+#endif
 #endif
 
 
