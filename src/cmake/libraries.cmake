@@ -81,6 +81,8 @@ MACRO( CONFIGURE_MPI )
             IF ( MPI_INCLUDE )
                 INCLUDE_DIRECTORIES( ${MPI_INCLUDE} )
             ENDIF()
+            STRING(REGEX REPLACE "," ";" MPI_LIBRARIES "${MPI_LIBRARIES}" )
+            STRING(REGEX REPLACE ":" ";" MPI_LINK_FLAGS "${MPI_LINK_FLAGS}" )
         ELSE()
             # Perform the default search for MPI
             INCLUDE ( FindMPI )
