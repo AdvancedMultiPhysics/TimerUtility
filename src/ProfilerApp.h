@@ -16,6 +16,8 @@
 #include "ProfilerThreadID.h"
 #include "ProfilerDefinitions.h"
 
+#include <limits>
+
 
 // Disale RecursiveFunctionMap, there seems to be issues with non-trivial types on gcc
 #undef TIMER_ENABLE_THREAD_LOCAL
@@ -236,7 +238,7 @@ public:
     typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
     //! Convience typedef for storing a time interval
-    typedef std::chrono::duration<double> duration;
+    typedef std::chrono::nanoseconds duration;
 
     //! Return the current time
     static inline time_point now() { return std::chrono::steady_clock::now(); }
@@ -477,8 +479,8 @@ private:
         duration *start_time;       // Store when start was called for the given trace (seconds from constructor call)
         duration *end_time;         // Store when stop was called for the given trace (seconds from constructor call)
         // Constructor
-        store_trace(): N_calls(0), id(0), next(NULL), min_time(1e100), max_time(0), 
-            total_time(0), N_trace_alloc(0), start_time(NULL), end_time(NULL) {
+        store_trace(): N_calls(0), id(0), next(NULL), min_time(std::numeric_limits<duration>::max()),
+            max_time(0), total_time(0), N_trace_alloc(0), start_time(NULL), end_time(NULL) {
             memset(trace,0,TRACE_SIZE*sizeof(TRACE_TYPE));
         }
         // Destructor

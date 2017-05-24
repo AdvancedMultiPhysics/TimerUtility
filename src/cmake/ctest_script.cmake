@@ -174,6 +174,7 @@ SET( CTEST_CUSTOM_WARNING_EXCEPTION
     "warning: jobserver unavailable" 
     "This object file does not define any previously undefined public symbols"
     "Note: No relevant classes found. No output generated."
+    "The version of gcc is not supported. The version currently supported with MEX is"
 )
 SET( CTEST_CUSTOM_ERROR_EXCEPTION 
     "Note: No relevant classes found. No output generated."

@@ -249,9 +249,6 @@ int run_tests( bool enable_trace, std::string save_name )
     PROFILE_SAVE(save_name);
     PROFILE_STOP("SAVE");
 
-    // Stop main
-    PROFILE_STOP("MAIN");
-
     // Re-save the results
     PROFILE_SAVE(save_name);
 
@@ -302,6 +299,18 @@ int run_tests( bool enable_trace, std::string save_name )
     } else {
         std::cout << "MAIN was not found in trace results\n";
         N_errors++;
+    }
+    if ( enable_trace && trace!=nullptr ) {
+        int N = trace->N_trace;
+        const double *start = trace->start();
+        const double *stop = trace->stop();
+        bool pass = start!=nullptr && stop!=nullptr && N==1;
+        if ( *start < -0.01 || *start > 100.0 || *start > *stop )
+            pass = false;
+        if ( !pass ) {
+            std::cout << "Error with trace results of MAIN\n";
+            N_errors++;
+        }
     }
 
     // Find and check sleep
@@ -375,6 +384,7 @@ int run_tests( bool enable_trace, std::string save_name )
     PROFILE_SAVE(save_name);
     PROFILE_SAVE(save_name,true);
     MemoryApp::print(std::cout);
+    PROFILE_STOP("MAIN");
     return N_errors;
 }
 

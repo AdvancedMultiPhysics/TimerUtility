@@ -446,7 +446,9 @@ void TraceWindow::updateTimers()
     for (size_t i=0; i<data.size(); i++) {
         timerLabels[i] = new QLabel();
         timerLabels[i]->setMinimumWidth(30);
-        timerLabels[i]->setText(data[i]->message.c_str());
+        std::string label = "<font size=\"3\" color=\"black\">" + data[i]->message +
+            "</font><br><font size=\"2\" color=\"gray\">" + data[i]->file + "</font>";
+        timerLabels[i]->setText(label.c_str());
         timerGrid->addWidget(timerLabels[i],i,0);
         QImage image(resolution,Np*Nt,QImage::Format_RGB32);
         uint64_t rgb = idRgbMap[data[i]->id];
