@@ -20,7 +20,7 @@ ELSE()
     # Set extra compiler flags that are necessary for qt
     SET( QT_FLAGS )
     IF ( USING_GCC )
-        SET( QT_FLAGS "-Wno-strict-overflow -Wno-overloaded-virtual" )
+        SET( QT_FLAGS "-Wno-strict-overflow -Wno-overloaded-virtual -Wno-unused-variable" )
     ELSEIF ( USING_CLANG )
         SET( QT_FLAGS "-Wno-deprecated-register -Wno-unused-function -Wno-tautological-constant-out-of-range-compare" )
     ENDIF()
