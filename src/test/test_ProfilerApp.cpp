@@ -32,6 +32,17 @@ inline int getSize() {
 }
 
 
+inline void printOverhead( const std::string& timer, int N_calls )
+{
+    if ( getRank() == 0 ) {
+        size_t id = global_profiler.get_timer_id( timer.c_str(), __FILE__ );
+        float time = global_profiler.getTimerResults( id ).trace[0].tot;
+        printf( "   %s: %i ns\n", timer.c_str(), int(time*1e9/N_calls) );
+    }
+}
+
+
+
 bool call_recursive_scope( int N, int i=0 ) 
 {
     bool pass = true;
@@ -180,6 +191,20 @@ int run_tests( bool enable_trace, std::string save_name )
             PROFILE_STOP(  names2[j] );
         }
         PROFILE_STOP("dynamic");
+        PROFILE_START("scoped-static");
+        for (int j=0; j<N_timers; j++)
+            PROFILE_SCOPED( timer, "static_name2" );
+        PROFILE_STOP("scoped-static");
+        PROFILE_START("scoped-dynamic");
+        for (int j=0; j<N_timers; j++)
+            PROFILE_SCOPED( timer, names2[j] );
+        PROFILE_STOP("scoped-dynamic");
+        PROFILE_START("scoped-manual");
+        for (int j=0; j<N_timers; j++) {
+            ScopedTimer timer( "static_name3", __FILE__, __LINE__, 0, false, global_profiler );
+            NULL_USE( timer );
+        }
+        PROFILE_STOP("scoped-manual");
         PROFILE_START("level 0");
         for (int j=0; j<N_timers; j++) {
             global_profiler.start( names[j], __FILE__, __LINE__, 0, ids[j] );
@@ -221,28 +246,18 @@ int run_tests( bool enable_trace, std::string save_name )
         delete [] tmp;
         PROFILE_STOP("allocate1");
     }
-    size_t tid1 = global_profiler.get_timer_id( "static", __FILE__ );
-    size_t tid2 = global_profiler.get_timer_id( "dynamic", __FILE__ );
-    size_t tid3 = global_profiler.get_timer_id( "level 0", __FILE__ );
-    size_t tid4 = global_profiler.get_timer_id( "level 1", __FILE__ );
-    size_t tid5 = global_profiler.get_timer_id( "level 2", __FILE__ );
-    size_t aid1 = global_profiler.get_timer_id( "active 1", __FILE__ );
-    size_t aid2 = global_profiler.get_timer_id( "active 2", __FILE__ );
-    float t1 = global_profiler.getTimerResults( tid1 ).trace[0].tot;
-    float t2 = global_profiler.getTimerResults( tid2 ).trace[0].tot;
-    float t3 = global_profiler.getTimerResults( tid3 ).trace[0].tot;
-    float t4 = global_profiler.getTimerResults( tid4 ).trace[0].tot;
-    float t5 = global_profiler.getTimerResults( tid5 ).trace[0].tot;
-    float a1 = global_profiler.getTimerResults( aid1 ).trace[0].tot;
-    float a2 = global_profiler.getTimerResults( aid2 ).trace[0].tot;
-    if ( rank == 0 ) {
-        printf( "\nProfiler overhead: %i ns, %i ns, %i ns, %i ns, %i ns\n",
-            int(t1*1e9/(N_it*N_timers)), int(t2*1e9/(N_it*N_timers)),
-            int(t3*1e9/(N_it*N_timers)), int(t4*1e9/(N_it*N_timers)),
-            int(t5*1e9/(N_it*N_timers)) );
-        printf( "active() overhead: %i ns, %i ns\n\n",
-            int(a1*1e9/(N_it*N_timers)), int(a2*1e9/(N_it*N_timers)) );
-    }
+    printf( "\nProfiler overhead:\n" );
+    printOverhead( "static", N_it*N_timers );
+    printOverhead( "dynamic", N_it*N_timers );
+    printOverhead( "scoped-static", N_it*N_timers );
+    printOverhead( "scoped-dynamic", N_it*N_timers );
+    printOverhead( "scoped-manual", N_it*N_timers );
+    printOverhead( "level 0", N_it*N_timers );
+    printOverhead( "level 1", N_it*N_timers );
+    printOverhead( "level 2", N_it*N_timers );
+    printOverhead( "active 1", N_it*N_timers );
+    printOverhead( "active 2", N_it*N_timers );
+    printf( "\n" );
 
     // Profile the save
     PROFILE_START("SAVE");

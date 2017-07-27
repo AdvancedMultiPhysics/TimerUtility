@@ -19,8 +19,8 @@
 #include <limits>
 
 
-// Disale RecursiveFunctionMap, there seems to be issues with non-trivial types on gcc
-#undef TIMER_ENABLE_THREAD_LOCAL
+// Disable RecursiveFunctionMap, there seems to be issues with non-trivial types on gcc
+#define DISABLE_TIMER_THREAD_LOCAL_MAP
 
 
 #define TRACE_TYPE uint64_t
@@ -615,6 +615,11 @@ private:
     // Function to return a hopefully unique id based on the active bit array
     static inline uint64_t get_trace_id( const TRACE_TYPE *trace );
 
+    // Start/stop the timer
+    void start( thread_info* thread, store_timer* timer );
+    void stop( thread_info* thread, store_timer* timer, time_point end_time = now() );
+
+
     // Function to return the string of active timers
     static std::vector<id_struct> get_active_list( TRACE_TYPE *active, unsigned int myIndex, const thread_info *head );
 
@@ -656,8 +661,7 @@ private:
     mutable volatile TimerUtility::atomic::int64_atomic d_bytes; // The current memory used by the profiler
 
 protected:
-    #ifdef TIMER_ENABLE_THREAD_LOCAL
-        friend ScopedTimer;
+    #if defined(TIMER_ENABLE_THREAD_LOCAL) && !defined(DISABLE_TIMER_THREAD_LOCAL_MAP)
         class RecursiveFunctionMap {
           public:
             RecursiveFunctionMap(): state(1) {}
@@ -675,6 +679,9 @@ protected:
         };
         thread_local static RecursiveFunctionMap d_level_map;
     #endif
+
+friend ScopedTimer;
+
 };
 
 
@@ -682,90 +689,9 @@ protected:
 extern ProfilerApp global_profiler;
 
 
-/** \class ScopedTimer
-  *
-  * This class provides a scoped timer that automatically stops when it
-  * leaves scope and is thread safe.
-  * Example usage:
-  *    void my_function(void *arg) {
-  *       ScopedTimer timer = PROFILE_SCOPED(timer,"my function");
-  *       ...
-  *    }
-  *    void my_function(void *arg) {
-  *       PROFILE_SCOPED(timer,"my function");
-  *       ...
-  *    }
-  */
-class ScopedTimer {
-public:
-    /**                 
-     * @brief Create and start a scoped profiler
-     * @details This is constructor to create and start a timer that starts
-     *    at the given line, and is automatically deleted.  
-     *    The scoped timer is also recursive safe, in that it automatically
-     *    appends "-x" to indicate the number of recursive calls of the given timer.  
-     *    Note: We can only have one scoped timer in a given scope
-     *    Note: the scoped timer is generally lower performance that PROFILE_START and PROFILE_STOP.
-     * @param msg           Name of the timer
-     * @param file          Name of the file containing the code (__FILE__)
-     * @param line          Line number containing the start command (__LINE__)
-     * @param level         Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level of the specified by enable will be included.
-     * @param app           Profiler application to use.  Default is the global profiler
-     */
-    ScopedTimer( const std::string& msg, const char* file, const int line, 
-        const int level=0, ProfilerApp& app=global_profiler ):
-        d_app(app), d_filename(file), d_line(line), d_level(level)
-    {
-        d_id = 0;
-        if ( level <= app.get_level( ) ) {
-            #if defined(TIMER_ENABLE_THREAD_LOCAL) && defined(TIMER_ENABLE_STD_TUPLE)
-                count = app.d_level_map.get(msg);
-                ++(*count);
-                d_message = msg + "-" + std::to_string(*count);
-                d_id = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
-            #else
-                int recursive_level = 0;
-                char buffer[16];
-                while ( d_id==0 ) {
-                    recursive_level++;
-                    sprintf(buffer,"-%i",recursive_level);
-                    d_message = msg + std::string(buffer);
-                    size_t id2 = ProfilerApp::get_timer_id(d_message.c_str(),d_filename);
-                    bool test = d_app.active(id2);
-                    d_id = test ? 0:id2;
-                }
-            #endif
-            d_app.start(d_message,d_filename,d_line,d_level,d_id);
-        }
-    }
-    ~ScopedTimer()
-    {
-        // Note: we do not require that d_filename is still in scope since we use the timer id
-        if ( d_id != 0 )  {
-            d_app.stop(d_message,d_filename,-1,d_level,d_id);
-            #if defined(TIMER_ENABLE_THREAD_LOCAL) && defined(TIMER_ENABLE_STD_TUPLE)
-                --(*count);
-            #endif
-        }
-    }
-protected:
-    ScopedTimer(const ScopedTimer&);            // Private copy constructor
-    ScopedTimer& operator=(const ScopedTimer&); // Private assignment operator
-private:
-    ProfilerApp& d_app;
-    std::string d_message;
-    const char* d_filename;
-    const int d_line;
-    const int d_level;
-    size_t d_id;
-    #ifdef TIMER_ENABLE_THREAD_LOCAL
-        int *count;
-    #endif
-};
-
 
 #include "ProfilerApp.hpp"
+#include "ProfilerAppClasses.h"
 #include "ProfilerAppMacros.h"
 
 

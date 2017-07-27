@@ -77,7 +77,7 @@ inline void ERROR_MSG( const std::string& msg ) {
 /******************************************************************
 * Define global variables                                         *
 ******************************************************************/
-#ifdef TIMER_ENABLE_THREAD_LOCAL
+#if defined(TIMER_ENABLE_THREAD_LOCAL) && !defined(DISABLE_TIMER_THREAD_LOCAL_MAP)
     thread_local ProfilerApp::RecursiveFunctionMap ProfilerApp::d_level_map;
 #endif
 ProfilerApp global_profiler;
@@ -727,7 +727,7 @@ bool TimerMemoryResults::operator==(const TimerMemoryResults& rhs) const
 ***********************************************************************/
 ProfilerApp::ProfilerApp()
 {
-    #ifdef TIMER_ENABLE_THREAD_LOCAL
+    #if defined(TIMER_ENABLE_THREAD_LOCAL) && !defined(DISABLE_TIMER_THREAD_LOCAL_MAP)
         d_level_map = RecursiveFunctionMap();
     #endif
     d_construct_time = now();
@@ -800,6 +800,46 @@ void ProfilerApp::synchronize()
 /***********************************************************************
 * Function to start profiling a block of code                          *
 ***********************************************************************/
+void ProfilerApp::start( thread_info* thread, store_timer* timer )
+{
+    if ( timer->is_active ) {
+        if ( d_disable_timer_error ) {
+            // Stop the timer before starting
+            this->stop( thread, timer );
+        } else {
+            // Throw an error
+            std::stringstream msg;
+            const auto& data = *(timer->timer_data);
+            msg << "Timer is already active, did you forget to call stop? (" << 
+                data.message << " in " << data.filename << " at line " << data.start_line << ")\n";
+            ERROR_MSG(msg.str());
+        }
+    }
+    // Get the memory usage
+    if ( d_store_memory_data && thread->N_memory_steps<d_max_trace_remaining ) {
+        size_t* N_alloc = &thread->N_memory_alloc;
+        size_t N_size = thread->N_memory_steps;
+        size_t N_max = d_max_trace_remaining;
+        // Check the memory allocation
+        check_allocate_arrays(N_alloc,N_size,N_max,&thread->time_memory,&thread->size_memory,&d_bytes);
+        // Get the current memroy usage
+        size_t memory = MemoryApp::getTotalMemoryUsage();
+        thread->time_memory[N_size] = 0;
+        thread->size_memory[N_size] = memory-d_bytes;
+    }
+    // Start the timer 
+    memcpy(timer->trace,thread->active,TRACE_SIZE*sizeof(TRACE_TYPE));
+    timer->is_active = true;
+    timer->N_calls++;
+    set_trace_bit(timer->trace_index,TRACE_SIZE,thread->active);
+    timer->start_time = now();
+    // Record the time of the memory usage
+    if ( d_store_memory_data && thread->N_memory_steps<d_max_trace_remaining ) {
+        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>( timer->start_time - d_construct_time );
+        thread->time_memory[thread->N_memory_steps] = ns.count();
+        thread->N_memory_steps++;
+    }
+}
 void ProfilerApp::start( const char* message, const char* filename, 
     int line, int level, uint64_t timer_id ) 
 {
@@ -813,83 +853,37 @@ void ProfilerApp::start( const char* message, const char* filename,
     if ( timer_id == 0 )
         timer_id = get_timer_id(message,filename);
     store_timer* timer = get_block(thread_data,timer_id,true,message,filename,line,-1);
-    if ( timer->is_active ) {
-        if ( d_disable_timer_error ) {
-            // Stop the timer before starting
-            this->stop( message, filename, -1, level, timer_id );
-        } else {
-            // Throw an error
-            std::stringstream msg;
-            msg << "Timer is already active, did you forget to call stop? (" << 
-                message << " in " << filename << " at line " << line << ")\n";
-            ERROR_MSG(msg.str());
-        }
-    }
-    // Get the memory usage
-    if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
-        size_t* N_alloc = &thread_data->N_memory_alloc;
-        size_t N_size = thread_data->N_memory_steps;
-        size_t N_max = d_max_trace_remaining;
-        // Check the memory allocation
-        check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
-        // Get the current memroy usage
-        size_t memory = MemoryApp::getTotalMemoryUsage();
-        thread_data->time_memory[N_size] = 0;
-        thread_data->size_memory[N_size] = memory-d_bytes;
-    }
-    // Start the timer 
-    memcpy(timer->trace,thread_data->active,TRACE_SIZE*sizeof(TRACE_TYPE));
-    timer->is_active = true;
-    timer->N_calls++;
-    set_trace_bit(timer->trace_index,TRACE_SIZE,thread_data->active);
-    timer->start_time = now();
-    // Record the time of the memory usage
-    if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
-        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>( timer->start_time - d_construct_time );
-        thread_data->time_memory[thread_data->N_memory_steps] = ns.count();
-        thread_data->N_memory_steps++;
-    }
+    // Start the timer
+    start( thread_data, timer );
 }
 
 
 /***********************************************************************
 * Function to stop profiling a block of code                           *
 ***********************************************************************/
-void ProfilerApp::stop( const char* message, const char* filename, 
-    int line, int level, uint64_t timer_id ) 
+void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_time )
 {
-    if ( level<0 || level>=128 )
-        ERROR_MSG("level must be in the range 0-127");
-    if ( this->d_level<level )
-        return;
-    // Use the current time (minimize the effects of the overhead of the timer)
-    auto end_time = now();
-    // Get the thread data
-    thread_info* thread_data = get_thread_data();
-    // Get the appropriate timer
-    if ( timer_id == 0 )
-        timer_id = get_timer_id(message,filename);
-    store_timer* timer = get_block(thread_data,timer_id,true,message,filename,-1,line);
     if ( !timer->is_active ) {
         if ( d_disable_timer_error ) {
             // Start the timer before starting
-            this->start( message, filename, -1, level, timer_id );
+            this->start( thread, timer );
             // Use the current time as the new stop
             end_time = now();
         } else {
             std::stringstream msg;
+            const auto& data = *(timer->timer_data);
             msg << "Timer is not active, did you forget to call start? (" << 
-                message << " in " << filename << " at line " << line << ")\n";
+                data.message << " in " << data.filename << " at line " << data.stop_line << ")\n";
             ERROR_MSG(msg.str());
         }
     }
     timer->is_active = false;
     // Update the active trace log
-    unset_trace_bit(timer->trace_index,TRACE_SIZE,thread_data->active );
+    unset_trace_bit(timer->trace_index,TRACE_SIZE,thread->active );
     // The timer is only a calling timer if it was active before and after the current timer
     TRACE_TYPE active[TRACE_SIZE]={0};
     for (size_t i=0; i<TRACE_SIZE; i++)
-        active[i] = thread_data->active[i] & timer->trace[i];
+        active[i] = thread->active[i] & timer->trace[i];
     uint64_t trace_id = get_trace_id( active );
     // Find the trace to save
     store_trace *trace = timer->trace_head;
@@ -936,19 +930,37 @@ void ProfilerApp::stop( const char* message, const char* filename,
     trace->total_time += time;
     trace->N_calls++;
     // Get the memory usage
-    if ( d_store_memory_data && thread_data->N_memory_steps<d_max_trace_remaining ) {
-        size_t* N_alloc = &thread_data->N_memory_alloc;
-        size_t N_size = thread_data->N_memory_steps;
+    if ( d_store_memory_data && thread->N_memory_steps<d_max_trace_remaining ) {
+        size_t* N_alloc = &thread->N_memory_alloc;
+        size_t N_size = thread->N_memory_steps;
         size_t N_max = d_max_trace_remaining;
         // Check the memory allocation
-        check_allocate_arrays(N_alloc,N_size,N_max,&thread_data->time_memory,&thread_data->size_memory,&d_bytes);
+        check_allocate_arrays(N_alloc,N_size,N_max,&thread->time_memory,&thread->size_memory,&d_bytes);
         // Get the current memory usage
         auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>( end_time - d_construct_time );
         size_t memory = MemoryApp::getTotalMemoryUsage();
-        thread_data->time_memory[N_size] = ns.count();
-        thread_data->size_memory[N_size] = memory-d_bytes;
-        thread_data->N_memory_steps++;
+        thread->time_memory[N_size] = ns.count();
+        thread->size_memory[N_size] = memory-d_bytes;
+        thread->N_memory_steps++;
     }
+}
+void ProfilerApp::stop( const char* message, const char* filename, 
+    int line, int level, uint64_t timer_id ) 
+{
+    if ( level<0 || level>=128 )
+        ERROR_MSG("level must be in the range 0-127");
+    if ( this->d_level<level )
+        return;
+    // Use the current time (minimize the effects of the overhead of the timer)
+    auto end_time = now();
+    // Get the thread data
+    thread_info* thread_data = get_thread_data();
+    // Get the appropriate timer
+    if ( timer_id == 0 )
+        timer_id = get_timer_id(message,filename);
+    store_timer* timer = get_block(thread_data,timer_id,true,message,filename,-1,line);
+    // Stop the timer
+    stop( thread_data, timer, end_time );
 }
 
 
@@ -991,7 +1003,7 @@ void ProfilerApp::disable( )
     d_bytes = 0;
     RELEASE_LOCK(&lock);
     // Delete scoped variables
-    #ifdef TIMER_ENABLE_THREAD_LOCAL
+    #if defined(TIMER_ENABLE_THREAD_LOCAL) && !defined(DISABLE_TIMER_THREAD_LOCAL_MAP)
         d_level_map.clear();
     #endif
 }
