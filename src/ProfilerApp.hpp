@@ -132,41 +132,4 @@ CONSTEXPR_TIMER inline uint64_t ProfilerApp::get_timer_id( const char* message, 
 }
 
 
-/***********************************************************************
-* Function to return a unique id based on the active timer bit array.  *
-* This function works by performing a DJB2 hash on the bit array       *
-***********************************************************************/
-inline uint64_t ProfilerApp::get_trace_id( const TRACE_TYPE *trace ) 
-{
-    #if TRACE_SIZE%4 != 0
-        #error TRACE_SIZE must be a multiple of 4
-    #endif
-    uint64_t hash1 = 5381;
-    uint64_t hash2 = 104729;
-    uint64_t hash3 = 1299709;
-    uint64_t hash4 = 15485863;
-    const TRACE_TYPE* s1 = &trace[0];
-    const TRACE_TYPE* s2 = &trace[1];
-    const TRACE_TYPE* s3 = &trace[2];
-    const TRACE_TYPE* s4 = &trace[3];
-    hash1 = ((hash1 << 5) + hash1) ^ (*s1);
-    hash2 = ((hash2 << 5) + hash2) ^ (*s2);
-    hash3 = ((hash3 << 5) + hash3) ^ (*s3);
-    hash4 = ((hash4 << 5) + hash4) ^ (*s4);
-    for (size_t i=4; i<TRACE_SIZE; i+=4) {
-        // hash = hash * 33 ^ s[i]
-        uint64_t c1 = *(s1+=4);
-        uint64_t c2 = *(s2+=4);
-        uint64_t c3 = *(s3+=4);
-        uint64_t c4 = *(s4+=4);
-        hash1 = ((hash1 << 5) + hash1) ^ c1;
-        hash2 = ((hash2 << 5) + hash2) ^ c2;
-        hash3 = ((hash3 << 5) + hash3) ^ c3;
-        hash4 = ((hash4 << 5) + hash4) ^ c4;
-    }
-    uint64_t hash = hash1 ^ hash2 ^ hash3 ^ hash4;
-    return hash;
-}
-
-
 #endif

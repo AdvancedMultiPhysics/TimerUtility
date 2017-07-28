@@ -237,9 +237,6 @@ public:
     //! Convience typedef for storing a point in time
     typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
-    //! Convience typedef for storing a time interval
-    typedef std::chrono::nanoseconds duration;
-
     //! Return the current time
     static inline time_point now() { return std::chrono::steady_clock::now(); }
 
@@ -472,14 +469,14 @@ private:
         uint64_t id;                // This is a (hopefully) unique id that we can use for comparison
         TRACE_TYPE trace[TRACE_SIZE]; // Store the trace
         store_trace *next;          // Pointer to the next entry in the list
-        duration min_time;          // Store the minimum time spent in the given block (seconds)
-        duration max_time;          // Store the maximum time spent in the given block (seconds)
-        duration total_time;        // Store the total time spent in the given block (seconds)
+        int64_t min_time;           // Store the minimum time spent in the given block (nano-seconds)
+        int64_t max_time;           // Store the maximum time spent in the given block (nano-seconds)
+        int64_t total_time;         // Store the total time spent in the given block (nano-seconds)
         size_t N_trace_alloc;       // The size of the arrays for start_time and stop_time
-        duration *start_time;       // Store when start was called for the given trace (seconds from constructor call)
-        duration *end_time;         // Store when stop was called for the given trace (seconds from constructor call)
+        int64_t *start_time;        // Store when start was called for the given trace (nano-seconds from constructor call)
+        int64_t *end_time;          // Store when stop was called for the given trace (nano-seconds from constructor call)
         // Constructor
-        store_trace(): N_calls(0), id(0), next(NULL), min_time(std::numeric_limits<duration>::max()),
+        store_trace(): N_calls(0), id(0), next(NULL), min_time(std::numeric_limits<int64_t>::max()),
             max_time(0), total_time(0), N_trace_alloc(0), start_time(NULL), end_time(NULL) {
             memset(trace,0,TRACE_SIZE*sizeof(TRACE_TYPE));
         }
@@ -525,17 +522,18 @@ private:
         int N_calls;                        // Number of calls to this block
         uint64_t id;                        // A unique id for each timer
         TRACE_TYPE trace[TRACE_SIZE];       // Store the current trace
-        duration min_time;                  // Store the minimum time spent in the given block (seconds)
-        duration max_time;                  // Store the maximum time spent in the given block (seconds)
-        duration total_time;                // Store the total time spent in the given block (seconds)
+        int64_t min_time;                    // Store the minimum time spent in the given block (nano-seconds)
+        int64_t max_time;                    // Store the maximum time spent in the given block (nano-seconds)
+        int64_t total_time;                  // Store the total time spent in the given block (nano-seconds)
         store_trace *trace_head;            // Head of the trace-log list
         store_timer *next;                  // Pointer to the next entry in the list
         store_timer_data_info *timer_data;  // Pointer to the timer data
         time_point start_time;              // Store when start was called for the given block
         // Constructor used to initialize key values
         store_timer(): is_active(false), trace_index(0), N_calls(0), id(0), 
-            min_time(0), max_time(0), total_time(0), trace_head(NULL),
-            next(NULL), timer_data(NULL), start_time(time_point())
+            min_time(std::numeric_limits<int64_t>::max()), max_time(0),
+            total_time(0), trace_head(NULL), next(NULL), timer_data(NULL),
+            start_time(time_point())
         {
             memset(trace,0,sizeof(trace));
         }
@@ -557,11 +555,11 @@ private:
         store_timer *head[TIMER_HASH_SIZE]; // Store the timers in a hash table
         size_t N_memory_steps;              // The number of steps we have for the memory usage
         size_t N_memory_alloc;              // The size of the arrays allocated for time_memory and size_memory
-        size_t* time_memory;                // The times at which we know the memory usage (ns from start)
-        size_t* size_memory;                // The memory usage at each time
+        int64_t* time_memory;               // The times at which we know the memory usage (ns from start)
+        int64_t* size_memory;                // The memory usage at each time
         // Constructor used to initialize key values
         explicit thread_info( int id_ ): id(id_), N_timers(0), 
-            N_memory_steps(0), N_memory_alloc(0), time_memory(NULL), size_memory(NULL)
+            N_memory_steps(0), N_memory_alloc(0), time_memory(nullptr), size_memory(nullptr)
         {
             for (int i=0; i<TRACE_SIZE; i++)
                 active[i] = 0;
@@ -612,9 +610,6 @@ private:
     inline void getTimerResultsID( uint64_t id, std::vector<const thread_info*>& threads,
         int rank, const time_point& end_time, TimerResults& results ) const;
 
-    // Function to return a hopefully unique id based on the active bit array
-    static inline uint64_t get_trace_id( const TRACE_TYPE *trace );
-
     // Start/stop the timer
     void start( thread_info* thread, store_timer* timer );
     void stop( thread_info* thread, store_timer* timer, time_point end_time = now() );
@@ -648,16 +643,16 @@ private:
     #endif
     
     // Misc variables
-    bool d_store_trace_data;        // Do we want to store trace information
-    bool d_store_memory_data;       // Do we want to store memory information
-    bool d_disable_timer_error;     // Do we want to disable the timer errors for start/stop
-    char d_level;                   // Level of timing to use (default is 0, -1 is disabled)
-    time_point d_construct_time;    // Store when the constructor was called
-    duration d_shift;               // Offset to add to all trace times when saving (used to synchronize the trace data)
+    bool d_store_trace_data;          // Do we want to store trace information
+    bool d_store_memory_data;         // Do we want to store memory information
+    bool d_disable_timer_error;       // Do we want to disable the timer errors for start/stop
+    char d_level;                     // Level of timing to use (default is 0, -1 is disabled)
+    time_point d_construct_time;      // Store when the constructor was called
+    int64_t d_shift;                  // Offset to add to all trace times when saving (used to synchronize the trace data)
     mutable size_t d_max_trace_remaining; // The number of traces remaining to store for each thread
-    mutable size_t d_N_memory_steps; // The number of steps we have for the memory usage
-    mutable size_t* d_time_memory;  // The times at which we know the memory usage (ns from creation)
-    mutable size_t* d_size_memory;  // The memory usage at each time
+    mutable size_t d_N_memory_steps;  // The number of steps we have for the memory usage
+    mutable int64_t* d_time_memory;   // The times at which we know the memory usage (ns from creation)
+    mutable int64_t* d_size_memory;   // The memory usage at each time
     mutable volatile TimerUtility::atomic::int64_atomic d_bytes; // The current memory used by the profiler
 
 protected:

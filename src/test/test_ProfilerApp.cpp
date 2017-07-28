@@ -36,8 +36,13 @@ inline void printOverhead( const std::string& timer, int N_calls )
 {
     if ( getRank() == 0 ) {
         size_t id = global_profiler.get_timer_id( timer.c_str(), __FILE__ );
-        float time = global_profiler.getTimerResults( id ).trace[0].tot;
-        printf( "   %s: %i ns\n", timer.c_str(), int(time*1e9/N_calls) );
+        auto results = global_profiler.getTimerResults( id );
+        if ( results.trace.size() == 1 ) {
+            float time = results.trace[0].tot;
+            printf( "   %s: %i ns\n", timer.c_str(), int(time*1e9/N_calls) );
+        } else {
+            printf( "   %s: N/A\n", timer.c_str() );
+        }
     }
 }
 
@@ -420,7 +425,7 @@ int main(int argc, char* argv[])
         // Run the tests
         std::vector<std::pair<bool,std::string> > tests;
         tests.push_back( std::pair<bool,std::string>(false,"test_ProfilerApp"));
-        tests.push_back( std::pair<bool,std::string>(true,"test_ProfilerApp-trace"));
+        //tests.push_back( std::pair<bool,std::string>(true,"test_ProfilerApp-trace"));
         for (size_t i=0; i<tests.size(); i++) {
             int m1 = getMemoryUsage();
             int m2 = global_profiler.getMemoryUsed();

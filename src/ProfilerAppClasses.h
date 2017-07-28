@@ -76,7 +76,6 @@ public:
     }
     ~ScopedTimer()
     {
-        // Note: we do not require that d_filename is still in scope since we use the timer id
         if ( d_timer )  {
             d_app.stop(d_thread,d_timer);
             if ( d_count )
