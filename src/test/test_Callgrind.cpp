@@ -1,7 +1,7 @@
 #include "Callgrind.h"
 #include "ProfilerApp.h"
+#include <cstdio>
 #include <iostream>
-#include <stdio.h>
 #include <string>
 #include <vector>
 

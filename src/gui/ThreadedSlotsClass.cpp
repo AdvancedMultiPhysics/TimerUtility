@@ -6,10 +6,10 @@
 #include <QApplication>
 
 
-ThreadedSlotsClass::ThreadedSlotsClass() : d_callAction( NULL ), d_running( false )
+ThreadedSlotsClass::ThreadedSlotsClass() : d_callAction( nullptr ), d_running( false )
 {
     d_id         = std::this_thread::get_id();
-    d_callAction = new QAction( NULL );
+    d_callAction = new QAction( nullptr );
     connect( d_callAction, SIGNAL( triggered() ), this, SLOT( callFunMain() ) );
 }
 ThreadedSlotsClass::~ThreadedSlotsClass() { delete d_callAction; }

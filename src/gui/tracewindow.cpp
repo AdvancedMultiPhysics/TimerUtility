@@ -50,7 +50,7 @@ public:
     // Update
     void redraw() { move( pos ); }
     // Draw the rectangle
-    void paintEvent( QPaintEvent * )
+    void paintEvent( QPaintEvent * ) override
     {
         QPainter p( this );
         p.setRenderHint( QPainter::Antialiasing );
@@ -91,7 +91,7 @@ public:
         pos0 = ( t - d_t_global[0] ) / ( d_t_global[1] - d_t_global[0] );
         move( pos0 );
     }
-    void mousePressEvent( QMouseEvent *event )
+    void mousePressEvent( QMouseEvent *event ) override
     {
         if ( event->button() == Qt::LeftButton ) {
             start  = event->globalPos().x();
@@ -99,7 +99,7 @@ public:
             active = true;
         }
     }
-    void mouseMoveEvent( QMouseEvent *event )
+    void mouseMoveEvent( QMouseEvent *event ) override
     {
         int pos = event->globalPos().x();
         if ( !active || abs( last - pos ) < 4 )
@@ -109,7 +109,7 @@ public:
         double pos2 = pos0 + static_cast<double>( pos - start ) / w;
         move( pos2 );
     }
-    void mouseReleaseEvent( QMouseEvent *event )
+    void mouseReleaseEvent( QMouseEvent *event ) override
     {
         if ( event->button() == Qt::LeftButton ) {
             int pos     = event->globalPos().x();
@@ -139,10 +139,13 @@ private:
 class QLabelMouse : public QLabel
 {
 public:
-    explicit QLabelMouse( TraceWindow *trace ) : QLabel( NULL ), d_trace( trace ) {}
-    void mousePressEvent( QMouseEvent *event ) { d_trace->traceMousePressEvent( event ); }
-    void mouseMoveEvent( QMouseEvent *event ) { d_trace->traceMouseMoveEvent( event ); }
-    void mouseReleaseEvent( QMouseEvent *event ) { d_trace->traceMouseReleaseEvent( event ); }
+    explicit QLabelMouse( TraceWindow *trace ) : QLabel( nullptr ), d_trace( trace ) {}
+    void mousePressEvent( QMouseEvent *event ) override { d_trace->traceMousePressEvent( event ); }
+    void mouseMoveEvent( QMouseEvent *event ) override { d_trace->traceMouseMoveEvent( event ); }
+    void mouseReleaseEvent( QMouseEvent *event ) override
+    {
+        d_trace->traceMouseReleaseEvent( event );
+    }
 
 private:
     TraceWindow *d_trace;
@@ -175,8 +178,8 @@ TYPE sum( const std::vector<TYPE> &x )
  ***********************************************************************/
 TraceWindow::TraceWindow( const TimerWindow *parent_ )
     : ThreadedSlotsClass(),
-      timerGrid( NULL ),
-      memory( NULL ),
+      timerGrid( nullptr ),
+      memory( nullptr ),
       parent( parent_ ),
       N_procs( parent_->N_procs ),
       N_threads( parent_->N_threads ),
@@ -213,7 +216,7 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ )
     timerGrid->registerResizeCallback( f );
 
     // Create the layout
-    QVBoxLayout *layout = new QVBoxLayout;
+    auto *layout = new QVBoxLayout;
     layout->setMargin( 0 );
     layout->setContentsMargins( QMargins( 0, 0, 0, 0 ) );
     layout->setSpacing( 0 );
@@ -345,8 +348,8 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
             for ( int k = 0; k < N_trace; k++ ) {
                 if ( stop[k] <= t0 || start[k] >= t1 )
                     continue;
-                int64_t m1 = static_cast<int64_t>( ceil( ( start[k] - t0 ) / dt ) );
-                int64_t m2 = static_cast<int64_t>( floor( ( stop[k] - t0 ) / dt ) );
+                auto m1 = static_cast<int64_t>( ceil( ( start[k] - t0 ) / dt ) );
+                auto m2 = static_cast<int64_t>( floor( ( stop[k] - t0 ) / dt ) );
                 if ( start[k] <= t0 ) {
                     m1 = 0;
                 }
@@ -383,12 +386,12 @@ void TraceWindow::updateTimeline()
     // Get the data for the entire window
     std::vector<std::shared_ptr<TimerTimeline>> data = TraceWindow::getTraceData( t_global );
     // Create the global id map
-    for ( size_t i = 0; i < parent->d_data.timers.size(); i++ )
-        idRgbMap[parent->d_data.timers[i].id] = rgb0;
+    for ( const auto &timer : parent->d_data.timers )
+        idRgbMap[timer.id] = rgb0;
     for ( size_t i = 0; i < data.size(); i++ )
         idRgbMap[data[i]->id] = jet( i / ( data.size() - 1.0 ) );
     // Create the image
-    QImage *image = NULL;
+    QImage *image = nullptr;
     int Np        = selected_rank == -1 ? N_procs : 1;
     int Nt        = selected_thread == -1 ? N_threads : 1;
     if ( Np * Nt * data.size() <= 256 ) {
@@ -467,8 +470,8 @@ void TraceWindow::updateTimers()
     for ( size_t i = 0; i < data.size(); i++ ) {
         timerLabels[i] = new QLabel();
         timerLabels[i]->setMinimumWidth( 30 );
-        std::string label = "<font size=\"3\" color=\"black\">" + data[i]->message +
-                            "</font><br><font size=\"2\" color=\"gray\">" + data[i]->file +
+        std::string label = R"(<font size="3" color="black">)" + data[i]->message +
+                            R"(</font><br><font size="2" color="gray">)" + data[i]->file +
                             "</font>";
         timerLabels[i]->setText( label.c_str() );
         timerGrid->addWidget( timerLabels[i], i, 0 );
@@ -531,7 +534,7 @@ void TraceWindow::resizeDone()
         timerPlots[i]->setPixmap(
             timerPixelMap[i]->scaled( w2, h2, Qt::IgnoreAspectRatio, Qt::FastTransformation ) );
     }
-    if ( zoomBoundaries[0].get() != NULL ) {
+    if ( zoomBoundaries[0].get() != nullptr ) {
         zoomBoundaries[0]->redraw();
         zoomBoundaries[1]->redraw();
     }
@@ -545,10 +548,10 @@ void TraceWindow::resizeDone()
 void TraceWindow::resizeMemory()
 {
     PROFILE_START( "resizeMemory" );
-    MemoryPlot *memplot = dynamic_cast<MemoryPlot *>( memory );
-    QRect pos           = timerGrid->getPosition( 0, 1 );
-    int left            = pos.x();
-    int right           = left + pos.width();
+    auto *memplot = dynamic_cast<MemoryPlot *>( memory );
+    QRect pos     = timerGrid->getPosition( 0, 1 );
+    int left      = pos.x();
+    int right     = left + pos.width();
     memplot->align( left, right );
     if ( parent->d_data.memory.empty() )
         memplot->setFixedHeight( 45 );
@@ -654,8 +657,8 @@ void TraceWindow::createToolBars()
     processorButton = new QToolButton();
     processorButton->setPopupMode( QToolButton::InstantPopup );
     toolBar->addWidget( processorButton );
-    processorButtonMenu         = new QMenu();
-    QSignalMapper *signalMapper = new QSignalMapper( this );
+    processorButtonMenu = new QMenu();
+    auto *signalMapper  = new QSignalMapper( this );
     ADD_MENU_ACTION( processorButtonMenu, "All", -1 );
     for ( int i = 0; i < N_procs; i++ )
         ADD_MENU_ACTION( processorButtonMenu, stringf( "Rank %i", i ).c_str(), i );
@@ -699,12 +702,12 @@ std::array<double, 2> TraceWindow::getGlobalTime( const std::vector<TimerResults
     std::array<double, 2> t_global;
     t_global[0] = 1e100;
     t_global[1] = -1e100;
-    for ( size_t i = 0; i < timers.size(); i++ ) {
-        for ( size_t j = 0; j < timers[i].trace.size(); j++ ) {
-            const int N_trace = timers[i].trace[j].N_trace;
+    for ( const auto &timer : timers ) {
+        for ( const auto &j : timer.trace ) {
+            const int N_trace = j.N_trace;
             if ( N_trace > 0 ) {
-                const double *start = timers[i].trace[j].start();
-                const double *stop  = timers[i].trace[j].stop();
+                const double *start = j.start();
+                const double *stop  = j.stop();
                 t_global[0]         = std::min( t_global[0], start[0] );
                 t_global[1]         = std::max( t_global[1], stop[N_trace - 1] );
             }

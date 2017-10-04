@@ -3,13 +3,13 @@
 #if CXX_STD == 11 || CXX_STD == 14
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <set>
 #include <sstream>
 #include <stdexcept>
-#include <stdio.h>
 #include <tuple>
 #include <vector>
 
@@ -29,7 +29,7 @@ void split( const char* line, std::vector<std::string>& vec )
         while ( line[i] > 32 ) {
             i++;
         }
-        vec.push_back( std::string( line, i ) );
+        vec.emplace_back( line, i );
         line += i;
     }
 }
@@ -56,10 +56,10 @@ std::tuple<std::string, std::string> splitFilename( const std::string& filename 
 
 // Structure to hold data about a function
 struct function_structure {
-    int calls;
-    long int cost;
+    int calls{ 0 };
+    long int cost{ 0 };
     std::vector<function_structure> subfunctions;
-    function_structure() : calls( 0 ), cost( 0 ) {}
+    function_structure() = default;
 };
 
 
@@ -99,18 +99,18 @@ std::tuple<int, function_structure> getData(
     int id = getID( line, map );
     function_structure data;
     std::vector<std::string> vec;
-    while ( 1 ) {
+    while ( true ) {
         long int pos = ftell( fid );
         char line2[1024];
         char* rtn = fgets( line2, sizeof( line2 ), fid );
-        if ( rtn == NULL )
+        if ( rtn == nullptr )
             break;
         if ( line2[0] <= 10 )
             break;
         if ( strncmp( line2, "calls=", 6 ) == 0 ) {
             data.calls = atoi( line2 + 6 );
             continue;
-        } else if ( strchr( line2, '=' ) != NULL ) {
+        } else if ( strchr( line2, '=' ) != nullptr ) {
             fseek( fid, pos, SEEK_SET );
             break;
         }
@@ -128,7 +128,7 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
 {
     // Open the file to memory for reading
     FILE* fid = fopen( filename.c_str(), "rb" );
-    if ( fid == NULL )
+    if ( fid == nullptr )
         ERROR_MSG( "Error opening file: " + filename );
     // Read and process the data
     int ob        = -1;
@@ -141,10 +141,10 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
     std::vector<callgrind_function_struct>& functions = results.functions;
     std::map<std::tuple<int, int, int>, id_struct> id_struct_map;
     long int global_cost = 0;
-    while ( 1 ) {
+    while ( true ) {
         char line[1024];
         char* rtn = fgets( line, sizeof( line ), fid );
-        if ( rtn == NULL )
+        if ( rtn == nullptr )
             break;
         if ( line[0] <= 10 )
             continue;
@@ -211,10 +211,10 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
             ERROR_MSG( msg );
         }
     }
-    for ( size_t i = 0; i < functions.size(); i++ ) {
-        functions[i].inclusive_cost = functions[i].exclusive_cost;
-        for ( size_t j = 0; j < functions[i].subfunctions.size(); j++ )
-            functions[i].inclusive_cost += functions[i].subfunctions[j].cost;
+    for ( auto& function : functions ) {
+        function.inclusive_cost = function.exclusive_cost;
+        for ( size_t j = 0; j < function.subfunctions.size(); j++ )
+            function.inclusive_cost += function.subfunctions[j].cost;
     }
     // Check for and combine duplicate entries
     std::sort( functions.begin(), functions.end() );
@@ -230,8 +230,8 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
         }
     }
     // Check for duplicate subfunctions
-    for ( size_t i = 0; i < functions.size(); i++ ) {
-        std::vector<callgrind_subfunction_struct>& subfunctions = functions[i].subfunctions;
+    for ( auto& function : functions ) {
+        std::vector<callgrind_subfunction_struct>& subfunctions = function.subfunctions;
         std::sort( subfunctions.begin(), subfunctions.end() );
         for ( int j = (int) subfunctions.size() - 1; j > 0; j-- ) {
             if ( subfunctions[j].id == subfunctions[j - 1].id ) {
@@ -245,8 +245,8 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
     }
     // Check that the total cost adds correctly
     long int total_cost = 0;
-    for ( size_t i = 0; i < functions.size(); i++ )
-        total_cost += functions[i].exclusive_cost;
+    for ( auto& function : functions )
+        total_cost += function.exclusive_cost;
     if ( std::abs( total_cost - global_cost ) > 0.001 * global_cost )
         std::cout << "Warning: cost is not conserved loading callgrind files (" << total_cost << ","
                   << global_cost << ")\n";
@@ -287,12 +287,12 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
         ERROR_MSG( "Internal error" );
     // Duplicate the functions, removing recursive functions
     std::vector<callgrind_function_struct> functions = callgrind.functions;
-    for ( size_t i = 0; i < functions.size(); i++ ) {
-        id_struct id                                            = functions[i].id;
-        std::vector<callgrind_subfunction_struct>& subfunctions = functions[i].subfunctions;
+    for ( auto& function : functions ) {
+        id_struct id                                            = function.id;
+        std::vector<callgrind_subfunction_struct>& subfunctions = function.subfunctions;
         for ( size_t j = 0; j < subfunctions.size(); j++ ) {
             if ( subfunctions[j].id == id ) {
-                functions[i].exclusive_cost += subfunctions[j].cost;
+                function.exclusive_cost += subfunctions[j].cost;
                 std::swap( subfunctions[j], subfunctions[subfunctions.size() - 1] );
                 subfunctions.resize( subfunctions.size() - 1 );
                 std::sort( subfunctions.begin(), subfunctions.end() );
@@ -302,13 +302,13 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
     // Create the traces
     std::map<id_struct, std::set<id_struct>> subfunctions;
     std::map<id_struct, std::set<id_struct>> parents;
-    for ( size_t i = 0; i < functions.size(); i++ ) {
-        id_struct id             = functions[i].id;
+    for ( auto& function : functions ) {
+        id_struct id             = function.id;
         std::set<id_struct>& set = subfunctions[id];
         if ( parents.find( id ) == parents.end() )
             parents[id] = std::set<id_struct>();
-        for ( size_t j = 0; j < functions[i].subfunctions.size(); j++ ) {
-            id_struct id2 = functions[i].subfunctions[j].id;
+        for ( auto& subfunction : function.subfunctions ) {
+            id_struct id2 = subfunction.id;
             set.insert( id2 );
             parents[id2].insert( id );
         }
@@ -316,7 +316,7 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
     std::vector<std::pair<id_struct, std::set<id_struct>>> tmp;
     tmp.reserve( parents.size() );
     for ( const auto& it : parents ) {
-        tmp.push_back( std::pair<id_struct, std::set<id_struct>>( it.first, it.second ) );
+        tmp.emplace_back( it.first, it.second );
     }
     auto sort_fun = []( const std::pair<id_struct, std::set<id_struct>>& a,
                         const std::pair<id_struct, std::set<id_struct>>& b ) {
@@ -336,8 +336,8 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
                 int index                            = index_map[id];
                 const callgrind_function_struct& fun = functions[index];
                 double time                          = fun.inclusive_cost;
-                for ( size_t j = 0; j < timers[index].trace.size(); j++ )
-                    time -= timers[index].trace[j].tot;
+                for ( auto& j : timers[index].trace )
+                    time -= j.tot;
                 if ( time > 0.01 * fun.inclusive_cost ) {
                     // Create a new trace for self
                     TraceResults trace;
@@ -349,16 +349,16 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
                     timers[index].trace.push_back( trace );
                 }
                 // For each subfunction, create the appropriate traces (and remove the parent)
-                for ( size_t j = 0; j < fun.subfunctions.size(); j++ ) {
-                    id_struct id2 = fun.subfunctions[j].id;
+                for ( const auto& subfunction : fun.subfunctions ) {
+                    id_struct id2 = subfunction.id;
                     // int index2 = index_map[id2];
                     // Create the child traces assume the same ratio as the traces in the current
                     // timer
 
                     // Erase the current timer from the parent list
-                    for ( size_t k = 0; k < tmp.size(); k++ ) {
-                        if ( tmp[k].first == id2 )
-                            tmp[k].second.erase( id );
+                    for ( auto& k : tmp ) {
+                        if ( k.first == id2 )
+                            k.second.erase( id );
                     }
                 }
             }

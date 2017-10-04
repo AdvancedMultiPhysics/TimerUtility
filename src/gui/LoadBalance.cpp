@@ -31,7 +31,7 @@ public:
     // Update
     void redraw() { move( pos ); }
     // Draw the rectangle
-    void paintEvent( QPaintEvent* )
+    void paintEvent( QPaintEvent* ) override
     {
         QPainter p( this );
         QPen pen( QColor( 60, 0, 0 ) );
@@ -66,7 +66,7 @@ inline QwtText qwtText( const QString& string, const QFont& font )
 
 
 LoadBalance::LoadBalance( QWidget* parent )
-    : QwtPlot( parent ), canvas( NULL ), barChart( NULL ), active( false )
+    : QwtPlot( parent ), canvas( nullptr ), barChart( nullptr ), active( false )
 {
     setTitle( qwtText( "Load Balance", QFont( "Times", 12, QFont::Bold ) ) );
     setAutoFillBackground( true );
@@ -100,7 +100,7 @@ LoadBalance::LoadBalance( QWidget* parent )
     barChart->setLayoutHint( 4.0 ); // minimum width for a single bar
     barChart->setSpacing( 10 );     // spacing between bars
     barChart->setBaseline( 0 );
-    QwtColumnSymbol* symbol = new QwtColumnSymbol( QwtColumnSymbol::Box );
+    auto* symbol = new QwtColumnSymbol( QwtColumnSymbol::Box );
     symbol->setLineWidth( 2 );
     symbol->setFrameStyle( QwtColumnSymbol::Raised );
     symbol->setPalette( QColor( 0, 50, 0 ) );
@@ -161,16 +161,16 @@ void LoadBalance::plot( const std::vector<float>& time_ )
         }
         barChart->setSamples( time );
         barChart->attach( this );
-        barChart->setVisible( 1 );
-        curvePlot[0]->attach( NULL );
+        barChart->setVisible( true );
+        curvePlot[0]->attach( nullptr );
         curvePlot[1]->setPen( QColor( 204, 0, 0 ), 3, Qt::DotLine );
         range[0] = -0.5;
         range[1] = N_procs - 0.5;
     } else {
-        barChart->attach( NULL );
+        barChart->attach( nullptr );
         curvePlot[0]->setSamples( rank, time );
         curvePlot[0]->attach( this );
-        curvePlot[0]->setVisible( 1 );
+        curvePlot[0]->setVisible( true );
         curvePlot[0]->setPen( QColor( 0, 50, 0 ), 3, Qt::SolidLine );
         curvePlot[1]->setPen( QColor( 204, 0, 0 ), 2, Qt::DotLine );
         range[0] = 0;
@@ -183,7 +183,7 @@ void LoadBalance::plot( const std::vector<float>& time_ )
     mean2[1] = mean;
     curvePlot[1]->setSamples( rank2, mean2 );
     curvePlot[1]->attach( this );
-    curvePlot[1]->setVisible( 1 );
+    curvePlot[1]->setVisible( true );
     insertLegend( new QwtLegend() );
 
     // Set the label
@@ -194,9 +194,9 @@ void LoadBalance::plot( const std::vector<float>& time_ )
 
     // Set the axis range
     double max_time = 0;
-    for ( int i = 0; i < time.size(); i++ )
-        max_time = std::max( max_time, time[i] );
-    global_range = { range[0], range[1], 0, 1.1 * max_time };
+    for ( double i : time )
+        max_time = std::max( max_time, i );
+    global_range = { { range[0], range[1], 0, 1.1 * max_time } };
     zoom( global_range );
     PROFILE_STOP( "plot" );
 }
@@ -204,8 +204,8 @@ void LoadBalance::zoom( const std::array<double, 4>& range )
 {
     plot_range = range;
     // Create the rank ticks
-    int proc0 = static_cast<int>( ceil( range[0] ) );
-    int proc1 = static_cast<int>( floor( range[1] ) );
+    auto proc0 = static_cast<int>( ceil( range[0] ) );
+    auto proc1 = static_cast<int>( floor( range[1] ) );
     QwtScaleDiv xtick( range[0], range[1] );
     if ( proc1 - proc0 < 16 ) {
         xtick = QwtScaleDiv( range[0], range[1], QList<double>(), QList<double>(), rank.toList() );

@@ -1,24 +1,13 @@
 #include "MemoryApp.h"
 #include "ProfilerApp.h"
 #include "test_Helpers.h"
-#include <math.h>
+#include <cmath>
 #include <string>
 #include <vector>
 
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
-
-
-// Define NULL_USE
-#define NULL_USE( variable )                 \
-    do {                                     \
-        if ( 0 ) {                           \
-            char *temp = (char *) &variable; \
-            temp++;                          \
-        }                                    \
-    \
-} while ( 0 )
 
 
 inline int getRank()
@@ -247,7 +236,7 @@ int run_tests( bool enable_trace, std::string save_name )
         // Test the memory around allocations
         PROFILE_START( "allocate1" );
         PROFILE_START( "allocate2" );
-        double *tmp = new double[5000000];
+        auto *tmp = new double[5000000];
         NULL_USE( tmp );
         PROFILE_STOP( "allocate2" );
         delete[] tmp;
@@ -313,12 +302,12 @@ int run_tests( bool enable_trace, std::string save_name )
     quicksort( id2.size(), &id2[0], &data2[0] );
 
     // Find and check MAIN
-    const TraceResults *trace = NULL;
-    for ( size_t i = 0; i < data1.size(); i++ ) {
-        if ( data1[i].message == "MAIN" )
-            trace = &data1[i].trace[0];
+    const TraceResults *trace = nullptr;
+    for ( auto &i : data1 ) {
+        if ( i.message == "MAIN" )
+            trace = &i.trace[0];
     }
-    if ( trace != NULL ) {
+    if ( trace != nullptr ) {
         if ( trace->tot == 0 ) {
             std::cout << "Error with trace results\n";
             N_errors++;
@@ -341,17 +330,17 @@ int run_tests( bool enable_trace, std::string save_name )
     }
 
     // Find and check sleep
-    trace = NULL;
-    for ( size_t i = 0; i < data1.size(); i++ ) {
-        if ( data1[i].message == "sleep" ) {
-            trace = &data1[i].trace[0];
-            if ( fabs( data1[i].trace[0].tot - 1.0 ) > 0.1 ) {
-                std::cout << "Error profiling sleep: " << data1[i].trace[0].tot << std::endl;
+    trace = nullptr;
+    for ( auto &i : data1 ) {
+        if ( i.message == "sleep" ) {
+            trace = &i.trace[0];
+            if ( fabs( i.trace[0].tot - 1.0 ) > 0.1 ) {
+                std::cout << "Error profiling sleep: " << i.trace[0].tot << std::endl;
                 N_errors++;
             }
         }
     }
-    if ( trace == NULL ) {
+    if ( trace == nullptr ) {
         std::cout << "sleep was not found in trace results\n";
         N_errors++;
     }
@@ -396,7 +385,7 @@ int run_tests( bool enable_trace, std::string save_name )
         x.timers     = data1;
         x.memory     = std::vector<MemoryResults>( 1, memory1 );
         size_t bytes = x.size();
-        char *data   = new char[bytes];
+        auto *data   = new char[bytes];
         x.pack( data );
         y.unpack( data );
         if ( x != x ) {
@@ -433,13 +422,13 @@ int main( int argc, char *argv[] )
 
         // Run the tests
         std::vector<std::pair<bool, std::string>> tests;
-        tests.push_back( std::pair<bool, std::string>( false, "test_ProfilerApp" ) );
+        tests.emplace_back( false, "test_ProfilerApp" );
         // tests.push_back( std::pair<bool,std::string>(true,"test_ProfilerApp-trace"));
-        for ( size_t i = 0; i < tests.size(); i++ ) {
+        for ( auto &test : tests ) {
             int m1 = getMemoryUsage();
             int m2 = global_profiler.getMemoryUsed();
             printf( "%i %i %i\n", m1 - m2, m1, m2 );
-            N_errors += run_tests( tests[i].first, tests[i].second );
+            N_errors += run_tests( test.first, test.second );
             m1 = getMemoryUsage();
             m2 = global_profiler.getMemoryUsed();
             printf( "%i %i %i\n", m1 - m2, m1, m2 );

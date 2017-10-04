@@ -5,7 +5,7 @@
 # To run modernize
 #   export CLANG_PATH=/packages/llvm/install/clang+llvm-5.0.0-linux-x86_64-ubuntu14.04
 #   export PATH=${CLANG_PATH}/bin:${CLANG_PATH}/share/clang:$PATH
-#   find src -name "*.cpp" -or -name "*.cc" | xargs -I{} clang-tidy -checks=modernize* -p=/projects/AtomicModel/build/debug -fix {}
+#   find src -name "*.cpp" -or -name "*.cc" | xargs -I{} clang-tidy -checks=modernize* -p=/projects/TimerUtility/build/debug -fix {}
 #   find src -name "*.cpp" -or -name "*.cc" -or -name "*.h" -or -name "*.hpp" -or -name "*.I" | xargs -I{} clang-format -i {}
 
 

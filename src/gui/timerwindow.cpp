@@ -24,7 +24,7 @@
 #include "tracewindow.h"
 
 extern "C" {
-#include "assert.h"
+#include <cassert>
 }
 
 
@@ -45,9 +45,9 @@ std::string threadString( const std::vector<int>& x )
 // Function to search and return the timer for an id
 static const TimerResults& findTimer( const std::vector<TimerResults>& timers, id_struct id )
 {
-    for ( size_t i = 0; i < timers.size(); i++ ) {
-        if ( timers[i].id == id )
-            return timers[i];
+    for ( const auto& timer : timers ) {
+        if ( timer.id == id )
+            return timer;
     }
     printf( "timer not found\n" );
     static TimerResults null_timer;
@@ -70,10 +70,10 @@ inline bool keepTrace( const TraceSummary& trace, const std::vector<id_struct>& 
     const bool keep_subfunctions )
 {
     bool keep = true;
-    for ( size_t i = 0; i < callList.size(); i++ ) {
-        bool found = trace.id == callList[i];
-        for ( size_t j = 0; j < trace.active.size(); j++ )
-            found = found || callList[i] == trace.active[j];
+    for ( const auto& i : callList ) {
+        bool found = trace.id == i;
+        for ( const auto& j : trace.active )
+            found = found || i == j;
         keep = keep && found;
     }
     if ( keep && !keep_subfunctions ) {
@@ -81,8 +81,8 @@ inline bool keepTrace( const TraceSummary& trace, const std::vector<id_struct>& 
         if ( trace.active.size() == callList.size() ) {
             // We should not find id in the call list
             bool found = false;
-            for ( size_t i = 0; i < callList.size(); i++ )
-                found = found || trace.id == callList[i];
+            for ( const auto& i : callList )
+                found = found || trace.id == i;
             keep = keep && !found;
         }
     }
@@ -159,11 +159,11 @@ inline void ERROR_MSG( const std::string& msg ) { throw std::logic_error( msg );
  ***********************************************************************/
 TimerWindow::TimerWindow()
     : ThreadedSlotsClass(),
-      mainMenu( NULL ),
-      timerTable( NULL ),
-      callLineText( NULL ),
-      backButton( NULL ),
-      processorButton( NULL )
+      mainMenu( nullptr ),
+      timerTable( nullptr ),
+      callLineText( nullptr ),
+      backButton( nullptr ),
+      processorButton( nullptr )
 {
     PROFILE_START( "TimerWindow constructor" );
     QWidget::setWindowTitle( QString( "load_timer" ) );
@@ -193,13 +193,13 @@ TimerWindow::TimerWindow()
     loadBalance->hide();
 
     // Create the layout
-    QHBoxLayout* layout_callLine = new QHBoxLayout;
+    auto* layout_callLine = new QHBoxLayout;
     layout_callLine->addWidget( callLineText );
     layout_callLine->addWidget( backButton );
     QWidget* widget_callLine = new QWidget;
     widget_callLine->setLayout( layout_callLine );
 
-    QVBoxLayout* layout = new QVBoxLayout;
+    auto* layout = new QVBoxLayout;
     layout->setMargin( 0 );
     layout->setContentsMargins( QMargins( 0, 0, 0, 0 ) );
     layout->setSpacing( 0 );
@@ -271,7 +271,7 @@ void TimerWindow::exit() { qApp->quit(); }
  ***********************************************************************/
 void TimerWindow::reset()
 {
-    if ( loadBalance != NULL )
+    if ( loadBalance != nullptr )
         loadBalance->plot( std::vector<float>() );
     callList.clear();
     inclusiveTime       = true;
@@ -364,8 +364,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             return;
         }
         // Remove traces that don't have any calls
-        for ( size_t i = 0; i < d_data.timers.size(); i++ ) {
-            std::vector<TraceResults>& trace = d_data.timers[i].trace;
+        for ( auto& timer : d_data.timers ) {
+            std::vector<TraceResults>& trace = timer.trace;
             for ( int64_t j = trace.size() - 1; j >= 0; j-- ) {
                 if ( trace[j].N == 0 ) {
                     std::swap( trace[j], trace[trace.size() - 1] );
@@ -378,9 +378,9 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         N_procs       = d_data.N_procs;
         N_threads     = 0;
         selected_rank = -1;
-        for ( size_t i = 0; i < d_data.timers.size(); i++ ) {
-            for ( size_t j = 0; j < d_data.timers[i].trace.size(); j++ )
-                N_threads = std::max<int>( N_threads, d_data.timers[i].trace[j].thread + 1 );
+        for ( auto& timer : d_data.timers ) {
+            for ( auto& j : timer.trace )
+                N_threads = std::max<int>( N_threads, j.thread + 1 );
         }
         // Get the global summary data
         d_dataTimer.clear();
@@ -400,9 +400,9 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.max.resize( N_procs, 0 );
             timer.tot.resize( N_procs, 0 );
             timer.trace.clear();
-            for ( size_t j = 0; j < d_data.timers[i].trace.size(); j++ ) {
+            for ( auto& j : d_data.timers[i].trace ) {
                 int index                     = -1;
-                std::vector<id_struct> active = getActive( d_data.timers[i].trace[j] );
+                std::vector<id_struct> active = getActive( j );
                 for ( size_t k = 0; k < timer.trace.size(); k++ ) {
                     if ( timer.trace[k]->active == active ) {
                         index = static_cast<int>( k );
@@ -412,8 +412,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                 if ( index == -1 ) {
                     index    = static_cast<int>( timer.trace.size() );
                     size_t k = d_dataTrace.size();
-                    d_dataTrace.push_back( std::shared_ptr<TraceSummary>( new TraceSummary() ) );
-                    d_dataTrace[k]->id     = d_data.timers[i].trace[j].id;
+                    d_dataTrace.push_back( std::make_shared<TraceSummary>() );
+                    d_dataTrace[k]->id     = j.id;
                     d_dataTrace[k]->active = active;
                     d_dataTrace[k]->N.resize( N_procs, 0 );
                     d_dataTrace[k]->min.resize( N_procs, 1e30 );
@@ -421,13 +421,13 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                     d_dataTrace[k]->tot.resize( N_procs, 0 );
                     timer.trace.push_back( d_dataTrace[k].get() );
                 }
-                TraceSummary* trace = const_cast<TraceSummary*>( timer.trace[index] );
-                int rank            = d_data.timers[i].trace[j].rank;
-                trace->threads.insert( d_data.timers[i].trace[j].thread );
-                trace->N[rank] += d_data.timers[i].trace[j].N;
-                trace->min[rank] = std::min( trace->min[rank], d_data.timers[i].trace[j].min );
-                trace->max[rank] = std::max( trace->max[rank], d_data.timers[i].trace[j].max );
-                trace->tot[rank] += d_data.timers[i].trace[j].tot;
+                auto* trace = const_cast<TraceSummary*>( timer.trace[index] );
+                int rank    = j.rank;
+                trace->threads.insert( j.thread );
+                trace->N[rank] += j.N;
+                trace->min[rank] = std::min( trace->min[rank], j.min );
+                trace->max[rank] = std::max( trace->max[rank], j.max );
+                trace->tot[rank] += j.tot;
             }
             std::set<int> ids;
             for ( size_t j = 0; j < timer.trace.size(); j++ ) {
@@ -444,15 +444,15 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         }
         traceToolbar->setVisible( hasTraceData() );
         // Set min for any ranks with zero calls to zero
-        for ( size_t i = 0; i < d_dataTimer.size(); i++ ) {
+        for ( auto& i : d_dataTimer ) {
             for ( int k = 0; k < N_procs; k++ ) {
-                if ( d_dataTimer[i].N[k] == 0 )
-                    d_dataTimer[i].min[k] = 0;
+                if ( i.N[k] == 0 )
+                    i.min[k] = 0;
             }
-            for ( size_t i = 0; i < d_dataTrace.size(); i++ ) {
+            for ( auto& i : d_dataTrace ) {
                 for ( int k = 0; k < N_procs; k++ ) {
-                    if ( d_dataTrace[i]->N[k] == 0 )
-                        d_dataTrace[i]->min[k] = 0;
+                    if ( i->N[k] == 0 )
+                        i->min[k] = 0;
                 }
             }
         }
@@ -460,7 +460,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         printf( "%s loaded successfully\n", filename.c_str() );
         if ( N_procs > 1 ) {
             processorButtonMenu.reset( new QMenu() );
-            QSignalMapper* signalMapper = new QSignalMapper( this );
+            auto* signalMapper = new QSignalMapper( this );
             ADD_MENU_ACTION( processorButtonMenu, "Average", -1 );
             ADD_MENU_ACTION( processorButtonMenu, "Minimum", -2 );
             ADD_MENU_ACTION( processorButtonMenu, "Maximum", -3 );
@@ -469,7 +469,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                     ADD_MENU_ACTION( processorButtonMenu, stringf( "Rank %i", i ).c_str(), i );
             } else {
                 const int ranks_per_menu = 250;
-                QMenu* rank_menu         = NULL;
+                QMenu* rank_menu         = nullptr;
                 for ( int i = 0; i < N_procs; i++ ) {
                     if ( i % ranks_per_menu == 0 ) {
                         std::string name = stringf( "Ranks %i-%i", i, i + ranks_per_menu - 1 );
@@ -494,9 +494,9 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
 bool TimerWindow::hasTraceData() const
 {
     bool traceData = false;
-    for ( size_t i = 0; i < d_data.timers.size(); i++ ) {
-        for ( size_t j = 0; j < d_data.timers[i].trace.size(); j++ )
-            traceData = traceData || d_data.timers[i].trace[j].N_trace > 0;
+    for ( const auto& timer : d_data.timers ) {
+        for ( const auto& j : timer.trace )
+            traceData = traceData || j.N_trace > 0;
     }
     return traceData;
 }
@@ -684,25 +684,25 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
     std::vector<std::shared_ptr<TimerSummary>> timers;
     timers.reserve( d_data.timers.size() );
     // Get the timers of interest
-    for ( size_t i = 0; i < d_dataTimer.size(); i++ ) {
+    for ( const auto& i : d_dataTimer ) {
         std::shared_ptr<TimerSummary> timer( new TimerSummary() );
-        timer->id      = d_dataTimer[i].id;
-        timer->message = d_dataTimer[i].message;
-        timer->file    = d_dataTimer[i].file;
-        timer->start   = d_dataTimer[i].start;
-        timer->stop    = d_dataTimer[i].stop;
+        timer->id      = i.id;
+        timer->message = i.message;
+        timer->file    = i.file;
+        timer->start   = i.start;
+        timer->stop    = i.stop;
         if ( callList.empty() ) {
             // Special case where we want all timers/trace results
-            timer->trace = d_dataTimer[i].trace;
+            timer->trace = i.trace;
         } else {
             // Get the timers that have all of the call hierarchy
             timer->trace.resize( 0 );
-            timer->trace.reserve( d_dataTimer[i].trace.size() );
-            for ( size_t j = 0; j < d_dataTimer[i].trace.size(); j++ ) {
-                const TraceSummary* trace = d_dataTimer[i].trace[j];
-                ASSERT( trace != NULL );
+            timer->trace.reserve( i.trace.size() );
+            for ( auto j : i.trace ) {
+                const TraceSummary* trace = j;
+                ASSERT( trace != nullptr );
                 if ( keepTrace( *trace, callList, true ) )
-                    timer->trace.push_back( d_dataTimer[i].trace[j] );
+                    timer->trace.push_back( j );
             }
         }
         if ( !timer->trace.empty() )
@@ -721,21 +721,21 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
             TimerSummary* timer                     = timers[i].get();
             std::vector<const TraceSummary*> trace2 = timer->trace;
             timer->trace.resize( 0 );
-            for ( size_t j = 0; j < trace2.size(); j++ ) {
-                const std::vector<id_struct>& id2 = trace2[j]->active;
+            for ( auto& j : trace2 ) {
+                const std::vector<id_struct>& id2 = j->active;
                 std::vector<int> tmp( id_map.size(), 0 );
-                for ( size_t k = 0; k < ids.size(); k++ )
-                    tmp[id_map[ids[k]]]++;
-                for ( size_t k = 0; k < id2.size(); k++ )
-                    tmp[id_map[id2[k]]]++;
+                for ( const auto& id : ids )
+                    tmp[id_map[id]]++;
+                for ( const auto& k : id2 )
+                    tmp[id_map[k]]++;
                 int tmp2 = 0;
-                for ( size_t k = 0; k < tmp.size(); k++ ) {
-                    if ( tmp[k] == 2 )
+                for ( int k : tmp ) {
+                    if ( k == 2 )
                         tmp2++;
                 }
                 if ( tmp2 <= 1 ) {
                     keep[i] = true;
-                    timer->trace.push_back( trace2[j] );
+                    timer->trace.push_back( j );
                 }
             }
         }
@@ -749,8 +749,8 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
         timers.resize( k );
     }
     // Compute the timer statistics
-    for ( size_t i = 0; i < timers.size(); i++ ) {
-        TimerSummary* timer = timers[i].get();
+    for ( auto& i : timers ) {
+        TimerSummary* timer = i.get();
         timer->N.resize( N_procs, 0 );
         timer->min.resize( N_procs, 1e100 );
         timer->max.resize( N_procs, 0.0 );
@@ -810,8 +810,8 @@ void TimerWindow::cellSelected( int row, int col )
         return;
     id_struct id( timerTable->item( row, 0 )->text().toStdString() );
     bool found = false;
-    for ( size_t i = 0; i < callList.size(); i++ )
-        found = found || callList[i] == id;
+    for ( auto& i : callList )
+        found = found || i == id;
     if ( !found )
         callList.push_back( id );
     updateDisplay();
@@ -917,7 +917,7 @@ void TimerWindow::createActions()
 
 void TimerWindow::createMenus()
 {
-    mainMenu = new QMenuBar( NULL );
+    mainMenu = new QMenuBar( nullptr );
     fileMenu = mainMenu->addMenu( tr( "&File" ) );
     fileMenu->addAction( openAct );
     fileMenu->addAction( closeAct );
@@ -938,8 +938,8 @@ void TimerWindow::createMenus()
     helpMenu->addAction( aboutAct );
 
     // Create developer menu on rhs
-    QMenuBar* developer_bar = new QMenuBar( this );
-    QMenu* developer        = developer_bar->addMenu( tr( "&Developer" ) );
+    auto* developer_bar = new QMenuBar( this );
+    QMenu* developer    = developer_bar->addMenu( tr( "&Developer" ) );
     developer->addAction( savePerformanceTimers );
     developer->addAction( runUnitTestAction );
     mainMenu->setCornerWidget( developer_bar );

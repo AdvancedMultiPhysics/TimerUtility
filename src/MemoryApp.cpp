@@ -40,7 +40,7 @@ static size_t getPhysicalMemory()
 {
     size_t N_bytes = 0;
 #if defined( USE_LINUX )
-    size_t page_size  = static_cast<size_t>( sysconf( _SC_PAGESIZE ) );
+    auto page_size    = static_cast<size_t>( sysconf( _SC_PAGESIZE ) );
     static long pages = sysconf( _SC_PHYS_PAGES );
     N_bytes           = pages * page_size;
 #elif defined( USE_MAC )
@@ -117,7 +117,7 @@ void* operator new( size_t size, const std::nothrow_t& ) __nothrow_new
 {
     void* ret = malloc( size );
     if ( !ret )
-        return NULL;
+        return nullptr;
     const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( ret );
     TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_allocated, block_size );
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
@@ -127,7 +127,7 @@ void* operator new[]( size_t size, const std::nothrow_t& ) __nothrow_new
 {
     void* ret = malloc( size );
     if ( !ret )
-        return NULL;
+        return nullptr;
     const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( ret );
     TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_allocated, block_size );
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
@@ -135,7 +135,7 @@ void* operator new[]( size_t size, const std::nothrow_t& ) __nothrow_new
 }
 void operator delete(void* data) __throw_delete
 {
-    if ( data != NULL ) {
+    if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
@@ -144,7 +144,7 @@ void operator delete(void* data) __throw_delete
 }
 void operator delete[]( void* data ) __throw_delete
 {
-    if ( data != NULL ) {
+    if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
@@ -153,7 +153,7 @@ void operator delete[]( void* data ) __throw_delete
 }
 void operator delete(void* data, const std::nothrow_t&) __nothrow_new
 {
-    if ( data != NULL ) {
+    if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
@@ -162,7 +162,7 @@ void operator delete(void* data, const std::nothrow_t&) __nothrow_new
 }
 void operator delete[]( void* data, const std::nothrow_t& ) __nothrow_new
 {
-    if ( data != NULL ) {
+    if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
@@ -199,10 +199,10 @@ void operator delete[]( void* data, std::size_t ) __throw_delete
 static size_t subtract_address_abs( const void* x1, const void* x2 )
 {
     // Return the absolute difference between two addresses abs(x-y)
-    size_t y1    = reinterpret_cast<size_t>( x1 );
-    size_t y2    = reinterpret_cast<size_t>( x2 );
-    int64_t v1   = static_cast<int64_t>( y1 );
-    int64_t v2   = static_cast<int64_t>( y2 );
+    auto y1      = reinterpret_cast<size_t>( x1 );
+    auto y2      = reinterpret_cast<size_t>( x2 );
+    auto v1      = static_cast<int64_t>( y1 );
+    auto v2      = static_cast<int64_t>( y2 );
     int64_t diff = v1 > v2 ? ( v1 - v2 ) : ( v2 - v1 );
     return static_cast<size_t>( diff );
 }

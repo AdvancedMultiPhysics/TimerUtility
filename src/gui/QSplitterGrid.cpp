@@ -31,12 +31,12 @@ static inline int sum( const std::vector<T>& x )
  ***********************************************************************/
 QSplitterGrid::QSplitterGrid( QWidget* parent )
     : QScrollArea( parent ),
-      grid( NULL ),
+      grid( nullptr ),
       hspacing( 1 ),
       vspacing( 1 ),
       row_uniform( false ),
       col_uniform( false ),
-      frame_widget( NULL )
+      frame_widget( nullptr )
 {
     reset();
 }
@@ -191,13 +191,13 @@ void QSplitterGrid::resize( int w, int h )
 {
     if ( w > 0 ) {
         int s = sum( row_size );
-        for ( size_t i = 0; i < row_size.size(); i++ )
-            row_size[i] = std::max( ( h * row_size[i] - vspacing ) / s, 2 );
+        for ( int& i : row_size )
+            i = std::max( ( h * i - vspacing ) / s, 2 );
     }
     if ( h > 0 ) {
         int s = sum( col_size );
-        for ( size_t i = 0; i < col_size.size(); i++ )
-            col_size[i] = std::max( ( w * col_size[i] - hspacing ) / s, 2 );
+        for ( int& i : col_size )
+            i = std::max( ( w * i - hspacing ) / s, 2 );
     }
     resize2();
 }
@@ -237,13 +237,13 @@ const QWidget* QSplitterGrid::getWidget( int row, int column ) const
 {
     auto it = widget_map.find( std::pair<int, int>( row, column ) );
     if ( it == widget_map.end() )
-        return NULL;
+        return nullptr;
     return it->second;
 }
 void QSplitterGrid::setRowHeight( int size )
 {
-    for ( size_t i = 0; i < row_size.size(); i++ )
-        row_size[i] = size;
+    for ( int& i : row_size )
+        i = size;
     resize2();
 }
 void QSplitterGrid::setRowHeight( const std::vector<int>& size )
@@ -254,8 +254,8 @@ void QSplitterGrid::setRowHeight( const std::vector<int>& size )
 }
 void QSplitterGrid::setColumnWidth( int size )
 {
-    for ( size_t i = 0; i < col_size.size(); i++ )
-        col_size[i] = size;
+    for ( int& i : col_size )
+        i = size;
     resize2();
 }
 void QSplitterGrid::setColumnWidth( const std::vector<int>& size )

@@ -16,10 +16,9 @@ int load_test( const std::string& name, size_t size, bool includes_trace, bool i
     }
     bool error = false;
     std::vector<bool> rank_called( size, false );
-    for ( size_t i = 0; i < timers.size(); i++ ) {
-        for ( size_t j = 0; j < timers[i].trace.size(); j++ ) {
-            const TraceResults& trace = timers[i].trace[j];
-            rank_called[trace.rank]   = true;
+    for ( auto& timer : timers ) {
+        for ( const auto& trace : timer.trace ) {
+            rank_called[trace.rank] = true;
             if ( trace.N == 0 || trace.rank >= size ) {
                 error = true;
                 break;
@@ -38,9 +37,8 @@ int load_test( const std::string& name, size_t size, bool includes_trace, bool i
     // Check the traces
     if ( includes_trace ) {
         error = false;
-        for ( size_t i = 0; i < timers.size(); i++ ) {
-            for ( size_t j = 0; j < timers[i].trace.size(); j++ ) {
-                const TraceResults& trace = timers[i].trace[j];
+        for ( auto& timer : timers ) {
+            for ( const auto& trace : timer.trace ) {
                 if ( trace.N == 0 || trace.N_trace == 0 || trace.N < trace.N_trace )
                     error = true;
             }

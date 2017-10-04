@@ -26,12 +26,12 @@
 
 
 // Define NULL_USE
-#define NULL_USE( variable )                 \
-    do {                                     \
-        if ( 0 ) {                           \
-            char *temp = (char *) &variable; \
-            temp++;                          \
-        }                                    \
+#define NULL_USE( variable )                \
+    do {                                    \
+        if ( 0 ) {                          \
+            auto temp = (char *) &variable; \
+            temp++;                         \
+        }                                   \
     } while ( 0 )
 
 // Define ASSERT

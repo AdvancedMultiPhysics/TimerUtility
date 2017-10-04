@@ -19,7 +19,7 @@ int main( int, char *[] )
     int N_errors = 0;
 
     // Get the initial memory
-    MemoryApp::MemoryStats m1 = MemoryApp::getMemoryStats();
+    auto m1 = MemoryApp::getMemoryStats();
     if ( m1.bytes_new != 0 || m1.bytes_delete != 0 || m1.N_new != 0 || m1.N_delete != 0 ) {
         std::cout << "Memory structure is not initialized to 0" << std::endl;
         N_errors++;
@@ -29,8 +29,8 @@ int main( int, char *[] )
 #ifdef TIMER_DISABLE_NEW_OVERLOAD
     std::cout << "Skipping new/delete tests (disabled)" << std::endl;
 #else
-    double *tmp1 = new double();
-    double *tmp2 = new ( std::nothrow ) double();
+    auto *tmp1 = new double();
+    auto *tmp2 = new ( std::nothrow ) double();
     check_ptr( tmp1 );
     check_ptr( tmp2 );
     MemoryApp::MemoryStats m2 = MemoryApp::getMemoryStats();
@@ -43,7 +43,7 @@ int main( int, char *[] )
     check_ptr( tmp2 );
     MemoryApp::MemoryStats m4 = MemoryApp::getMemoryStats();
     DISABLE_WARNINGS
-    delete[] tmp1;
+    delete tmp1;
     ENABLE_WARNINGS
     operator delete[]( tmp2, std::nothrow );
     MemoryApp::MemoryStats m5 = MemoryApp::getMemoryStats();

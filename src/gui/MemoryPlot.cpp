@@ -73,7 +73,7 @@ MemoryPlot::MemoryPlot( QWidget* parent, const std::vector<MemoryResults>& memor
         plotLayout()->setCanvasMargin( axis, 0 );
     }
 
-    QwtPlotCanvas* canvas = new QwtPlotCanvas();
+    auto* canvas = new QwtPlotCanvas();
     canvas->setLineWidth( 0 );
     canvas->setFrameStyle( QFrame::Box | QFrame::Sunken );
     canvas->setBorderRadius( 0 );
@@ -84,7 +84,7 @@ MemoryPlot::MemoryPlot( QWidget* parent, const std::vector<MemoryResults>& memor
     setCanvas( canvas );
 
     // Create the line plots
-    d_curvePlot.resize( d_N_procs, NULL );
+    d_curvePlot.resize( d_N_procs, nullptr );
     for ( int i = 0; i < d_N_procs; i++ ) {
         d_curvePlot[i] = new QwtPlotCurve( "" );
         d_curvePlot[i]->setLegendIconSize( QSize( 0, 0 ) );
@@ -96,9 +96,9 @@ MemoryPlot::MemoryPlot( QWidget* parent, const std::vector<MemoryResults>& memor
 
 MemoryPlot::~MemoryPlot()
 {
-    for ( size_t i = 0; i < d_curvePlot.size(); i++ ) {
-        d_curvePlot[i]->attach( NULL );
-        delete d_curvePlot[i];
+    for ( auto& i : d_curvePlot ) {
+        i->attach( nullptr );
+        delete i;
     }
 }
 
@@ -113,10 +113,10 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
 
     // Get the memory usage for each rank
     for ( int i = 0; i < d_N_procs; i++ ) {
-        d_curvePlot[i]->attach( NULL );
-        d_curvePlot[i]->setVisible( 0 );
+        d_curvePlot[i]->attach( nullptr );
+        d_curvePlot[i]->setVisible( false );
     }
-    std::array<double, 2> range = { 1e100, 0 };
+    std::array<double, 2> range = { { 1e100, 0 } };
     if ( d_N_procs == 0 ) {
         // Dummy plot
     } else if ( rank == -1 ) {
@@ -203,7 +203,7 @@ std::array<size_t, 2> MemoryPlot::updateRankData( int rank )
     d_size[rank].clear();
     d_time[rank].reserve( 2 * ( i2 - i1 ) / N + 3 );
     d_size[rank].reserve( 2 * ( i2 - i1 ) / N + 3 );
-    std::array<size_t, 2> range = { size[i2], size[i2] };
+    std::array<size_t, 2> range = { { size[i2], size[i2] } };
     for ( size_t i = i1; i < i2; i += N ) {
         d_time[rank].push_back( time[i] );
         d_time[rank].push_back( time[i + 1] );
@@ -218,11 +218,11 @@ std::array<size_t, 2> MemoryPlot::updateRankData( int rank )
 }
 void MemoryPlot::plotRank( int rank, double scale )
 {
-    for ( size_t i = 0; i < d_size[rank].size(); i++ )
-        d_size[rank][i] *= scale;
+    for ( double& i : d_size[rank] )
+        i *= scale;
     d_curvePlot[rank]->setSamples( d_time[rank].data(), d_size[rank].data(), d_time[rank].size() );
     d_curvePlot[rank]->attach( this );
-    d_curvePlot[rank]->setVisible( 1 );
+    d_curvePlot[rank]->setVisible( true );
     uint32_t color = jet( 0 );
     if ( d_N_procs > 1 )
         color = jet( static_cast<double>( rank ) / static_cast<double>( d_N_procs - 1 ) );
