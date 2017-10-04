@@ -1,3 +1,4 @@
+c // clang-format off
 #ifndef included_ProfilerAppMacros
 #define included_ProfilerAppMacros
 
@@ -97,4 +98,4 @@ c This will disable the monitoring of the memory usage within the application.
 
 
 #endif
-
+c // clang-format on

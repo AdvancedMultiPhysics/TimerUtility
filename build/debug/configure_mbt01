@@ -3,11 +3,12 @@ rm -rf CMake*
 cmake                                                   \
     -G "Unix Makefiles"                                 \
     -D CMAKE_BUILD_TYPE=Debug                           \
+    -D CMAKE_EXPORT_COMPILE_COMMANDS=ON                 \
     -D CMAKE_C_COMPILER:PATH=mpicc                      \
-        -D CFLAGS="-fPIC -pg"                               \
+        -D CFLAGS="-fPIC -pg"                           \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
-        -D CXXFLAGS="-fPIC -pg"                             \
-        -D CXX_STD=14                                   \
+        -D CXXFLAGS="-fPIC -pg"                         \
+        -D CXX_STD=11                                   \
     -D CMAKE_Fortran_COMPILER:PATH=mpif77               \
         -D FFLAGS="-pg"                                 \
     -D USE_MPI=1                                        \

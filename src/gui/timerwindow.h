@@ -1,19 +1,19 @@
 #ifndef TimerWindow_H
 #define TimerWindow_H
 
-#include <QMainWindow>
-#include <QTableWidget>
 #include <QLineEdit>
+#include <QMainWindow>
 #include <QPushButton>
-#include <QToolButton>
-#include <QToolBar>
+#include <QTableWidget>
 #include <QTimer>
+#include <QToolBar>
+#include <QToolButton>
 
 #include <memory>
 
-#include "ProfilerApp.h"
-#include "LoadBalance.h"
 #include "GuiTimerStructures.h"
+#include "LoadBalance.h"
+#include "ProfilerApp.h"
 #include "ThreadedSlotsClass.h"
 
 
@@ -23,7 +23,7 @@ class QTableView;
 class TraceWindow;
 
 
-class TimerWindow : public  ThreadedSlotsClass
+class TimerWindow : public ThreadedSlotsClass
 {
     Q_OBJECT
 
@@ -32,7 +32,7 @@ public:
     virtual ~TimerWindow();
 
 protected:
-    void closeEvent(QCloseEvent *event);
+    void closeEvent( QCloseEvent *event );
 
 public slots:
     void exit();
@@ -41,7 +41,7 @@ private slots:
     void open();
     void reset();
     void about();
-    void cellSelected(int nRow, int nCol);
+    void cellSelected( int nRow, int nCol );
     void backButtonPressed();
     void exclusiveFun();
     void subfunctionFun();
@@ -53,7 +53,7 @@ private slots:
 
     // Developer functions
     void savePerformance();
-    void runUnitTestsSlot( );
+    void runUnitTestsSlot();
 
 private:
     void createActions();
@@ -62,10 +62,10 @@ private:
     void createStatusBar();
     void readSettings();
     void writeSettings();
-    void loadFile( std::string filename, bool showFailure=true );
-    void setCurrentFile(const QString &fileName);
+    void loadFile( std::string filename, bool showFailure = true );
+    void setCurrentFile( const QString &fileName );
     void updateDisplay();
-    QString strippedName(const QString &fullFileName);
+    QString strippedName( const QString &fullFileName );
 
     QMenuBar *mainMenu;
     QTableWidget *timerTable;
@@ -116,17 +116,18 @@ protected:
     bool includeSubfunctions;
     mutable std::shared_ptr<TraceWindow> traceWindow;
 
-friend class TraceWindow;
+    friend class TraceWindow;
 
-// Data for unit testing
+    // Data for unit testing
 public:
-    int runUnitTests( const std::string& file );
+    int runUnitTests( const std::string &file );
+
 private:
     std::string unitTestFilename;
-    void resetUnitTestRunning( );
-    void callLoadFile( );
-    void callSelectCell( );
-    void closeTrace( );
+    void resetUnitTestRunning();
+    void callLoadFile();
+    void callSelectCell();
+    void closeTrace();
 };
 
 #endif

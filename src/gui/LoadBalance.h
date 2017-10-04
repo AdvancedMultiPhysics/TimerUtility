@@ -1,28 +1,28 @@
 #ifndef LoadBalance_H
 #define LoadBalance_H
 
-#include <memory>
 #include <array>
+#include <memory>
 
-#include <qwt_plot.h>
 #include <qstringlist.h>
+#include <qwt_plot.h>
 #include <qwt_plot_barchart.h>
-#include <qwt_plot_curve.h>
 #include <qwt_plot_canvas.h>
+#include <qwt_plot_curve.h>
 
 #include <QMouseEvent>
 
 class DrawBoxClass;
 
 
-class LoadBalance: public QwtPlot
+class LoadBalance : public QwtPlot
 {
     Q_OBJECT
 
 public:
     explicit LoadBalance( QWidget * = NULL );
     virtual ~LoadBalance();
-    void plot( const std::vector<float>& time );
+    void plot( const std::vector<float> &time );
 
 public Q_SLOTS:
     void exportChart();
@@ -32,13 +32,13 @@ private:
 
     QwtPlotCanvas *canvas;
     QwtPlotBarChart *barChart;
- 	QwtPlotCurve *curvePlot[2];
+    QwtPlotCurve *curvePlot[2];
     int N_procs;
     QVector<double> rank;
     QVector<double> time;
-    std::array<double,4> global_range;
-    std::array<double,4> plot_range;
-    void zoom( const std::array<double,4>& range );
+    std::array<double, 4> global_range;
+    std::array<double, 4> plot_range;
+    void zoom( const std::array<double, 4> &range );
 
 private:
     LoadBalance() {}
@@ -46,11 +46,10 @@ private:
 private:
     bool active;
     QPoint start, last;
-    virtual void mousePressEvent(QMouseEvent *event);
-    virtual void mouseMoveEvent(QMouseEvent *event);
-    virtual void mouseReleaseEvent(QMouseEvent *event);
+    virtual void mousePressEvent( QMouseEvent *event );
+    virtual void mouseMoveEvent( QMouseEvent *event );
+    virtual void mouseReleaseEvent( QMouseEvent *event );
     std::shared_ptr<DrawBoxClass> zoom_box;
-
 };
 
 #endif
