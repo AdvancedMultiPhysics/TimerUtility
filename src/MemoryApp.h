@@ -2,6 +2,8 @@
 #define included_MemoryApp
 
 
+#include "ProfilerAtomicHelpers.h"
+
 #include <iostream>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,48 +12,12 @@
 
 
 #if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
-#define USE_WINDOWS
-#elif defined( __APPLE__ )
-#define USE_MAC
-#else
-#define USE_LINUX
-#endif
-
-
-#ifdef USE_WINDOWS
-// Windows
 #include <Psapi.h>
-#include <string>
 #include <windows.h>
-#elif defined( USE_MAC )
-// Mac
+#elif defined( __APPLE__ )
 #include <mach/mach.h>
-#include <pthread.h>
-#include <string.h>
-#include <sys/time.h>
-#elif defined( USE_LINUX )
-// Linux
+#else
 #include <malloc.h>
-#include <pthread.h>
-#include <string.h>
-#include <sys/time.h>
-#else
-#error Unknown OS
-#endif
-
-
-#ifndef __cplusplus_std
-#ifndef __cplusplus
-#error Detecting C++ version requires __cplusplus
-#elif __cplusplus == 1 || __cplusplus == 199711L
-#define __cplusplus_std 98
-#elif __cplusplus <= 201103L
-#define __cplusplus_std 11
-#elif __cplusplus <= 201402L
-#define __cplusplus_std 14
-#else
-#error Unknown value for __cplusplus
-#endif
 #endif
 
 
@@ -125,16 +91,8 @@ private:
     MemoryApp();
     ~MemoryApp();
 
-// Private data
-#if defined( USE_WINDOWS )
-    typedef __int64 int64_atomic;
-#elif defined( USE_MAC )
-    typedef int64_t int64_atomic;
-#elif defined( USE_LINUX )
-    typedef long int int64_atomic;
-#else
-#error Unknown OS
-#endif
+    // Private data
+    using int64_atomic = TimerUtility::atomic::int64_atomic;
     static int64_atomic d_bytes_allocated;
     static int64_atomic d_bytes_deallocated;
     static int64_atomic d_calls_new;
@@ -143,32 +101,19 @@ private:
     static size_t d_physical_memory;
     static void* d_base_frame;
 
-// Overload new/delete are friends
 #ifndef TIMER_DISABLE_NEW_OVERLOAD
-#if __cplusplus_std == 98
-#define __throw_new throw( std::bad_alloc )
-#define __nothrow_new throw()
-#define __throw_delete throw()
-#define __nothrow_delete throw()
-#elif __cplusplus_std == 11 || __cplusplus_std == 14
-#define __throw_new
-#define __throw_delete noexcept
-#define __nothrow_new noexcept
-#define __nothrow_delete noexcept
-#else
-#error Unknown value for __cplusplus_std
-#endif
-    friend void* operator new( size_t size ) __throw_new;
-    friend void* operator new[]( size_t size ) __throw_new;
-    friend void operator delete(void* data) __throw_delete;
-    friend void operator delete[]( void* data ) __throw_delete;
-    friend void* operator new( size_t size, const std::nothrow_t& ) __nothrow_new;
-    friend void* operator new[]( size_t size, const std::nothrow_t& ) __nothrow_new;
-    friend void operator delete(void* data, const std::nothrow_t&) __nothrow_delete;
-    friend void operator delete[]( void* data, const std::nothrow_t& ) __nothrow_delete;
+    // Overload new/delete are friends
+    friend void* operator new( size_t size );
+    friend void* operator new[]( size_t size );
+    friend void operator delete( void* data ) noexcept;
+    friend void operator delete[]( void* data ) noexcept;
+    friend void* operator new( size_t size, const std::nothrow_t& ) noexcept;
+    friend void* operator new[]( size_t size, const std::nothrow_t& ) noexcept;
+    friend void operator delete(void* data, const std::nothrow_t&) noexcept;
+    friend void operator delete[]( void* data, const std::nothrow_t& ) noexcept;
 #if CXX_STD == 14
-    friend void operator delete(void* data, std::size_t) __throw_delete;
-    friend void operator delete[]( void* data, std::size_t ) __throw_delete;
+    friend void operator delete( void* data, std::size_t ) noexcept;
+    friend void operator delete[]( void* data, std::size_t ) noexcept;
 #endif
 #endif
 };
@@ -180,16 +125,14 @@ private:
 inline size_t MemoryApp::getTotalMemoryUsage()
 {
     size_t N_bytes = 0;
-#if defined( USE_LINUX )
-    struct mallinfo meminfo = mallinfo();
-    size_t size_hblkhd      = static_cast<unsigned int>( meminfo.hblkhd );
-    size_t size_uordblks    = static_cast<unsigned int>( meminfo.uordblks );
-    N_bytes                 = size_hblkhd + size_uordblks;
-    // Correct for possible 32-bit wrap around
-    size_t N_bytes_new = d_bytes_allocated - d_bytes_deallocated;
-    while ( N_bytes < N_bytes_new )
-        N_bytes += 0x100000000;
-#elif defined( USE_MAC )
+#if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
+    // Windows
+    PROCESS_MEMORY_COUNTERS memCounter;
+    GetProcessMemoryInfo( GetCurrentProcess(), &memCounter, sizeof( memCounter ) );
+    N_bytes = memCounter.WorkingSetSize;
+
+#elif defined( __APPLE__ )
+    // MAC
     struct task_basic_info t_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
     kern_return_t rtn =
@@ -198,10 +141,16 @@ inline size_t MemoryApp::getTotalMemoryUsage()
         return 0;
     }
     N_bytes = t_info.virtual_size;
-#elif defined( USE_WINDOWS )
-    PROCESS_MEMORY_COUNTERS memCounter;
-    GetProcessMemoryInfo( GetCurrentProcess(), &memCounter, sizeof( memCounter ) );
-    N_bytes = memCounter.WorkingSetSize;
+#else
+    // Linux
+    struct mallinfo meminfo = mallinfo();
+    size_t size_hblkhd      = static_cast<unsigned int>( meminfo.hblkhd );
+    size_t size_uordblks    = static_cast<unsigned int>( meminfo.uordblks );
+    N_bytes                 = size_hblkhd + size_uordblks;
+    // Correct for possible 32-bit wrap around
+    size_t N_bytes_new = d_bytes_allocated - d_bytes_deallocated;
+    while ( N_bytes < N_bytes_new )
+        N_bytes += 0x100000000;
 #endif
     return N_bytes;
 }

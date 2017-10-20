@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <stdint.h>
 #include <stdio.h>
@@ -16,29 +17,9 @@
 #include "ProfilerDefinitions.h"
 #include "ProfilerThreadID.h"
 
-#include <limits>
-
 
 // Disable RecursiveFunctionMap, there seems to be issues with non-trivial types on gcc
 #define DISABLE_TIMER_THREAD_LOCAL_MAP
-
-
-#define TRACE_TYPE uint64_t
-#define TRACE_TYPE_size 64
-#define TRACE_SIZE \
-    64 // The maximum number of timers that will be checked for the trace logs
-       // The actual number of timers is TRACE_SIZE * number of bits of TRACE_TYPE
-       // Note: this only affects the trace logs, the number of timers is unlimited
-#define MAX_TRACE_TRACE \
-    1e6 // The maximum number of stored start and stop times per trace
-        // Note: this is only used if store_trace is set, and should be a power of 2
-        // Note: the maximum ammount of memory used per trace is 16*MAX_TRACE_TRACE bytes (plus the
-        // trace itself)
-#define MAX_TRACE_MEMORY 0x6000000 // The maximum number of times to store the memory usage
-#define MAX_THREADS \
-    1024 // The maximum number of threads supported (also change ProfilerThreadIndexHashMapSize in
-         // ProfilerThreadID.h)
-#define TIMER_HASH_SIZE 1024 // The size of the hash table to store the timers
 #define CONSTEXPR_TIMER
 
 
@@ -272,39 +253,34 @@ public:
 
     /*!
      * \brief  Function to start profiling a block of code
-     * \details  This function starts profiling a block of code until a corresponding stop is
-     * called. It is recommended to use PROFILE_START(message) to call this routine.  It will
-     *   automatically fill in the file name and the line number.
-     * @param message       Message to uniquely identify the block of code being profiled.
+     * \details  This function starts profiling a block of code until a corresponding stop
+     *   is called. It is recommended to use PROFILE_START(message) to call this routine.
+     *   It will automatically fill in the file name and the line number.
+     * @param[in] message   Message to uniquely identify the block of code being profiled.
      *                      It must be a unique message to all start called within the same file.
-     * @param filename      Name of the file containing the code
-     * @param line          Line number containing the start command
-     * @param level         Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level of the specified by enable will
-     * be included.
-     * @param id            Optional id for the timer (helps improve performance).  See get_timer_id
-     * for more info.
+     * @param[in] filename  Name of the file containing the code
+     * @param[in] line      Line number containing the start command
+     * @param[in] level     Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level will be included.
+     * @param[in] id        Optional id for the timer (helps improve performance).
+     *                      See get_timer_id for more info.
      */
     void start(
         const char* message, const char* filename, int line, int level = 0, uint64_t id = 0 );
 
     /*!
      * \brief  Function to start profiling a block of code
-     * \details  This function starts profiling a block of code until a corresponding stop is
-     called.
-     *   It is recommended to use PROFILE_START(message) to call this routine.  It will
-
-     *   automatically fill in the file name and the line number.
-     * @param message       Message to uniquely identify the block of code being profiled.
+     * \details  This function starts profiling a block of code until a corresponding stop
+     *   is called.  It is recommended to use PROFILE_START(message) to call this routine.
+     *   It will automatically fill in the file name and the line number.
+     * @param[in] message   Message to uniquely identify the block of code being profiled.
      *                      It must be a unique message to all start called within the same file.
-     * @param filename      Name of the file containing the code
-     * @param line          Line number containing the start command
-
-     * @param level         Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level of the specified by enable will
-     be included.
-     * @param id            Optional id for the timer (helps improve performance).  See get_timer_id
-     for more info.
+     * @param[in] filename  Name of the file containing the code
+     * @param[in] line      Line number containing the start command
+     * @param[in] level     Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level will be included.
+     * @param[in] id        Optional id for the timer (helps improve performance).
+     *                      See get_timer_id for more info.
      */
     inline void start(
         const std::string& message, const char* filename, int line, int level = 0, uint64_t id = 0 )
@@ -317,15 +293,14 @@ public:
      * \details  This function stop profiling a block of code until a corresponding stop is called.
      *   It is recommended to use PROFILE_STOP(message) to call this routine.  It will
      *   automatically fill in the file name and the line number.
-     * @param message       Message to uniquely identify the block of code being profiled.
-     *                      It must match a start call.
-     * @param filename      Name of the file containing the code
-     * @param line          Line number containing the stop command
-     * @param level         Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level of the specified by enable will
-     * be included. Note: this must match the level in start
-     * @param id            Optional id for the timer (helps improve performance).  See get_timer_id
-     * for more info.
+     * @param[in] message   Message to uniquely identify the block of code being profiled.
+     *                      It must be a unique message to all start called within the same file.
+     * @param[in] filename  Name of the file containing the code
+     * @param[in] line      Line number containing the start command
+     * @param[in] level     Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level will be included.
+     * @param[in] id        Optional id for the timer (helps improve performance).
+     *                      See get_timer_id for more info.
      */
     void stop(
         const char* message, const char* filename, int line, int level = 0, uint64_t id = 0 );
@@ -335,15 +310,14 @@ public:
      * \details  This function stop profiling a block of code until a corresponding stop is called.
      *   It is recommended to use PROFILE_STOP(message) to call this routine.  It will
      *   automatically fill in the file name and the line number.
-     * @param message       Message to uniquely identify the block of code being profiled.
-     *                      It must match a start call.
-     * @param filename      Name of the file containing the code
-     * @param line          Line number containing the stop command
-     * @param level         Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level of the specified by enable will
-     * be included. Note: this must match the level in start
-     * @param id            Optional id for the timer (helps improve performance).  See get_timer_id
-     * for more info.
+     * @param[in] message   Message to uniquely identify the block of code being profiled.
+     *                      It must be a unique message to all start called within the same file.
+     * @param[in] filename  Name of the file containing the code
+     * @param[in] line      Line number containing the start command
+     * @param[in] level     Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level will be included.
+     * @param[in] id        Optional id for the timer (helps improve performance).
+     *                      See get_timer_id for more info.
      */
     void stop(
         const std::string& message, const char* filename, int line, int level = 0, uint64_t id = 0 )
@@ -354,9 +328,9 @@ public:
     /*!
      * \brief  Function to check if a timer is active
      * \details  This function checks if a given timer is active on the current thread.
-     * @param message       Message to uniquely identify the block of code being profiled.
+     * @param[in] message   Message to uniquely identify the block of code being profiled.
      *                      It must match a start call.
-     * @param filename      Name of the file containing the code
+     * @param[in] filename  Name of the file containing the code
      */
     inline bool active( const std::string& message, const char* filename )
     {
@@ -368,8 +342,7 @@ public:
     /*!
      * \brief  Function to check if a timer is active
      * \details  This function checks if a given timer is active on the current thread.
-     * @param id            ID for the timer (helps improve performance).  See get_timer_id for more
-     * info.
+     * @param[in] id        ID of the timer we want
      */
     inline bool active( uint64_t id )
     {
@@ -383,17 +356,18 @@ public:
      * Note: .x.timer will automatically be appended to the filename, where x is the rank+1 of the
      * process. Note: .x.trace will automatically be appended to the filename when detailed traces
      * are used.
-     * @param filename      File name for saving the results
-     * @param global        Save a global file (true) or individual files (false)
+     * @param[in] filename  File name for saving the results
+     * @param[in] global    Save a global file (true) or individual files (false)
      */
     void save( const std::string& filename, bool global = false ) const;
 
     /*!
      * \brief  Function to load the profiling info
      * \details  This will load the timing and trace info from a file
-     * @param filename      File name for loading the results
+     * @param[in] filename  File name for loading the results
      *                      Note: .x.timer will be automatically appended to the filename
-     * @param rank          Rank to load (-1: all ranks)
+     * @param[in] rank      Rank to load (-1: all ranks)
+     * @param[in] global    Save the time results in a global file (default is false)
      */
     static TimerMemoryResults load(
         const std::string& filename, int rank = -1, bool global = false );
@@ -411,9 +385,8 @@ public:
      * \brief  Function to enable the timers
      * \details  This function will enable the current timer clase.  It supports an optional level
      * argument that specifies the level of detail to use for the timers.
-     * @param level         Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level of the specified by enable will
-     * be included.
+     * @param[in] level     Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level will be included.
      */
     void enable( int level = 0 );
 
@@ -427,7 +400,7 @@ public:
      * for each call. This will allow the user to look at the detailed results to get trace
      * information. However this will significantly increase the memory requirements for any traces
      *  that get called repeatedly and may negitivly impact the performance.
-     * @param profile       Do we want to store detailed profiling data
+     * @param[in] profile   Do we want to store detailed profiling data
      */
     void set_store_trace( bool profile );
 
@@ -439,7 +412,7 @@ public:
      *  timer.  This data will be combined from all timers/threads to get the memory usage
      *  of the application over time.  Combined with the trace level data, we can determine
      *  when memory is allocated and which timers are active.
-     * @param memory        Do we want to store detailed profiling data
+     * @param[in] memory    Do we want to store detailed profiling data
      */
     void set_store_memory( bool memory );
 
@@ -452,7 +425,7 @@ public:
      *   error.  The default behavior is to abort.  Timer errors include starting a timer
      *   that is already started, or stopping a timer that is not running.
      *   The user should only disable theses checks if they understand the behavior.
-     * @param flag        Do we want to ignore timer errors
+     * @param[in] flag      Do we want to ignore timer errors
      */
     void ignore_timer_errors( bool flag ) { d_disable_timer_error = flag; }
 
@@ -462,8 +435,8 @@ public:
      *     Internally all timers are stored using this id for faster searching.
      *     Many routines can take the timer id directly to imrove performance by
      *     avoiding the hashing function.
-     * @param message     The timer message
-     * @param filename    The filename
+     * @param[in] message   The timer message
+     * @param[in] filename  The filename
      */
     CONSTEXPR_TIMER static inline uint64_t get_timer_id(
         const char* message, const char* filename );
@@ -479,7 +452,7 @@ public:
      * \brief  Function to return the current timer results
      * \details  This function will return a vector containing the
      *      current timing results for all threads.
-     * @param id        ID of the timer we want
+     * @param[in] id        ID of the timer we want
      */
     TimerResults getTimerResults( uint64_t id ) const;
 
@@ -495,6 +468,34 @@ public:
      * \details  Return the total memory usage of the profiler app
      */
     size_t getMemoryUsed() const { return static_cast<size_t>( d_bytes ); }
+
+
+public: // Constants to determine parameters that affect performance/memory
+    // Type to use for storing trace (should be largest native unsigned integer)
+    using TRACE_TYPE                    = uint64_t;
+    static const size_t TRACE_TYPE_size = sizeof( TRACE_TYPE );
+
+    // The maximum number of timers that will be checked for the trace logs
+    // The actual number of timers is TRACE_SIZE * number of bits of TRACE_TYPE
+    // Note: this only affects the trace logs, the number of timers is unlimited
+    static const size_t TRACE_SIZE = 64;
+
+    // The maximum number of stored start and stop times per trace
+    // Note: this is only used if store_trace is set, and should be a power of 2
+    // Note: the maximum ammount of memory used per trace is 16*MAX_TRACE_TRACE bytes (plus the
+    // trace itself)
+    static const size_t MAX_TRACE_TRACE = 1e6;
+
+    // The maximum number of times to store the memory usage
+    static const size_t MAX_TRACE_MEMORY = 0x6000000;
+
+    // The maximum number of threads supported (also change ProfilerThreadIndexHashMapSize in
+    // ProfilerThreadID.h)
+    static const size_t MAX_THREADS = 1024;
+
+    // The size of the hash table to store the timers
+    static const size_t TIMER_HASH_SIZE = 1024;
+
 
 private:
     // Protect against copy of the class
@@ -571,16 +572,16 @@ private:
 
     // Structure to store the timing information for a single block of code
     struct store_timer {
-        bool is_active;               // Are we currently running a timer
-        unsigned int trace_index;     // The index of the current timer in the trace
-        int N_calls;                  // Number of calls to this block
-        uint64_t id;                  // A unique id for each timer
-        TRACE_TYPE trace[TRACE_SIZE]; // Store the current trace
-        int64_t min_time;        // Store the minimum time spent in the given block (nano-seconds)
-        int64_t max_time;        // Store the maximum time spent in the given block (nano-seconds)
-        int64_t total_time;      // Store the total time spent in the given block (nano-seconds)
-        store_trace* trace_head; // Head of the trace-log list
-        store_timer* next;       // Pointer to the next entry in the list
+        bool is_active;                    // Are we currently running a timer
+        unsigned int trace_index;          // The index of the current timer in the trace
+        int N_calls;                       // Number of calls to this block
+        uint64_t id;                       // A unique id for each timer
+        TRACE_TYPE trace[TRACE_SIZE];      // Store the current trace
+        int64_t min_time;                  // Store the minimum time spent in the given block (ns)
+        int64_t max_time;                  // Store the maximum time spent in the given block (ns)
+        int64_t total_time;                // Store the total time spent in the given block (ns)
+        store_trace* trace_head;           // Head of the trace-log list
+        store_timer* next;                 // Pointer to the next entry in the list
         store_timer_data_info* timer_data; // Pointer to the timer data
         time_point start_time;             // Store when start was called for the given block
         // Constructor used to initialize key values
@@ -630,15 +631,15 @@ private:
               time_memory( nullptr ),
               size_memory( nullptr )
         {
-            for ( int i = 0; i < TRACE_SIZE; i++ )
+            for ( size_t i = 0; i < TRACE_SIZE; i++ )
                 active[i] = 0;
-            for ( int i = 0; i < TIMER_HASH_SIZE; i++ )
+            for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ )
                 head[i] = NULL;
         }
         // Destructor
         ~thread_info()
         {
-            for ( int i = 0; i < TIMER_HASH_SIZE; i++ ) {
+            for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ ) {
                 delete head[i];
                 head[i] = NULL;
             }

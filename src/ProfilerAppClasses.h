@@ -30,13 +30,13 @@ public:
      *    appends "-x" to indicate the number of recursive calls of the given timer.
      *    Note: We can only have one scoped timer in a given scope
      *    Note: the scoped timer is generally lower performance that PROFILE_START and PROFILE_STOP.
-     * @param msg           Name of the timer
-     * @param file          Name of the file containing the code (__FILE__)
-     * @param line          Line number containing the start command (__LINE__)
-     * @param level         Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level of the specified by enable will
-     * be included.
-     * @param app           Profiler application to use.  Default is the global profiler
+     * @param[in] msg       Name of the timer
+     * @param[in] file      Name of the file containing the code (__FILE__)
+     * @param[in] line      Line number containing the start command (__LINE__)
+     * @param[in] level     Level of detail to include this timer (default is 0)
+     *                      Only timers whos level is <= the level will be included.
+     * @param[in] recursive Should the time support recursive calls (default is true)
+     * @param[in] app       Profiler application to use (default will use the global profiler)
      */
     ScopedTimer( const std::string& msg, const char* file, const int line, const int level = 0,
         bool recursive = true, ProfilerApp& app = global_profiler )

@@ -6,41 +6,25 @@
 #include "ProfilerAtomicHelpers.h"
 #include "ProfilerDefinitions.h"
 
-#include <stdint.h>
-
-
-#ifndef TIMER_ENABLE_THREAD_LOCAL
-#if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
-#define USE_WINDOWS
-#include <windows.h>
-#elif defined( __APPLE__ )
-#define USE_MAC
-#include <pthread.h>
-#else
-#define USE_LINUX
-#include <pthread.h>
-#endif
-#define ProfilerThreadIndexHashMapSize 1024
-#endif
+#include <thread>
 
 
 namespace TimerUtility {
 
-bool initialize_map();
-
 
 // Class definition
-class ProfilerThreadIndex
+class ProfilerThreadIndex final
 {
 public:
     static inline int getThreadIndex();
     static inline int getNThreads() { return N_threads; }
+    static bool initialize_map();
 
 protected:
     static volatile atomic::int32_atomic N_threads;
 #ifndef TIMER_ENABLE_THREAD_LOCAL
-    static volatile atomic::int32_atomic map[2 * ProfilerThreadIndexHashMapSize];
-    friend bool initialize_map();
+    static const size_t HashMapSize = 1024;
+    static volatile atomic::int32_atomic map[2 * HashMapSize];
 #endif
 
 private:
@@ -55,21 +39,12 @@ inline int ProfilerThreadIndex::getThreadIndex()
     thread_local static int id = atomic::atomic_increment( &N_threads ) - 1;
     return id;
 #else
-// Get a uint64_t id for the thread
-#ifdef USE_WINDOWS
-    DWORD tmp_thread_id = GetCurrentThreadId();
-    uint64_t id         = (uint64_t) tmp_thread_id;
-#elif defined( USE_LINUX ) || defined( USE_MAC )
-    pthread_t tmp_thread_id = pthread_self();
-    uint64_t id             = (uint64_t) tmp_thread_id;
-#else
-#error Unknown OS
-#endif
-    // Create a hash key
-    int hash =
-        static_cast<int>( ( ( id * 0x9E3779B97F4A7C15 ) >> 48 ) % ProfilerThreadIndexHashMapSize );
+    // Get a uint64_t id for the thread
+    std::thread::id id = std::this_thread::get_id();
+    static std::hash<std::thread::id> hasher;
+    int32_t hash = static_cast<int32_t>( hasher( id ) );
     // Lookup the value in the hash table, adding if necessary
-    int i = hash;
+    int i = hash % HashMapSize;
     while ( map[2 * i] != hash ) {
         if ( map[2 * i] == -1 ) {
             if ( atomic::atomic_compare_and_swap( &map[2 * i], -1, hash ) ) {
@@ -77,7 +52,7 @@ inline int ProfilerThreadIndex::getThreadIndex()
                 map[2 * i + 1] = id;
             }
         } else {
-            i = ( i + 1 ) % ProfilerThreadIndexHashMapSize;
+            i = ( i + 1 ) % HashMapSize;
         }
     }
     return map[2 * i + 1];

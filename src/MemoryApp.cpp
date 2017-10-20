@@ -4,33 +4,34 @@
 #include <cmath>
 
 
+// clang-format off
 #if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
-// Using windows
-#define USE_WINDOWS
-#define NOMINMAX
-#include <malloc.h>
-#include <process.h>
-#include <stdlib.h>
-#include <windows.h>
+    // Using windows
+    #include <malloc.h>
+    #include <process.h>
+    #include <stdlib.h>
+    #include <windows.h>
+    #define get_malloc_size( X ) _msize( X )
 #elif defined( __APPLE__ )
-// Using MAC
-#define USE_MAC
-#include <libkern/OSAtomic.h>
-#include <malloc/malloc.h>
-#include <pthread.h>
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#include <unistd.h>
+    // Using MAC
+    #include <libkern/OSAtomic.h>
+    #include <malloc/malloc.h>
+    #include <pthread.h>
+    #include <sys/sysctl.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #define get_malloc_size( X ) malloc_size( X )
 #elif defined( __linux ) || defined( __unix ) || defined( __posix )
-// Using Linux
-#define USE_LINUX
-#include <malloc.h>
-#include <pthread.h>
-#include <sys/types.h>
-#include <unistd.h>
+    // Using Linux
+    #include <malloc.h>
+    #include <pthread.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #define get_malloc_size( X ) malloc_usable_size( X )
 #else
-#error Unknown OS
+    #error Unknown OS
 #endif
+// clang-format on
 
 
 /***********************************************************************
@@ -83,17 +84,8 @@ void* MemoryApp::d_base_frame = 0;
 /***********************************************************************
  * Functions to overload new/delete                                     *
  ***********************************************************************/
-#ifdef USE_WINDOWS
-#define get_malloc_size( X ) _msize( X )
-#elif defined( USE_LINUX )
-#define get_malloc_size( X ) malloc_usable_size( X )
-#elif defined( USE_MAC )
-#define get_malloc_size( X ) malloc_size( X )
-#else
-#error Unknown OS
-#endif
 #ifndef TIMER_DISABLE_NEW_OVERLOAD
-void* operator new( size_t size ) __throw_new
+void* operator new( size_t size )
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -103,7 +95,7 @@ void* operator new( size_t size ) __throw_new
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
 }
-void* operator new[]( size_t size ) __throw_new
+void* operator new[]( size_t size )
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -113,7 +105,7 @@ void* operator new[]( size_t size ) __throw_new
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
 }
-void* operator new( size_t size, const std::nothrow_t& ) __nothrow_new
+void* operator new( size_t size, const std::nothrow_t& ) noexcept
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -123,7 +115,7 @@ void* operator new( size_t size, const std::nothrow_t& ) __nothrow_new
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
 }
-void* operator new[]( size_t size, const std::nothrow_t& ) __nothrow_new
+void* operator new[]( size_t size, const std::nothrow_t& ) noexcept
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -133,7 +125,7 @@ void* operator new[]( size_t size, const std::nothrow_t& ) __nothrow_new
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
 }
-void operator delete(void* data) __throw_delete
+void operator delete( void* data ) noexcept
 {
     if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
@@ -142,7 +134,7 @@ void operator delete(void* data) __throw_delete
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
     }
 }
-void operator delete[]( void* data ) __throw_delete
+void operator delete[]( void* data ) noexcept
 {
     if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
@@ -151,7 +143,7 @@ void operator delete[]( void* data ) __throw_delete
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
     }
 }
-void operator delete(void* data, const std::nothrow_t&) __nothrow_new
+void operator delete(void* data, const std::nothrow_t&) noexcept
 {
     if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
@@ -160,7 +152,7 @@ void operator delete(void* data, const std::nothrow_t&) __nothrow_new
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
     }
 }
-void operator delete[]( void* data, const std::nothrow_t& ) __nothrow_new
+void operator delete[]( void* data, const std::nothrow_t& ) noexcept
 {
     if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
@@ -170,7 +162,7 @@ void operator delete[]( void* data, const std::nothrow_t& ) __nothrow_new
     }
 }
 #if CXX_STD == 14
-void operator delete(void* data, std::size_t) __throw_delete
+void operator delete( void* data, std::size_t ) noexcept
 {
     if ( data != NULL ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
@@ -179,7 +171,7 @@ void operator delete(void* data, std::size_t) __throw_delete
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
     }
 }
-void operator delete[]( void* data, std::size_t ) __throw_delete
+void operator delete[]( void* data, std::size_t ) noexcept
 {
     if ( data != NULL ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );

@@ -16,20 +16,12 @@
 #include <mpi.h>
 #endif
 
+
 inline void ERROR_MSG( const std::string& msg ) { throw std::logic_error( msg ); }
 
 
-#define VEC_SIZE_MIN 256
-#define pout std::cout
-#define perr std::cerr
-#define printp printf
-
-
 // Check the limits of the define variables
-#if MAX_TRACE_MEMORY > 0xFFFFFFFF
-#error MAX_TRACE_MEMORY must be < 2^32
-#endif
-
+static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY must be < 2^32" );
 
 #define ASSERT( EXP )                                                                    \
     do {                                                                                 \
@@ -42,21 +34,7 @@ inline void ERROR_MSG( const std::string& msg ) { throw std::logic_error( msg );
     \
 } while ( false )
 
-
-#define INSIST( EXP, MSG )                                                               \
-    do {                                                                                 \
-        if ( !( EXP ) ) {                                                                \
-            std::stringstream stream;                                                    \
-            stream << "Failed assertion: " << #EXP << " " << __FILE__ << " " << __LINE__ \
-                   << std::endl;                                                         \
-            stream << "Message: " << #MSG << std::endl;                                  \
-            ERROR_MSG( stream.str() );                                                   \
-        }                                                                                \
-    \
-} while ( false )
-
-
-#define nullptr_USE( variable )             \
+#define NULL_USE( variable )                \
     do {                                    \
         if ( 0 ) {                          \
             char* temp = (char*) &variable; \
@@ -64,7 +42,6 @@ inline void ERROR_MSG( const std::string& msg ) { throw std::logic_error( msg );
         }                                   \
     \
 } while ( 0 )
-
 
 #define diff_ns( X, Y ) std::chrono::duration_cast<std::chrono::nanoseconds>( X - Y ).count()
 
@@ -132,7 +109,7 @@ void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max,
     type2** data2, TimerUtility::atomic::int64_atomic volatile* bytes_used )
 {
     int64_t size_old = *N_allocated;
-    int64_t size_new = std::max<size_t>( size_old, VEC_SIZE_MIN );
+    int64_t size_new = std::max<size_t>( size_old, 256 );
     while ( size_new <= (int64_t) N_current )
         size_new *= 2;
     // Stop allocating memory if we reached the limit
@@ -170,7 +147,7 @@ static inline bool GET_LOCK( const HANDLE* lock )
 {
     int retval = WaitForSingleObject( *lock, INFINITE );
     if ( retval != WAIT_OBJECT_0 ) {
-        perr << "Error locking mutex\n";
+        std::cerr << "Error locking mutex\n";
         return true;
     }
     return false;
@@ -179,7 +156,7 @@ static inline bool RELEASE_LOCK( const HANDLE* lock )
 {
     int retval = ReleaseMutex( *lock );
     if ( retval == 0 ) {
-        perr << "Error unlocking mutex\n";
+        std::cerr << "Error unlocking mutex\n";
         return true;
     }
     return false;
@@ -189,7 +166,7 @@ static inline bool GET_LOCK( const pthread_mutex_t* lock )
 {
     int retval = pthread_mutex_lock( const_cast<pthread_mutex_t*>( lock ) );
     if ( retval == -1 ) {
-        perr << "Error locking mutex\n";
+        std::cerr << "Error locking mutex\n";
         return true;
     }
     return false;
@@ -198,7 +175,7 @@ static inline bool RELEASE_LOCK( const pthread_mutex_t* lock )
 {
     int retval = pthread_mutex_unlock( const_cast<pthread_mutex_t*>( lock ) );
     if ( retval == -1 ) {
-        perr << "Error unlocking mutex\n";
+        std::cerr << "Error unlocking mutex\n";
         return true;
     }
     return false;
@@ -310,14 +287,14 @@ template<class TYPE>
 static inline void comm_send1( const TYPE* buf, size_t size, int dest, int tag )
 {
 #ifdef USE_MPI
-    INSIST( size < 0x80000000, "We do not support sending/recieving buffers > 2^31 (yet)" );
+    ASSERT( size < 0x80000000 );
     int err = MPI_Send( buf, (int) size, getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
 #else
-    nullptr_USE( buf );
-    nullptr_USE( size );
-    nullptr_USE( dest );
-    nullptr_USE( tag );
+    NULL_USE( buf );
+    NULL_USE( size );
+    NULL_USE( dest );
+    NULL_USE( tag );
     ERROR_MSG( "Calling MPI routine in no-mpi build" );
 #endif
 }
@@ -335,8 +312,8 @@ static inline TYPE* comm_recv1( int source, int tag )
     ASSERT( err == MPI_SUCCESS );
     return buf;
 #else
-    nullptr_USE( source );
-    nullptr_USE( tag );
+    NULL_USE( source );
+    NULL_USE( tag );
     ERROR_MSG( "Calling MPI routine in no-mpi build" );
     return nullptr;
 #endif
@@ -349,9 +326,9 @@ static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag 
         MPI_Send( getPtr( data ), (int) data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
 #else
-    nullptr_USE( data );
-    nullptr_USE( dest );
-    nullptr_USE( tag );
+    NULL_USE( data );
+    NULL_USE( dest );
+    NULL_USE( tag );
     ERROR_MSG( "Calling MPI routine in no-mpi build" );
 #endif
 }
@@ -369,8 +346,8 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
     ASSERT( err == MPI_SUCCESS );
     return data;
 #else
-    nullptr_USE( source );
-    nullptr_USE( tag );
+    NULL_USE( source );
+    NULL_USE( tag );
     ERROR_MSG( "Calling MPI routine in no-mpi build" );
     return std::vector<TYPE>();
 #endif
@@ -380,20 +357,20 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
 /***********************************************************************
  * Inline functions to set or unset the ith bit of the bit array trace  *
  ***********************************************************************/
-static inline void set_trace_bit( unsigned int i, unsigned int N, TRACE_TYPE* trace )
+static inline void set_trace_bit( unsigned int i, unsigned int N, ProfilerApp::TRACE_TYPE* trace )
 {
-    unsigned int j = i / TRACE_TYPE_size;
-    unsigned int k = i % TRACE_TYPE_size;
+    unsigned int j = i / ProfilerApp::TRACE_TYPE_size;
+    unsigned int k = i % ProfilerApp::TRACE_TYPE_size;
     size_t mask    = ( (size_t) 0x1 ) << k;
-    if ( i < N * TRACE_TYPE_size )
+    if ( i < N * ProfilerApp::TRACE_TYPE_size )
         trace[j] |= mask;
 }
-static inline void unset_trace_bit( unsigned int i, unsigned int N, TRACE_TYPE* trace )
+static inline void unset_trace_bit( unsigned int i, unsigned int N, ProfilerApp::TRACE_TYPE* trace )
 {
-    unsigned int j = i / TRACE_TYPE_size;
-    unsigned int k = i % TRACE_TYPE_size;
+    unsigned int j = i / ProfilerApp::TRACE_TYPE_size;
+    unsigned int k = i % ProfilerApp::TRACE_TYPE_size;
     size_t mask    = ( (size_t) 0x1 ) << k;
-    if ( i < N * TRACE_TYPE_size )
+    if ( i < N * ProfilerApp::TRACE_TYPE_size )
         trace[j] &= ~mask;
 }
 
@@ -404,16 +381,15 @@ static inline void unset_trace_bit( unsigned int i, unsigned int N, TRACE_TYPE* 
  * Note: The timer is only a calling timer if it was active before and  *
  *   after the current timer (hence the & of the two values)            *
  ***********************************************************************/
-static inline uint64_t get_trace_id( const TRACE_TYPE* active, const TRACE_TYPE* trace )
+static inline uint64_t get_trace_id(
+    const ProfilerApp::TRACE_TYPE* active, const ProfilerApp::TRACE_TYPE* trace )
 {
-#if TRACE_SIZE % 4 != 0
-#error TRACE_SIZE must be a multiple of 4
-#endif
+    static_assert( ProfilerApp::TRACE_SIZE % 4 == 0, "TRACE_SIZE must be a multiple of 4" );
     uint64_t hash1 = 5381;
     uint64_t hash2 = 104729;
     uint64_t hash3 = 1299709;
     uint64_t hash4 = 15485863;
-    for ( size_t i = 0; i < TRACE_SIZE; i += 4 ) {
+    for ( size_t i = 0; i < ProfilerApp::TRACE_SIZE; i += 4 ) {
         // hash = hash * 33 ^ s[i]
         uint64_t c1 = active[i + 0] & trace[i + 0];
         uint64_t c2 = active[i + 1] & trace[i + 1];
@@ -1364,7 +1340,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
 void ProfilerApp::save( const std::string& filename, bool global ) const
 {
     if ( this->d_level < 0 ) {
-        pout << "Warning: Timers are not enabled, no data will be saved\n";
+        std::cout << "Warning: Timers are not enabled, no data will be saved\n";
         return;
     }
     int N_procs = comm_size();
@@ -1407,14 +1383,14 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         // Open the file(s) for writing
         FILE* timerFile = fopen( filename_timer, "wb" );
         if ( timerFile == nullptr ) {
-            perr << "Error opening file for writing (timer)";
+            std::cerr << "Error opening file for writing (timer)";
             return;
         }
         FILE* traceFile = nullptr;
         if ( d_store_trace_data ) {
             traceFile = fopen( filename_trace, "wb" );
             if ( traceFile == nullptr ) {
-                perr << "Error opening file for writing (trace)";
+                std::cerr << "Error opening file for writing (trace)";
                 fclose( timerFile );
                 return;
             }
@@ -1500,7 +1476,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         FILE* memoryFile = fopen( filename_memory, "wb" );
         if ( memoryFile == nullptr ) {
             RELEASE_LOCK( &lock );
-            perr << "Error opening memory file" << std::endl;
+            std::cerr << "Error opening memory file" << std::endl;
             return;
         }
         // Get the memory usage

@@ -102,7 +102,7 @@ extern void global_profiler_save( const char* name, int global );
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  *  \param FILE     Name of the file to save
- *  \param GLOBAL   Save all ranks in a single file
+ *  \param GLOBAL   Optional variable to save all ranks in a single file (default is false)
  */
 #define PROFILE_SAVE( FILE, ... ) PROFILE_SAVE_GLOBAL( FILE, GET_LEVEL( _0, ##__VA_ARGS__, false ) )
 

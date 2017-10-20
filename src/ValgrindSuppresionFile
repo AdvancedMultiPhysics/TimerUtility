@@ -441,6 +441,15 @@
    fun:_dl_start
    ...
 }
+{
+   call_init
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   ...
+   fun:call_init
+   fun:_dl_init
+   ...
+}
 
 
 # pthread errors
