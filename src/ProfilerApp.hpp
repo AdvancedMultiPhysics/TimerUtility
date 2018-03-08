@@ -21,13 +21,14 @@ CONSTEXPR_TIMER inline const char* strip_path( const char* filename_in )
 }
 
 
+// Use the hashing function 2^32*0.5*(sqrt(5)-1)
+#define GET_TIMER_HASH( id ) ( ( ( id * 0x9E3779B97F4A7C15 ) >> 48 ) % TIMER_HASH_SIZE ) 
+
+
 /***********************************************************************
  * Function to get the timmer for a particular block of code            *
  * Note: This function performs some blocking as necessary.             *
  ***********************************************************************/
-#define GET_TIMER_HASH( id )                  \
-    ( ( ( id * 0x9E3779B97F4A7C15 ) >> 48 ) % \
-        TIMER_HASH_SIZE ) // Use the hashing function 2^32*0.5*(sqrt(5)-1)
 inline ProfilerApp::store_timer* ProfilerApp::get_block( thread_info* thread_data, uint64_t id,
     bool create, const char* message, const char* filename, const int start, const int stop )
 {

@@ -21,7 +21,7 @@
     #include <sys/types.h>
     #include <unistd.h>
     #define get_malloc_size( X ) malloc_size( X )
-#elif defined( __linux ) || defined( __unix ) || defined( __posix )
+#elif defined( __linux ) || defined( __linux__ ) || defined( __unix ) || defined( __posix )
     // Using Linux
     #include <malloc.h>
     #include <pthread.h>

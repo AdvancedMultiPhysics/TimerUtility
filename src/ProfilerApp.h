@@ -501,7 +501,6 @@ private:
     // Protect against copy of the class
     ProfilerApp( const ProfilerApp& );
 
-
     // Structure to store the info for a trace log
     struct store_trace {
         size_t N_calls; // Number of calls to this block
@@ -540,10 +539,8 @@ private:
             delete next;
             next = NULL;
         }
-
-    private:
-        store_trace( const store_trace& rhs );            // Private copy constructor
-        store_trace& operator=( const store_trace& rhs ); // Private assignment operator
+        store_trace( const store_trace& rhs ) = delete;
+        store_trace& operator=( const store_trace& rhs ) = delete;
     };
 
     // Structure to store the global timer information for a single block of code
@@ -563,11 +560,8 @@ private:
             delete next;
             next = NULL;
         }
-
-    private:
-        store_timer_data_info( const store_timer_data_info& rhs ); // Private copy constructor
-        store_timer_data_info& operator=(
-            const store_timer_data_info& rhs ); // Private assignment operator
+        store_timer_data_info( const store_timer_data_info& rhs ) = delete;
+        store_timer_data_info& operator=( const store_timer_data_info& rhs ) = delete;
     };
 
     // Structure to store the timing information for a single block of code
@@ -606,10 +600,8 @@ private:
             delete trace_head;
             delete next;
         }
-
-    private:
-        store_timer( const store_timer& rhs );            // Private copy constructor
-        store_timer& operator=( const store_timer& rhs ); // Private assignment operator
+        store_timer( const store_timer& rhs ) = delete;
+        store_timer& operator=( const store_timer& rhs ) = delete;
     };
 
     // Structure to store thread specific information
@@ -646,11 +638,9 @@ private:
             delete[] time_memory;
             delete[] size_memory;
         }
-
-    private:
-        thread_info();                                    // Private empty constructor
-        thread_info( const thread_info& rhs );            // Private copy constructor
-        thread_info& operator=( const thread_info& rhs ); // Private assignment operator
+        thread_info() = delete;
+        thread_info( const thread_info& rhs ) = delete;
+        thread_info& operator=( const thread_info& rhs ) = delete;
     };
 
     // Store thread specific info

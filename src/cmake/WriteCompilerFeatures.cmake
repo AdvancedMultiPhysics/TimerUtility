@@ -85,6 +85,9 @@ FUNCTION( TEST_FEATURE FEATURE_NAME FILENAME PREFIX CODE )
     IF ( ${CXX_STD} STREQUAL "98" )
         # Disable all features for 98
         SET( ${FEATURE_NAME} OFF )
+    ELSEIF ( DISABLE_${FEATURE_NAME} )
+        # Disable feature
+        SET( ${FEATURE_NAME} OFF )
     ELSE()
         # Check if compiler allows feature
         SET( CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS} )

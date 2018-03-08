@@ -4,6 +4,7 @@
 
 #include "ProfilerAtomicHelpers.h"
 
+#include <cstring>
 #include <iostream>
 #include <stdint.h>
 #include <stdio.h>
@@ -47,6 +48,8 @@ public:
         size_t system_memory;  //!<  Total physical memory on the machine
         size_t stack_used;     //!<  An estimate for the current stack size
         size_t stack_size;     //!<  The maximum stack size
+        //! Empty constuctor
+        MemoryStats() { memset(this,0,sizeof(MemoryStats)); }
     };
 
     /**
@@ -137,9 +140,8 @@ inline size_t MemoryApp::getTotalMemoryUsage()
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
     kern_return_t rtn =
         task_info( mach_task_self(), TASK_BASIC_INFO, (task_info_t) &t_info, &t_info_count );
-    if ( rtn != KERN_SUCCESS ) {
+    if ( rtn != KERN_SUCCESS )
         return 0;
-    }
     N_bytes = t_info.virtual_size;
 #else
     // Linux
