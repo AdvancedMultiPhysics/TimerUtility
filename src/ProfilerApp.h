@@ -472,29 +472,29 @@ public:
 
 public: // Constants to determine parameters that affect performance/memory
     // Type to use for storing trace (should be largest native unsigned integer)
-    using TRACE_TYPE                    = uint64_t;
-    static const size_t TRACE_TYPE_size = sizeof( TRACE_TYPE );
+    using TRACE_TYPE                        = uint64_t;
+    constexpr static size_t TRACE_TYPE_size = sizeof( TRACE_TYPE );
 
     // The maximum number of timers that will be checked for the trace logs
     // The actual number of timers is TRACE_SIZE * number of bits of TRACE_TYPE
     // Note: this only affects the trace logs, the number of timers is unlimited
-    static const size_t TRACE_SIZE = 64;
+    constexpr static size_t TRACE_SIZE = 64;
 
     // The maximum number of stored start and stop times per trace
     // Note: this is only used if store_trace is set, and should be a power of 2
     // Note: the maximum ammount of memory used per trace is 16*MAX_TRACE_TRACE bytes (plus the
     // trace itself)
-    static const size_t MAX_TRACE_TRACE = 1e6;
+    constexpr static size_t MAX_TRACE_TRACE = 1e6;
 
     // The maximum number of times to store the memory usage
-    static const size_t MAX_TRACE_MEMORY = 0x6000000;
+    constexpr static size_t MAX_TRACE_MEMORY = 0x6000000;
 
     // The maximum number of threads supported (also change ProfilerThreadIndexHashMapSize in
     // ProfilerThreadID.h)
-    static const size_t MAX_THREADS = 1024;
+    constexpr static size_t MAX_THREADS = 1024;
 
     // The size of the hash table to store the timers
-    static const size_t TIMER_HASH_SIZE = 1024;
+    constexpr static size_t TIMER_HASH_SIZE = 1024;
 
 
 private:

@@ -23,7 +23,7 @@ public:
 protected:
     static volatile atomic::int32_atomic N_threads;
 #ifndef TIMER_ENABLE_THREAD_LOCAL
-    static const size_t HashMapSize = 1024;
+    constexpr size_t HashMapSize = 1024;
     static volatile atomic::int32_atomic map[2 * HashMapSize];
 #endif
 

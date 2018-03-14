@@ -67,6 +67,12 @@ static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY mu
 thread_local ProfilerApp::RecursiveFunctionMap ProfilerApp::d_level_map;
 #endif
 ProfilerApp global_profiler;
+constexpr size_t ProfilerApp::TRACE_TYPE_size;
+constexpr size_t ProfilerApp::TRACE_SIZE;
+constexpr size_t ProfilerApp::MAX_TRACE_TRACE;
+constexpr size_t ProfilerApp::MAX_TRACE_MEMORY;
+constexpr size_t ProfilerApp::MAX_THREADS;
+constexpr size_t ProfilerApp::TIMER_HASH_SIZE;
 
 
 /******************************************************************
