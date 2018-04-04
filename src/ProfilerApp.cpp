@@ -37,11 +37,10 @@ static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY mu
 #define NULL_USE( variable )                \
     do {                                    \
         if ( 0 ) {                          \
-            char* temp = (char*) &variable; \
+            auto static temp = (char *) &variable; \
             temp++;                         \
         }                                   \
-    \
-} while ( 0 )
+    } while ( 0 )
 
 #define diff_ns( X, Y ) std::chrono::duration_cast<std::chrono::nanoseconds>( X - Y ).count()
 

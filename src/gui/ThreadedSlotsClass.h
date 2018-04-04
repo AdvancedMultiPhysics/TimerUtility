@@ -20,7 +20,7 @@ protected:
     //! Destructor
     virtual ~ThreadedSlotsClass();
     //! Call a function
-    void callFun( std::function<void( void )> fun );
+    void callFun( std::function<void( void )>&& fun );
     //! Process queue events
     void update();
 

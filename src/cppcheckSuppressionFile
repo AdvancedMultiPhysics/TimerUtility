@@ -16,5 +16,8 @@ duplicateExpression:*/src/test/test_ProfilerApp.cpp
 knownConditionTrueFalse:*/src/test/test_Callgrind.cpp
 knownConditionTrueFalse:*/src/test/test_Load.cpp
 
+// Suppress mismatchAllocDealloc (This is an intentional test)
+mismatchAllocDealloc:*/src/test/test_MemoryApp.cpp
 
-
+// Suppress unreadVariable
+unreadVariable:*/src/test/test_ProfilerApp_C.c

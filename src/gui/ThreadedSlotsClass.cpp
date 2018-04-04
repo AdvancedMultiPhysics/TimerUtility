@@ -13,7 +13,7 @@ ThreadedSlotsClass::ThreadedSlotsClass() : d_callAction( nullptr ), d_running( f
     connect( d_callAction, SIGNAL( triggered() ), this, SLOT( callFunMain() ) );
 }
 ThreadedSlotsClass::~ThreadedSlotsClass() { delete d_callAction; }
-void ThreadedSlotsClass::callFun( std::function<void( void )> fun )
+void ThreadedSlotsClass::callFun( std::function<void( void )>&& fun )
 {
     // If this is the parent thread, process immediately
     if ( std::this_thread::get_id() == d_id ) {

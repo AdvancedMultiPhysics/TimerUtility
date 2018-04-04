@@ -29,7 +29,7 @@
 #define NULL_USE( variable )                \
     do {                                    \
         if ( 0 ) {                          \
-            auto temp = (char *) &variable; \
+            auto static temp = (char *) &variable; \
             temp++;                         \
         }                                   \
     } while ( 0 )
