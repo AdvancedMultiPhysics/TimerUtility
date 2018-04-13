@@ -26,6 +26,7 @@ build/*/test/*
 build/*/tmp/*
 build/*/CMakeFiles/*
 build/*/CMakeCache.txt
+build/*/CMakeDoxy*
 build/*/CTestTestfile.cmake
 build/*/DartConfiguration.tcl
 build/*/Testing/*

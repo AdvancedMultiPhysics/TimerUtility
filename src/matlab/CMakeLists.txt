@@ -1,6 +1,3 @@
-INCLUDE ( macros )
-
-
 # Copy MATLAB GUI files
 SET( GUI_FILES 
     "${CMAKE_CURRENT_SOURCE_DIR}/load_timer.m"

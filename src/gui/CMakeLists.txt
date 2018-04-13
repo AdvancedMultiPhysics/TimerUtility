@@ -67,13 +67,12 @@ ELSE()
     # generate rules for building source files that moc generates
     QT_WRAP_CPP(QtApp_MOC_SRCS ${QtApp_MOCS})
     # build sources, moc'd sources, and rcc'd sources
-    ADD_EXECUTABLE( load_timer ${QtApp_SRCS} ${QtApp_MOC_SRCS} ${QtApp_RCC_SRCS})
+    ADD_EXECUTABLE( load_timer ${QtApp_SRCS} ${QtApp_MOC_SRCS} ${QtApp_RCC_SRCS} )
     SET_TARGET_PROPERTIES( load_timer PROPERTIES COMPILE_FLAGS "${QT_FLAGS} ${COVERAGE_FLAGS}" )
-    TARGET_LINK_LIBRARIES(load_timer QWT ${QT_QTMAIN_LIBRARY} ${QT_LIBRARIES} )
+    TARGET_LINK_LIBRARIES( load_timer QWT ${QT_QTMAIN_LIBRARY} ${QT_LIBRARIES} )
     ADD_PROJ_EXE_DEP( load_timer )
-    GET_TARGET_PROPERTY( tmp load_timer LOCATION)
-    STRING(REGEX REPLACE "//" "/" tmp "${tmp}" )
-    IF ( NOT "${tmp}" MATCHES "${${PROJ}_INSTALL_DIR}/gui/load_timer" )
+    GLOBAL_SET( load_timer-BINDIR "${CMAKE_CURRENT_BINARY_DIR}" )
+    IF ( NOT "${CMAKE_CURRENT_BINARY_DIR}" MATCHES "${${PROJ}_INSTALL_DIR}/gui" )
         INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/gui )
     ENDIF()
 

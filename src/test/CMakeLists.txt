@@ -1,5 +1,3 @@
-INCLUDE (macros)
-
 # Add tests
 ADD_TIMER_TEST( test_MemoryApp )
 ADD_TIMER_TEST_1_2_4( test_ProfilerApp )

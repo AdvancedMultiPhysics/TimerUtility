@@ -1,9 +1,6 @@
 # Set some CMake properties    
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-CMAKE_POLICY(SET CMP0014 OLD)
-IF ( ${CMAKE_MAJOR_VERSION} EQUAL 3 )
-    CMAKE_POLICY(SET CMP0026 OLD)
-ENDIF()
+CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
+SET( DISABLE_LTO TRUE )
 
 
 MESSAGE( "===========================" )
@@ -19,7 +16,7 @@ SET( TIMER_INC )               # Set an optional subfolder for includes (e.g. in
 
 
 # Initialize the project (should disable langagues that the TPL builder will enable)
-PROJECT( ${PROJ} LANGUAGES C CXX )
+PROJECT( ${PROJ} LANGUAGES )
 
 
 # Prevent users from building in place
@@ -40,6 +37,15 @@ INCLUDE_DIRECTORIES( "${${PROJ}_INSTALL_DIR}/include" )
 SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
 
 
+# Enable languages
+ENABLE_LANGUAGE( C )
+ENABLE_LANGUAGE( CXX )
+IF ( CMAKE_Fortran_COMPILER )
+    ENABLE_LANGUAGE( Fortran )
+    SET (CMAKE_Fortran_MODULE_DIRECTORY ${TIMER_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
+ENDIF()
+
+
 # Set the default C++ standard
 IF ( NOT CXX_STD )
     MESSAGE( WARNING "CXX_STD not set, defaulting to c++11" )
@@ -50,14 +56,10 @@ IF ( "${CXX_STD}" STREQUAL "98" )
 ENDIF()
 
 
-# Include macros
-INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros.cmake" )
-INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/libraries.cmake" )
-INCLUDE( "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteCompilerFeatures.cmake" TIMER )
-IF ( CMAKE_Fortran_COMPILER )
-    ENABLE_LANGUAGE( Fortran )
-    SET (CMAKE_Fortran_MODULE_DIRECTORY ${TIMER_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
-ENDIF()
+# Include CMake files
+INCLUDE( cmake/macros.cmake )
+INCLUDE( cmake/libraries.cmake )
+INCLUDE( cmake/WriteCompilerFeatures.cmake TIMER )
 
 
 # Check if we are only compiling docs
@@ -74,16 +76,11 @@ ENABLE_TESTING()
 INCLUDE( CTest )
 
 
-
 # Check the compile mode and compile flags
 IF ( NOT ONLY_BUILD_DOCS )
     CONFIGURE_SYSTEM()
     WRITE_COMPILE_FEATURES( "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" TIMER )
 ENDIF()
-
-
-# Add some directories to include
-INCLUDE_DIRECTORIES( "${TIMER_INSTALL_DIR}/include" )
 
 
 # Create the target for documentation
@@ -93,6 +90,7 @@ CHECK_ENABLE_FLAG( USE_DOXYGEN 1 )
 CHECK_ENABLE_FLAG( USE_LATEX 1 )
 FILE( MAKE_DIRECTORY "${${PROJ}_INSTALL_DIR}/doc" )
 IF ( USE_DOXYGEN )
+    SET(DOXYFILE_LATEX "YES")
     SET( DOXYFILE_IN "${${PROJ}_SOURCE_DIR}/doxygen/Doxyfile.in" )
     SET( DOXY_HEADER_FILE "${${PROJ}_SOURCE_DIR}/doxygen/html/header.html" )
     SET( DOXY_FOOTER_FILE "${${PROJ}_SOURCE_DIR}/doxygen/html/footer.html" )
@@ -103,7 +101,6 @@ IF ( USE_DOXYGEN )
     SET( DOXYGEN_MACROS "" )
     MESSAGE("DOXYGEN_MACROS = ${DOXYGEN_MACROS}")
     INCLUDE( "${${PROJ}_SOURCE_DIR}/cmake/UseDoxygen.cmake" )
-    SET(DOXYFILE_LATEX "YES")
     IF ( DOXYGEN_FOUND )
         ADD_DEPENDENCIES( doxygen latex_docs )
         ADD_DEPENDENCIES( doc latex_docs doxygen )
@@ -121,7 +118,7 @@ ADD_CUSTOM_TARGET( check COMMAND  make test  )
 ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT Debug TIMER.build TIMER.xcodeproj )
 
 
-# Get the mercurial revision
+# Get the version information
 WRITE_REPO_VERSION( "${${PROJ}_INSTALL_DIR}/include/TimerUtilityVersion.h" )
 
 
@@ -153,10 +150,10 @@ IF ( NOT ONLY_BUILD_DOCS )
         ADD_PACKAGE_SUBDIRECTORY( fortran )
     ENDIF()
     INSTALL_TIMER_TARGET( timerutility_library )
+    INSTALL_PROJ_LIB()
     ADD_SUBDIRECTORY( test )
     ADD_SUBDIRECTORY( matlab )
     ADD_SUBDIRECTORY( gui )
-    INSTALL_PROJ_LIB()
 ENDIF()
 IF ( USE_LATEX )
     ADD_SUBDIRECTORY(latex_docs)

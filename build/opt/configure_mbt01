@@ -2,7 +2,7 @@ rm -rf CMake*
 
 cmake                                                   \
     -G "Unix Makefiles"                                 \
-    -D CMAKE_BUILD_TYPE=RelWithDebInfo                  \
+    -D CMAKE_BUILD_TYPE=Release                         \
     -D CMAKE_C_COMPILER:PATH=mpicc                      \
         -D CFLAGS="-fPIC"                               \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \

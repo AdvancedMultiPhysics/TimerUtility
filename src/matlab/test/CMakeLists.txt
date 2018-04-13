@@ -1,6 +1,3 @@
-INCLUDE ( macros )
-
-
 # Add the data files needed for the tests
 
 # Add a simple test calling MATLAB
