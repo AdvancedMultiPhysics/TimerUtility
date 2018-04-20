@@ -1,23 +1,19 @@
-# Copy MATLAB GUI files
-SET( GUI_FILES 
-    "${CMAKE_CURRENT_SOURCE_DIR}/load_timer.m"
-    "${CMAKE_CURRENT_SOURCE_DIR}/load_timer.fig"
-    "${CMAKE_CURRENT_SOURCE_DIR}/plot_trace.m"
-    "${CMAKE_CURRENT_SOURCE_DIR}/plot_trace.fig"
-    "${CMAKE_CURRENT_SOURCE_DIR}/load_timer_file.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/load_timer_set.m"
-    "${CMAKE_CURRENT_SOURCE_DIR}/get_memory_time.cpp" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/get_active_times.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/matlab_helpers.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/TraceClass.m"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerApp.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerApp.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerAppMacros.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../MemoryApp.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../MemoryApp.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../ProfilerAtomicHelpers.h"
-)
-INSTALL(FILES ${GUI_FILES} DESTINATION "${TIMER_INSTALL_DIR}/gui" )
+# Create copy target to copy class and include files for mex files
+SET( COPY_TARGET copy-mex-include )
+ADD_CUSTOM_TARGET( ${COPY_TARGET} ALL )
+
+
+# Copy header files from the matlab directory
+FILE( GLOB HFILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/*.h ${CMAKE_CURRENT_SOURCE_DIR}/*.hpp )
+FOREACH (HFILE ${HFILES})
+    SET( SRC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/${HFILE}" )
+    SET( DST_FILE "${${PROJ}_INSTALL_DIR}/include/${${PROJ}_INC}/matlab/${HFILE}" )
+    ADD_CUSTOM_COMMAND(TARGET ${COPY_TARGET} 
+        PRE_BUILD 
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SRC_FILE}" "${DST_FILE}"
+        DEPENDS "${SRC_FILE}"
+    )
+ENDFOREACH ()
 
 
 # Create a matlab file to create class arrays
@@ -31,6 +27,8 @@ file(APPEND ${CreateClassArray} "end\n" )
 
 
 IF ( USE_MATLAB )
+    CREATE_MATLAB_WRAPPER()
+
     # Add the mex target
     ADD_CUSTOM_TARGET ( mex ALL DEPENDS timerutility )
     ADD_MEXCLEAN()
