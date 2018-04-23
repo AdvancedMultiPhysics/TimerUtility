@@ -1127,71 +1127,19 @@ ENDMACRO()
 
 
 # Add a matlab mex file
-FUNCTION( ADD_MATLAB_MEX MEXFILE )
-    # Set the MEX compiler and default link flags
-    IF ( USING_MSVC )
-        SET( MEX_LDFLAGS ${MEX_LDFLAGS} -L${CMAKE_CURRENT_BINARY_DIR}/.. 
-            -L${CMAKE_CURRENT_BINARY_DIR}/../Debug -L${CMAKE_CURRENT_BINARY_DIR} )
-    ENDIF()
-    SET( MEX_LDFLAGS ${MEX_LDFLAGS} -L${CMAKE_CURRENT_BINARY_DIR}/.. -L${CMAKE_CURRENT_BINARY_DIR}/../.. ${SYSTEM_LDFLAGS} )
-    SET( MEX_LIBS    ${MEX_LIBS}    ${SYSTEM_LIBS}    )
-    IF ( NOT USING_MSVC )
-        FOREACH( rpath ${CMAKE_INSTALL_RPATH} )
-            SET( MEX_LDFLAGS ${MEX_LDFLAGS} "-Wl,-rpath,${rpath},--no-undefined" )
-        ENDFOREACH()
-    ENDIF()
-    IF ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
-        SET( MEX_FLAGS ${MEX_FLAGS} -g )
-    ELSEIF ( "${CMAKE_BUILD_TYPE}" STREQUAL "Release" )
-        SET( MEX_FLAGS ${MEX_FLAGS} -O )
-    ELSE()
-        MESSAGE( FATAL_ERROR "Unknown build type: ${CMAKE_BUILD_TYPE}" )
-    ENDIF()
-    # Create the mex comamnd
-    STRING(REGEX REPLACE "[.]cpp" "" TARGET ${MEXFILE})
-    STRING(REGEX REPLACE "[.]c"   "" TARGET ${TARGET})
-    FILE(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}" )
-    IF ( USING_MSVC )
-        SET( MEX_BAT_FILE "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/compile_mex.bat" )
-        FILE( WRITE  "${MEX_BAT_FILE}" "${MEX_EXE} \"${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE}\" " )
-        APPEND_LIST( "${MEX_BAT_FILE}" "${MEX_FLAGS}"   "\"" "\" " )
-        APPEND_LIST( "${MEX_BAT_FILE}" "${COMPFLAGS}"   "\"" "\" " )
-        APPEND_LIST( "${MEX_BAT_FILE}" "${MEX_INCLUDE}" "\"" "\" " )
-        APPEND_LIST( "${MEX_BAT_FILE}" "${MEX_LDFLAGS}" "\"" "\" " )
-        APPEND_LIST( "${MEX_BAT_FILE}" "${MEX_LIBS}"    "\"" "\" " )
-        APPEND_LIST( "${MEX_BAT_FILE}" "${COVERAGE_MATLAB_LIBS}" "\"" "\" " )
-        SET( MEX_COMMAND "${MEX_BAT_FILE}" )
-    ELSE()
-        STRING(REPLACE " " ";" MEX_CFLAGS "$$CFLAGS ${CMAKE_C_FLAGS}")
-        STRING(REPLACE " " ";" MEX_CXXFLAGS "$$CXXFLAGS ${CMAKE_CXX_FLAGS}")
-        SET( MEX_COMMAND ${MEX_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE} 
-            ${MEX_FLAGS} ${MEX_INCLUDE} 
-            CFLAGS="${MEX_CFLAGS}" 
-            CXXFLAGS="${MEX_CXXFLAGS}" 
-            LDFLAGS="${MEX_LDFLAGS}" 
-            ${MEX_LIBS} ${COVERAGE_MATLAB_LIBS} 
-        )
-    ENDIF()
-    ADD_CUSTOM_COMMAND( 
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.${MEX_EXTENSION}
-        COMMAND ${MEX_COMMAND}
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/${TARGET}.${MEX_EXTENSION}" "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}/${TARGET}.${MEX_EXTENSION}" "${${PROJ}_INSTALL_DIR}/mex"
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/temp/${TARGET}
-        DEPENDS ${${PROJ}_LIBS} ${MATLAB_TARGET} ${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE}
+FUNCTION( ADD_MATLAB_MEX SOURCE )
+    STRING( REGEX REPLACE "[.]cpp" "" TARGET ${SOURCE} )
+    STRING( REGEX REPLACE "[.]c"   "" TARGET ${TARGET} )
+    MATLAB_ADD_MEX(
+        NAME ${TARGET}
+        SRC ${SOURCE}
     )
-    ADD_CUSTOM_TARGET( ${TARGET}
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.${MEX_EXTENSION}
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${MEXFILE}
-    )
-    IF ( MATLAB_TARGET )
-        ADD_DEPENDENCIES( ${TARGET} ${MATLAB_TARGET} )
-    ENDIF()
-    IF ( ${PROJ}_LIBS )
-        ADD_DEPENDENCIES( ${TARGET} ${${PROJ}_LIBS} )
-    ENDIF()
+    TARGET_LINK_LIBRARIES( ${TARGET} ${MATLAB_TARGET} )
+    ADD_PROJ_EXE_DEP( ${TARGET} )
     ADD_DEPENDENCIES( mex ${TARGET} )
-    SET( MEX_FILES2 ${MEX_FILES} "${${PROJ}_INSTALL_DIR}/mex/${TARGET}.${MEX_EXTENSION}" )
+    INSTALL( TARGETS ${TARGET} DESTINATION ${${PROJ}_INSTALL_DIR}/mex )
+    ADD_DEPENDENCIES( mex ${TARGET} )
+    SET( MEX_FILES2 ${MEX_FILES} "${${PROJ}_INSTALL_DIR}/mex/${TARGET}.${Matlab_MEX_EXTENSION}" )
     LIST( REMOVE_DUPLICATES MEX_FILES2 )
     SET( MEX_FILES ${MEX_FILES2} CACHE INTERNAL "" )
 ENDFUNCTION()
@@ -1224,7 +1172,6 @@ FUNCTION( CREATE_MATLAB_WRAPPER )
     SET( tmp_libs ${MEX_LIBCXX} ${MEX_FILES} )
     STRING(REGEX REPLACE ";" ":" tmp_libs "${tmp_libs}")
     STRING(REGEX REPLACE ";" ":" tmp_path "${MATLABPATH}")
-    FIND_PROGRAM( MATLAB_EXE2 NAME matlab PATHS "${MATLAB_DIRECTORY}/bin" NO_DEFAULT_PATH )
     IF ( USING_MSVC )
         # Create a matlab wrapper for windows
         SET( MATLAB_GUI "${CMAKE_CURRENT_BINARY_DIR}/tmp/matlab-gui.bat" )
@@ -1241,8 +1188,8 @@ FUNCTION( CREATE_MATLAB_WRAPPER )
         SET( MATLAB_GUI "${CMAKE_CURRENT_BINARY_DIR}/tmp/matlab-gui" )
         SET( MATLAB_CMD "${CMAKE_CURRENT_BINARY_DIR}/tmp/matlab-cmd" )
         SET( MATLAB_INSTALL_CMD "matlab-cmd" )
-        FILE( WRITE "${MATLAB_GUI}" "LD_PRELOAD=\"${tmp_libs}\" MKL_NUM_THREADS=1 MATLABPATH=\"${tmp_path}\" \"${MATLAB_EXE2}\" -singleCompThread -nosplash \"$@\"\n")
-        FILE( WRITE "${MATLAB_CMD}" "LD_PRELOAD=\"${tmp_libs}\" MKL_NUM_THREADS=1 MATLABPATH=\"${tmp_path}\" \"${MATLAB_EXE2}\" -singleCompThread -nosplash -nodisplay -nojvm \"$@\"\n")
+        FILE( WRITE "${MATLAB_GUI}" "LD_PRELOAD=\"${tmp_libs}\" MKL_NUM_THREADS=1 MATLABPATH=\"${tmp_path}\" \"${Matlab_MAIN_PROGRAM}\" -singleCompThread -nosplash \"$@\"\n")
+        FILE( WRITE "${MATLAB_CMD}" "LD_PRELOAD=\"${tmp_libs}\" MKL_NUM_THREADS=1 MATLABPATH=\"${tmp_path}\" \"${Matlab_MAIN_PROGRAM}\" -singleCompThread -nosplash -nodisplay -nojvm \"$@\"\n")
     ENDIF()
     FILE( COPY "${MATLAB_GUI}" DESTINATION "${${PROJ}_INSTALL_DIR}/mex"
         FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
@@ -1323,6 +1270,7 @@ MACRO( ADD_DISTCLEAN ${ARGN} )
         install_manifest.txt
         test
         matlab
+        Matlab
         mex
         tmp
         #tmp#

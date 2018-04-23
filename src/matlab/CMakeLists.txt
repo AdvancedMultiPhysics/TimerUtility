@@ -27,8 +27,6 @@ file(APPEND ${CreateClassArray} "end\n" )
 
 
 IF ( USE_MATLAB )
-    CREATE_MATLAB_WRAPPER()
-
     # Add the mex target
     ADD_CUSTOM_TARGET ( mex ALL DEPENDS timerutility )
     ADD_MEXCLEAN()
@@ -41,6 +39,9 @@ IF ( USE_MATLAB )
     ADD_MATLAB_MEX( get_memory_time.cpp )
     ADD_MATLAB_MEX( get_active_times.cpp )
     ADD_MATLAB_MEX( profile_mex.cpp )
+
+    # Create the wrappers for Matlab
+    CREATE_MATLAB_WRAPPER()
 
     # Add subdirectory
     ADD_SUBDIRECTORY( test )
