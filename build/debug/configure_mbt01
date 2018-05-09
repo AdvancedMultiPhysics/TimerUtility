@@ -8,7 +8,7 @@ cmake                                                   \
         -D CFLAGS="-fPIC -pg"                           \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
         -D CXXFLAGS="-fPIC -pg"                         \
-        -D CXX_STD=11                                   \
+        -D CXX_STD=14                                   \
     -D CMAKE_Fortran_COMPILER:PATH=mpif77               \
         -D FFLAGS="-pg"                                 \
     -D USE_MPI=1                                        \

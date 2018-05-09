@@ -17,6 +17,7 @@ syntax: glob
 build/*/TimerUtilitiy.cmake
 build/*/include/*
 build/*/lib/*
+build/*/bin/*
 build/*/gui/*
 build/*/doc/*
 build/*/latex_docs/*

@@ -1,5 +1,5 @@
 # Set some CMake properties    
-CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.9)
 SET( DISABLE_LTO TRUE )
 
 
@@ -49,10 +49,10 @@ ENDIF()
 # Set the default C++ standard
 IF ( NOT CXX_STD )
     MESSAGE( WARNING "CXX_STD not set, defaulting to c++11" )
-    SET( CXX_STD 11 )
+    SET( CXX_STD 14 )
 ENDIF()
-IF ( "${CXX_STD}" STREQUAL "98" )
-    MESSAGE( FATAL_ERROR "c++11 or higher is required" )
+IF ( "${CXX_STD}" STREQUAL "98" OR "${CXX_STD}" STREQUAL "11" )
+    MESSAGE( FATAL_ERROR "c++14 or higher is required" )
 ENDIF()
 
 
@@ -90,7 +90,7 @@ CHECK_ENABLE_FLAG( USE_DOXYGEN 1 )
 CHECK_ENABLE_FLAG( USE_LATEX 1 )
 FILE( MAKE_DIRECTORY "${${PROJ}_INSTALL_DIR}/doc" )
 IF ( USE_DOXYGEN )
-    SET(DOXYFILE_LATEX "YES")
+    SET( DOXYFILE_LATEX "YES" )
     SET( DOXYFILE_IN "${${PROJ}_SOURCE_DIR}/doxygen/Doxyfile.in" )
     SET( DOXY_HEADER_FILE "${${PROJ}_SOURCE_DIR}/doxygen/html/header.html" )
     SET( DOXY_FOOTER_FILE "${${PROJ}_SOURCE_DIR}/doxygen/html/footer.html" )

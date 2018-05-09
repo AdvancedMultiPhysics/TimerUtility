@@ -47,7 +47,7 @@ bool call_recursive_scope( int N, int i = 0 )
 {
     bool pass = true;
     if ( i < 10 ) {
-        char name[10];
+        char name[20];
         sprintf( name, "scoped-%i", i + 1 );
         pass = !global_profiler.active( name, __FILE__ );
         PROFILE_SCOPED( timer, "scoped" );
