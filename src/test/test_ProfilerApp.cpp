@@ -126,12 +126,14 @@ int run_tests( bool enable_trace, std::string save_name )
     // Get a list of timer names
     std::vector<std::string> names( N_timers );
     std::vector<std::string> names2( N_timers );
+    std::vector<std::string> names3( N_timers );
     std::vector<size_t> ids( N_timers );
     for ( int i = 0; i < N_timers; i++ ) {
         char tmp[16];
         sprintf( tmp, "%04i", i );
         names[i]  = std::string( tmp );
         names2[i] = std::string( tmp ) + "_";
+        names3[i] = std::string( tmp ) + "_s";
         ids[i]    = ProfilerApp::getTimerId( names[i].c_str(), __FILE__ );
     }
 
@@ -188,8 +190,8 @@ int run_tests( bool enable_trace, std::string save_name )
         PROFILE_STOP( "static" );
         PROFILE_START( "dynamic" );
         for ( int j = 0; j < N_timers; j++ ) {
-            global_profiler.start( names2[j], __FILE__, __LINE__, 0 );
-            global_profiler.stop( names2[j], __FILE__, __LINE__, 0 );
+            PROFILE_START( names2[j] );
+            PROFILE_STOP( names2[j] );
         }
         PROFILE_STOP( "dynamic" );
         PROFILE_START( "scoped-static" );
@@ -198,32 +200,37 @@ int run_tests( bool enable_trace, std::string save_name )
         PROFILE_STOP( "scoped-static" );
         PROFILE_START( "scoped-dynamic" );
         for ( int j = 0; j < N_timers; j++ )
-            ScopedTimer OBJ( names2[j], __FILE__, -1 );
+            PROFILE_SCOPED( timer, names3[j] );
         PROFILE_STOP( "scoped-dynamic" );
-        PROFILE_START( "scoped-manual" );
-        for ( int j = 0; j < N_timers; j++ ) {
-            ScopedTimer timer( "static_name3", __FILE__, __LINE__, 0, false, global_profiler );
-            NULL_USE( timer );
-        }
-        PROFILE_STOP( "scoped-manual" );
         PROFILE_START( "level 0" );
         for ( int j = 0; j < N_timers; j++ ) {
             global_profiler.start( ids[j], names[j].c_str(), __FILE__, -1, 0 );
             global_profiler.stop( ids[j], names[j].c_str(), __FILE__, -1, 0 );
         }
         PROFILE_STOP( "level 0" );
-        PROFILE_START( "level 1" );
+        PROFILE_START( "level 1 (1)" );
         for ( int j = 0; j < N_timers; j++ ) {
             global_profiler.start( ids[j], names[j].c_str(), __FILE__, -1, 1 );
             global_profiler.stop( ids[j], names[j].c_str(), __FILE__, -1, 1 );
         }
-        PROFILE_STOP( "level 1" );
-        PROFILE_START( "level 2" );
+        PROFILE_STOP( "level 1 (1)" );
+        PROFILE_START( "level 1 (2)" );
         for ( int j = 0; j < N_timers; j++ ) {
-            global_profiler.start( names[j], __FILE__, -1, 2 );
-            global_profiler.stop( names[j], __FILE__, -1, 2 );
+            global_profiler.start( names[j], __FILE__, -1, 1 );
+            global_profiler.stop( names[j], __FILE__, -1, 1 );
         }
-        PROFILE_STOP( "level 2" );
+        PROFILE_STOP( "level 1 (2)" );
+        PROFILE_START( "level 1 (3)" );
+        for ( int j = 0; j < N_timers; j++ ) {
+            PROFILE_START( "Test", 1 );
+            PROFILE_STOP( "Test", 1 );
+        }
+        PROFILE_STOP( "level 1 (3)" );
+        PROFILE_START( "level 1 (scoped)" );
+        for ( int j = 0; j < N_timers; j++ ) {
+            PROFILE_SCOPED( timer, "Test", 1 );
+        }
+        PROFILE_STOP( "level 1 (scoped)" );
         // Test the two forms of active
         PROFILE_START( "active 1" );
         for ( int j = 0; j < N_timers; j++ )
@@ -253,10 +260,11 @@ int run_tests( bool enable_trace, std::string save_name )
     printOverhead( "dynamic", N_it * N_timers );
     printOverhead( "scoped-static", N_it * N_timers );
     printOverhead( "scoped-dynamic", N_it * N_timers );
-    printOverhead( "scoped-manual", N_it * N_timers );
     printOverhead( "level 0", N_it * N_timers );
-    printOverhead( "level 1", N_it * N_timers );
-    printOverhead( "level 2", N_it * N_timers );
+    printOverhead( "level 1 (1)", N_it * N_timers );
+    printOverhead( "level 1 (2)", N_it * N_timers );
+    printOverhead( "level 1 (3)", N_it * N_timers );
+    printOverhead( "level 1 (scoped)", N_it * N_timers );
     printOverhead( "active 1", N_it * N_timers );
     printOverhead( "active 2", N_it * N_timers );
     printf( "\n" );
@@ -287,8 +295,8 @@ int run_tests( bool enable_trace, std::string save_name )
 
     // Load the data from the file (sorting based on the timer ids)
     PROFILE_START( "LOAD" );
-    auto load_results  = ProfilerApp::load( save_name, rank );
-    auto &data2 = load_results.timers;
+    auto load_results = ProfilerApp::load( save_name, rank );
+    auto &data2       = load_results.timers;
     MemoryResults memory2;
     if ( !load_results.memory.empty() )
         memory2 = load_results.memory[0];

@@ -2,24 +2,34 @@
 #define included_ProfilerAppMacros
 
 
-// Define some helper macros
+// Define some helper functions
 #define GET_LEVEL( _0, N, ... ) N
-#define PROFILE_START_LEVEL( NAME, FILE, LINE, LEVEL )                                  \
-    do {                                                                                \
-        static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" ); \
-        constexpr uint64_t id = ProfilerApp::getTimerId( NAME, FILE );                  \
-        static_assert( id != 0, "Invalid id" );                                         \
-        global_profiler.start( id, NAME, FILE, LINE, LEVEL );                           \
+#define PROFILE_START_LEVEL( NAME, FILE, LINE, LEVEL )                                         \
+    do {                                                                                       \
+        if ( LEVEL <= global_profiler.getLevel() ) {                                           \
+            static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" );    \
+            constexpr uint64_t v1 = ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ); \
+            static_assert( v1 != 0, "Invalid FILE hash" );                                     \
+            uint64_t v2 = ProfilerApp::hashString( NAME );                                     \
+            uint64_t id = ( v2 << 32 ) + ( v1 ^ v2 );                                          \
+            global_profiler.start( id, ProfilerApp::getString( NAME ), FILE, LINE, LEVEL );    \
+        }                                                                                      \
     } while ( 0 )
-#define PROFILE_STOP_LEVEL( NAME, FILE, LINE, LEVEL )                                   \
-    do {                                                                                \
-        static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" ); \
-        constexpr uint64_t id = ProfilerApp::getTimerId( NAME, FILE );                  \
-        static_assert( id != 0, "Invalid id" );                                         \
-        global_profiler.stop( id, NAME, FILE, LINE, LEVEL );                            \
+#define PROFILE_STOP_LEVEL( NAME, FILE, LINE, LEVEL )                                          \
+    do {                                                                                       \
+        if ( LEVEL <= global_profiler.getLevel() ) {                                           \
+            static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" );    \
+            constexpr uint64_t v1 = ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ); \
+            static_assert( v1 != 0, "Invalid FILE hash" );                                     \
+            uint64_t v2 = ProfilerApp::hashString( NAME );                                     \
+            uint64_t id = ( v2 << 32 ) + ( v1 ^ v2 );                                          \
+            global_profiler.stop( id, ProfilerApp::getString( NAME ), FILE, LINE, LEVEL );     \
+        }                                                                                      \
     } while ( 0 )
-#define PROFILE_SCOPED_LEVEL( OBJ, NAME, FILE, LINE, LEVEL ) \
-    ScopedTimer OBJ( ProfilerApp::getTimerId( NAME, FILE ), NAME, FILE, LINE, LEVEL, true, global_profiler )
+#define PROFILE_SCOPED_LEVEL( OBJ, NAME, FILE, LINE, LEVEL )                                \
+    ScopedTimer OBJ( ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ),             \
+        ProfilerApp::hashString( NAME ), ProfilerApp::getString( NAME ), FILE, LINE, LEVEL, \
+        global_profiler )
 #define PROFILE_SAVE_GLOBAL( NAME, GLOB ) global_profiler.save( NAME, GLOB )
 
 

@@ -123,7 +123,7 @@ constexpr inline uint64_t ProfilerApp::getTimerId( const char* message, const ch
 {
     uint32_t v1  = hashString( stripPath( filename ) );
     uint32_t v2  = hashString( message );
-    uint64_t key = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1^v2 );
+    uint64_t key = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
     return key;
 }
 

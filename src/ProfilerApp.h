@@ -159,30 +159,34 @@ struct TimerMemoryResults {
 };
 
 
+// clang-format off
 /** \class ProfilerApp
  *
  * This class provides some basic timing and profiling capabilities.
  * It works be providing start, stop, and save functions that allow the user to record
  * the total time required for blocks of code.  The results are written to an ASCII data
  * file that can be viewed directly or processed.  It is compatible with MPI and SAMRAI.
- * The overhead of the function is ~1us per call for start and stop.  the time for save
- * depends of the amount of data to be written and the speed of the writes.  Additional
- * details can be provided with set_store_trace which records the actual time (from startup)
+ * The overhead of the function is ~1us per call for start and stop.
+ * The time required to save depends of the amount of data to be written and the speed of the writes.
+ * Additional details can be provided with set_store_trace which records the actual time (from startup)
  * for each start and stop call.  This method significantly increases the memory requirements.
  * Several preprocessor define statement are given for easy incorporation: \verbatim
- *    PROFILE_START(NAME) - Start profiling a block of code with the given name
- *                          The name must be unique to the file and there must be a corresponding
- * stop statement. PROFILE_STOP(NAME)  - Stop profiling a block of code with the given name The name
- * must match the given start block, and there must only be one
- * PROFILE_STOP for each PROFILE_START.  This records the current line number as the final line
- * number for the block of code. PROFILE_STOP2(NAME) - Stop profiling a
- * block of code with the given name The name must match the given start block.  This is a
- * special stop that does not use the current line as the final line of the
- * block, but is provided for cases where there are multiple exit paths for
- * a given function or block of code. PROFILE_SAVE(FILE)  - Save the
- * results of profiling to a file. PROFILE_ENABLE(0)   - Enable the profiler with a default level
- * of 0 PROFILE_ENABLE(ln)  - Enable the profiler with the given level PROFILE_DISABLE()   -
- * Disable the profiler PROFILE_ENABLE_TRACE()  - Enable the trace-level data
+ *    PROFILE_START(NAME) - Start profiling a block of code with the given name.
+ *                          The name must be unique to the file and there must be a corresponding stop statement.
+ *    PROFILE_STOP(NAME)  - Stop profiling a block of code with the given name.
+ *                          The name must match the given start block, and there must only be one
+ *                          PROFILE_STOP for each PROFILE_START. This records the current line
+ *                          number as the final line number for the block of code.
+ *    PROFILE_STOP2(NAME) - Stop profiling a block of code with the given name.
+ *                          The name must match the given start block.  This is a special stop
+ *                          that does not use the current line as the final line of the block,
+ *                          but is provided for cases where there are multiple exit paths for
+ *                          a given function or block of code.
+ *    PROFILE_SAVE(FILE)  - Save the results of profiling to a file.
+ *    PROFILE_ENABLE(0)   - Enable the profiler with a default level of 0
+ *    PROFILE_ENABLE(ln)  - Enable the profiler with the given level
+ *    PROFILE_DISABLE()   - Disable the profiler
+ *    PROFILE_ENABLE_TRACE()  - Enable the trace-level data
  *    PROFILE_DISABLE_TRACE() - Disable the trace-level data
  *    PROFILE_ENABLE_MEMORY()  - Enable tracing the memory usage over time
  *    PROFILE_DISABLE_MEMORY() - Disable tracing the memory usage over time
@@ -193,15 +197,18 @@ struct TimerMemoryResults {
  * All start/stop and enable support an optional argument level that specifies the level of detail
  * for the timers.  All timers with a number greater than the current level in the profiler will be
  * ignored. The macros PROFILE_START and PROFILE_STOP automatically check the level for performance
- * and calling an unused timer adds ~5ns per call. <BR> For repeated calls the timer adds ~ 200ns per
- * call with without trace info, and ~1-10us per call with full trace info. Most of this overhead is
- * not in the time returned by the timer.  The resolution is ~ 1us for a single timer call. <BR>
- * Note: PROFILE_START and PROFILE_STOP require compile time string constants for the message.
- *    Calling start/stop directly eliminates this requirement, but add ~200ns to the cost. <BR>
- * Note: When a timer is created the initial cost may be significantly higher, 
- *    but this only occurs once pertimer. <BR>
- * Note: The scoped timer (PROFILE_SCOPED) has slightly better performance that START/STOP. <BR>
- * Example usage: \verbatim void my_function(void *arg) { PROFILE_START("my function");
+ * and calling an unused timer adds ~5ns per call. <BR>
+ * For repeated calls the timer adds ~ 200ns per call with without trace info, and ~1-10us per call
+ * with full trace info. Most of this overhead is not in the time returned by the timer.
+ * The resolution is ~ 1us for a single timer call. <BR>
+ * Note: PROFILE_START and PROFILE_STOP require compile time string constants for the
+ * message. Calling start/stop directly eliminates this requirement, but add ~200ns to the cost. <BR>
+ * Note: When a timer is created the initial cost may be significantly higher, but this only
+ * occurs once pertimer. <BR>
+ * Note: The scoped timer (PROFILE_SCOPED) has very similar performance to START/STOP. <BR>
+ * Example usage: \verbatim 
+ *    void my_function(void *arg) {
+ *       PROFILE_START("my function");
  *       int k;
  *       for (int i=0; i<10; i++) {
  *          PROFILE_START("sub call");
@@ -234,6 +241,7 @@ struct TimerMemoryResults {
  * which may be rounded to boundaries by the system.  This overhead is NOT accounted for,
  * and may cause a slight variation in the reported memory usage.
  */
+// clang-format on
 class ProfilerApp final
 {
 public:
@@ -271,7 +279,9 @@ public:
         if ( level < 0 || level >= 128 )
             throw std::logic_error( "level must be in the range 0-127" );
         if ( level <= d_level ) {
-            uint64_t id = getTimerId( message.c_str(), filename );
+            uint32_t v1 = hashString( stripPath( filename ) );
+            uint32_t v2 = hashString( message.c_str() );
+            uint64_t id = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
             start( id, message.c_str(), filename, line, level );
         }
     }
@@ -293,7 +303,9 @@ public:
         if ( level < 0 || level >= 128 )
             throw std::logic_error( "level must be in the range 0-127" );
         if ( level <= d_level ) {
-            uint64_t id = getTimerId( message.c_str(), filename );
+            uint32_t v1 = hashString( stripPath( filename ) );
+            uint32_t v2 = hashString( message.c_str() );
+            uint64_t id = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
             stop( id, message.c_str(), filename, line, level );
         }
     }
@@ -489,6 +501,17 @@ public: // Fast interface to start/stop
             stop( thread_data, timer, end_time );
         }
     }
+
+
+    // Helper functions
+    constexpr static inline const char* stripPath( const char* filename_in );
+    constexpr static inline uint32_t hashString( const char* str );
+    static inline uint32_t hashString( const std::string& str )
+    {
+        return hashString( str.c_str() );
+    }
+    static inline const char* getString( const std::string& str ) { return str.c_str(); }
+    constexpr static inline const char* getString( const char* str ) { return str; }
 
 
 public: // Constants to determine parameters that affect performance/memory
@@ -690,7 +713,6 @@ private: // Member data
 
 
 private: // Private member functions
-
     // Function to return a pointer to the thread info (or create it if necessary)
     // Note: this function does not require any blocking
     thread_info* getThreadData()
@@ -740,10 +762,6 @@ private: // Private member functions
     static void addTimers(
         std::vector<TimerResults>& timers, const std::vector<TimerResults>& add );
     static void gatherMemory( std::vector<MemoryResults>& memory );
-
-    // Helper functions
-    constexpr static inline const char* stripPath( const char* filename_in );
-    constexpr static inline uint32_t hashString( const char* str );
 
 
 protected: // Friends

@@ -790,8 +790,8 @@ void ProfilerApp::activeErrStart( thread_info* thread, store_timer* timer )
         // Throw an error
         std::stringstream msg;
         const auto& data = *( timer->timer_data );
-        msg << "Timer is already active, did you forget to call stop? (" << data.message
-            << " in " << data.filename << " at line " << data.start_line << ")\n";
+        msg << "Timer is already active, did you forget to call stop? (" << data.message << " in "
+            << data.filename << " at line " << data.start_line << ")\n";
         throw std::logic_error( msg.str() );
     }
 }
@@ -837,12 +837,11 @@ void ProfilerApp::activeErrStop( thread_info* thread, store_timer* timer )
         this->start( thread, timer );
     } else {
         const auto& data = *( timer->timer_data );
-        std::string msg  = "Timer is not active, did you forget to call start? (" +
-                          data.message + " in " + data.filename + " at line " +
-                          std::to_string( data.stop_line ) + ")\n";
+        std::string msg  = "Timer is not active, did you forget to call start? (" + data.message +
+                          " in " + data.filename + " at line " + std::to_string( data.stop_line ) +
+                          ")\n";
         throw std::logic_error( msg );
     }
-
 }
 void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_time )
 {
@@ -1022,7 +1021,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             size_t N_stored_trace = 0;
             if ( d_store_trace_data )
                 N_stored_trace = std::min<size_t>( trace->N_calls, MAX_TRACE_TRACE );
-            auto list = getActiveList( trace->trace, timer->trace_index, thread_data );
+            auto list           = getActiveList( trace->trace, timer->trace_index, thread_data );
             results.trace[k].id = results.id;
             results.trace[k].thread   = thread_id;
             results.trace[k].rank     = rank;
@@ -1065,7 +1064,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             for ( size_t i = 0; i < TRACE_SIZE; i++ )
                 active[i] = thread_data->active[i] & timer->trace[i];
             unset_trace_bit( timer->trace_index, TRACE_SIZE, active );
-            auto list = getActiveList( active, timer->trace_index, thread_data );
+            auto list                 = getActiveList( active, timer->trace_index, thread_data );
             results.trace[k].id       = results.id;
             results.trace[k].thread   = thread_id;
             results.trace[k].rank     = rank;
