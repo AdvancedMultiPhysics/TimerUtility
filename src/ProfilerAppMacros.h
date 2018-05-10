@@ -4,32 +4,22 @@
 
 // Define some helper macros
 #define GET_LEVEL( _0, N, ... ) N
-/*#define PROFILE_START_LEVEL(NAME,FILE,LINE,LEVEL)                     \
-    do {                                                                \
-      if ( LEVEL <= global_profiler.get_level() ) {                     \
-        const static size_t id = ProfilerApp::get_timer_id(NAME,FILE);  \
-        global_profiler.start( NAME, FILE, LINE, LEVEL, id );           \
-      }                                                                 \
-    } while(0)
-#define PROFILE_STOP_LEVEL(NAME,FILE,LINE,LEVEL)                        \
-    do {                                                                \
-      if ( LEVEL <= global_profiler.get_level() ) {                     \
-        const static size_t id = ProfilerApp::get_timer_id(NAME,FILE);  \
-        global_profiler.stop( NAME, FILE, LINE, LEVEL, id );            \
-      }                                                                 \
-    } while(0)*/
-#define PROFILE_START_LEVEL( NAME, FILE, LINE, LEVEL )        \
-    do {                                                      \
-        if ( LEVEL <= global_profiler.get_level() )           \
-            global_profiler.start( NAME, FILE, LINE, LEVEL ); \
+#define PROFILE_START_LEVEL( NAME, FILE, LINE, LEVEL )                                  \
+    do {                                                                                \
+        static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" ); \
+        constexpr uint64_t id = ProfilerApp::getTimerId( NAME, FILE );                  \
+        static_assert( id != 0, "Invalid id" );                                         \
+        global_profiler.start( id, NAME, FILE, LINE, LEVEL );                           \
     } while ( 0 )
-#define PROFILE_STOP_LEVEL( NAME, FILE, LINE, LEVEL )        \
-    do {                                                     \
-        if ( LEVEL <= global_profiler.get_level() )          \
-            global_profiler.stop( NAME, FILE, LINE, LEVEL ); \
+#define PROFILE_STOP_LEVEL( NAME, FILE, LINE, LEVEL )                                   \
+    do {                                                                                \
+        static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" ); \
+        constexpr uint64_t id = ProfilerApp::getTimerId( NAME, FILE );                  \
+        static_assert( id != 0, "Invalid id" );                                         \
+        global_profiler.stop( id, NAME, FILE, LINE, LEVEL );                            \
     } while ( 0 )
 #define PROFILE_SCOPED_LEVEL( OBJ, NAME, FILE, LINE, LEVEL ) \
-    ScopedTimer OBJ( NAME, FILE, LINE, LEVEL )
+    ScopedTimer OBJ( ProfilerApp::getTimerId( NAME, FILE ), NAME, FILE, LINE, LEVEL, true, global_profiler )
 #define PROFILE_SAVE_GLOBAL( NAME, GLOB ) global_profiler.save( NAME, GLOB )
 
 
@@ -129,7 +119,7 @@
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  *  \param X  Flag to indicate if we want to enable/disable the trace timers
  */
-#define PROFILE_STORE_TRACE( X ) global_profiler.set_store_trace( X )
+#define PROFILE_STORE_TRACE( X ) global_profiler.setStoreTrace( X )
 
 
 /*! \def PROFILE_ENABLE(...)
@@ -157,7 +147,7 @@
  *      performance if enabled.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE_TRACE() global_profiler.set_store_trace( true )
+#define PROFILE_ENABLE_TRACE() global_profiler.setStoreTrace( true )
 
 
 /*! \def PROFILE_DISABLE_TRACE()
@@ -168,7 +158,7 @@
  *      performance if enabled.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_DISABLE_TRACE() global_profiler.set_store_trace( false )
+#define PROFILE_DISABLE_TRACE() global_profiler.setStoreTrace( false )
 
 
 /*! \def PROFILE_ENABLE_MEMORY()
@@ -177,7 +167,7 @@
  *      the application.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE_MEMORY() global_profiler.set_store_memory( true )
+#define PROFILE_ENABLE_MEMORY() global_profiler.setStoreMemory( true )
 
 
 /*! \def PROFILE_DISABLE_MEMORY()
@@ -187,20 +177,7 @@
  *      the application.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_DISABLE_MEMORY() global_profiler.set_store_memory( false )
-
-
-/*! \def STATIC_ASSERT(EXP)
- *  \brief static assert
- *  \details This will perform a static assert if possible, otherwise it will have no effect.
- */
-#if defined( ENABLE_STATIC_ASSERT ) || defined( TIMER_ENABLE_STATIC_ASSERT )
-#define STATIC_ASSERT( EXP ) static_assert( EXP, "Failed static assert: " #EXP )
-#else
-#define STATIC_ASSERT( EXP ) \
-    do {                     \
-    } while ( 0 )
-#endif
+#define PROFILE_DISABLE_MEMORY() global_profiler.setStoreMemory( false )
 
 
 /*! @} */

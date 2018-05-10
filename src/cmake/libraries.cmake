@@ -105,7 +105,7 @@ MACRO( CONFIGURE_MPI )
             SET( MPIEXEC_NUMPROC_FLAG "-np" )
         ENDIF()
         # Set the definitions
-        ADD_DEFINITIONS( "-D USE_MPI" )  
+        ADD_DEFINITIONS( -DUSE_MPI )  
         MESSAGE( "Using MPI" )
         MESSAGE( "  MPIEXEC = ${MPIEXEC}" )
         MESSAGE( "  MPIEXEC_NUMPROC_FLAG = ${MPIEXEC_NUMPROC_FLAG}" )

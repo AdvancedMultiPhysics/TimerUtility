@@ -26,5 +26,5 @@ static int create_atomic_pthread_lock()
 }
 int atomic_pthread_lock_initialized = create_atomic_pthread_lock();
 #endif
-}
+} // namespace atomic
 } // namespace TimerUtility

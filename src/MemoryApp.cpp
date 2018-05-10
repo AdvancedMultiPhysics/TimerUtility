@@ -161,7 +161,6 @@ void operator delete[]( void* data, const std::nothrow_t& ) noexcept
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
     }
 }
-#if CXX_STD == 14
 void operator delete( void* data, std::size_t ) noexcept
 {
     if ( data != NULL ) {
@@ -180,7 +179,6 @@ void operator delete[]( void* data, std::size_t ) noexcept
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
     }
 }
-#endif
 #endif
 
 

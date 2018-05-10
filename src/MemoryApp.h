@@ -49,7 +49,7 @@ public:
         size_t stack_used;     //!<  An estimate for the current stack size
         size_t stack_size;     //!<  The maximum stack size
         //! Empty constuctor
-        MemoryStats() { memset(this,0,sizeof(MemoryStats)); }
+        MemoryStats() { memset( this, 0, sizeof( MemoryStats ) ); }
     };
 
     /**
@@ -114,10 +114,8 @@ private:
     friend void* operator new[]( size_t size, const std::nothrow_t& ) noexcept;
     friend void operator delete(void* data, const std::nothrow_t&) noexcept;
     friend void operator delete[]( void* data, const std::nothrow_t& ) noexcept;
-#if CXX_STD == 14
     friend void operator delete( void* data, std::size_t ) noexcept;
     friend void operator delete[]( void* data, std::size_t ) noexcept;
-#endif
 #endif
 };
 

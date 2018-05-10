@@ -59,7 +59,6 @@ ENDIF()
 # Include CMake files
 INCLUDE( cmake/macros.cmake )
 INCLUDE( cmake/libraries.cmake )
-INCLUDE( cmake/WriteCompilerFeatures.cmake TIMER )
 
 
 # Check if we are only compiling docs
@@ -74,13 +73,6 @@ SET( TRIGGER_SITE "" )
 SET( DROP_SITE_CDASH TRUE )
 ENABLE_TESTING()
 INCLUDE( CTest )
-
-
-# Check the compile mode and compile flags
-IF ( NOT ONLY_BUILD_DOCS )
-    CONFIGURE_SYSTEM()
-    WRITE_COMPILE_FEATURES( "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" TIMER )
-ENDIF()
 
 
 # Create the target for documentation
@@ -124,6 +116,7 @@ WRITE_REPO_VERSION( "${${PROJ}_INSTALL_DIR}/include/TimerUtilityVersion.h" )
 
 # Configure external packages
 IF ( NOT ONLY_BUILD_DOCS )
+    CONFIGURE_SYSTEM()
     CONFIGURE_MPI()     # MPI must be before other libraries
     CONFIGURE_MATLAB()  # MATLAB must be second after MPI
     CONFIGURE_TIMER()

@@ -17,9 +17,6 @@
 #endif
 
 
-inline void ERROR_MSG( const std::string& msg ) { throw std::logic_error( msg ); }
-
-
 // Check the limits of the define variables
 static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY must be < 2^32" );
 
@@ -29,20 +26,14 @@ static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY mu
             std::stringstream stream;                                                    \
             stream << "Failed assertion: " << #EXP << " " << __FILE__ << " " << __LINE__ \
                    << std::endl;                                                         \
-            ERROR_MSG( stream.str() );                                                   \
+            throw std::logic_error( stream.str() );                                      \
         }                                                                                \
-    \
-} while ( false )
-
-#define NULL_USE( variable )                \
-    do {                                    \
-        if ( 0 ) {                          \
-            auto static temp = (char *) &variable; \
-            temp++;                         \
-        }                                   \
-    } while ( 0 )
+                                                                                         \
+    } while ( false )
 
 #define diff_ns( X, Y ) std::chrono::duration_cast<std::chrono::nanoseconds>( X - Y ).count()
+
+volatile TimerUtility::atomic::int32_atomic ProfilerApp::d_N_threads = 0;
 
 
 /******************************************************************
@@ -62,9 +53,6 @@ static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY mu
 /******************************************************************
  * Define global variables                                         *
  ******************************************************************/
-#if defined( TIMER_ENABLE_THREAD_LOCAL ) && !defined( DISABLE_TIMER_THREAD_LOCAL_MAP )
-thread_local ProfilerApp::RecursiveFunctionMap ProfilerApp::d_level_map;
-#endif
 ProfilerApp global_profiler;
 constexpr size_t ProfilerApp::TRACE_TYPE_size;
 constexpr size_t ProfilerApp::TRACE_SIZE;
@@ -145,72 +133,24 @@ void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max,
 
 
 /******************************************************************
- * Some inline functions to acquire/release a mutex                *
- ******************************************************************/
-#ifdef USE_WINDOWS
-static inline bool GET_LOCK( const HANDLE* lock )
-{
-    int retval = WaitForSingleObject( *lock, INFINITE );
-    if ( retval != WAIT_OBJECT_0 ) {
-        std::cerr << "Error locking mutex\n";
-        return true;
-    }
-    return false;
-}
-static inline bool RELEASE_LOCK( const HANDLE* lock )
-{
-    int retval = ReleaseMutex( *lock );
-    if ( retval == 0 ) {
-        std::cerr << "Error unlocking mutex\n";
-        return true;
-    }
-    return false;
-}
-#elif defined( USE_LINUX ) || defined( USE_MAC )
-static inline bool GET_LOCK( const pthread_mutex_t* lock )
-{
-    int retval = pthread_mutex_lock( const_cast<pthread_mutex_t*>( lock ) );
-    if ( retval == -1 ) {
-        std::cerr << "Error locking mutex\n";
-        return true;
-    }
-    return false;
-}
-static inline bool RELEASE_LOCK( const pthread_mutex_t* lock )
-{
-    int retval = pthread_mutex_unlock( const_cast<pthread_mutex_t*>( lock ) );
-    if ( retval == -1 ) {
-        std::cerr << "Error unlocking mutex\n";
-        return true;
-    }
-    return false;
-}
-#else
-#error Unknown OS
-#endif
-
-
-/******************************************************************
  * Some inline functions to get the rank and comm size             *
  * Note: we want these functions to be safe to use, even if MPI    *
  *    has not been initialized.                                    *
  ******************************************************************/
+#ifdef USE_MPI
 static inline int comm_size()
 {
     int size = 1;
-#ifdef USE_MPI
     int flag = 0;
     MPI_Initialized( &flag );
     if ( flag )
         MPI_Comm_size( MPI_COMM_WORLD, &size );
     ASSERT( size > 0 );
-#endif
     return size;
 }
 static inline int comm_rank()
 {
     int rank = 0;
-#ifdef USE_MPI
     int flag = 0;
     MPI_Initialized( &flag );
     if ( flag ) {
@@ -220,26 +160,20 @@ static inline int comm_rank()
         ASSERT( size > 0 );
         ASSERT( rank < size && rank >= 0 );
     }
-#endif
     return rank;
 }
 static inline void comm_barrier()
 {
-#ifdef USE_MPI
     if ( comm_size() > 1 )
         MPI_Barrier( MPI_COMM_WORLD );
-#endif
 }
 static inline double comm_max_reduce( const double val )
 {
     double result = val;
-#ifdef USE_MPI
     if ( comm_size() > 1 )
         MPI_Allreduce( (double*) &val, &result, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD );
-#endif
     return result;
 }
-#ifdef USE_MPI
 template<class TYPE>
 inline MPI_Datatype getType();
 template<>
@@ -269,7 +203,7 @@ inline MPI_Datatype getType<int64_t>()
         return MPI_LONG;
     if ( sizeof( uint64_t ) == sizeof( long long ) )
         return MPI_LONG_LONG;
-    ERROR_MSG( "Invalid MPI type" );
+    throw std::logic_error( "Invalid MPI type" );
     return MPI_BYTE;
 }
 template<>
@@ -279,7 +213,7 @@ inline MPI_Datatype getType<uint64_t>()
         return MPI_UNSIGNED_LONG;
     if ( sizeof( uint64_t ) == sizeof( long long ) )
         return MPI_UNSIGNED_LONG_LONG;
-    ERROR_MSG( "Invalid MPI type" );
+    throw std::logic_error( "Invalid MPI type" );
     return MPI_BYTE;
 }
 template<>
@@ -287,26 +221,16 @@ inline MPI_Datatype getType<double>()
 {
     return MPI_DOUBLE;
 }
-#endif
 template<class TYPE>
 static inline void comm_send1( const TYPE* buf, size_t size, int dest, int tag )
 {
-#ifdef USE_MPI
     ASSERT( size < 0x80000000 );
     int err = MPI_Send( buf, (int) size, getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
-#else
-    NULL_USE( buf );
-    NULL_USE( size );
-    NULL_USE( dest );
-    NULL_USE( tag );
-    ERROR_MSG( "Calling MPI routine in no-mpi build" );
-#endif
 }
 template<class TYPE>
 static inline TYPE* comm_recv1( int source, int tag )
 {
-#ifdef USE_MPI
     MPI_Status status;
     int err = MPI_Probe( source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
@@ -316,31 +240,17 @@ static inline TYPE* comm_recv1( int source, int tag )
     err       = MPI_Recv( buf, count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
     return buf;
-#else
-    NULL_USE( source );
-    NULL_USE( tag );
-    ERROR_MSG( "Calling MPI routine in no-mpi build" );
-    return nullptr;
-#endif
 }
 template<class TYPE>
 static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag )
 {
-#ifdef USE_MPI
     int err =
         MPI_Send( getPtr( data ), (int) data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
-#else
-    NULL_USE( data );
-    NULL_USE( dest );
-    NULL_USE( tag );
-    ERROR_MSG( "Calling MPI routine in no-mpi build" );
-#endif
 }
 template<class TYPE>
 static inline std::vector<TYPE> comm_recv2( int source, int tag )
 {
-#ifdef USE_MPI
     MPI_Status status;
     int err = MPI_Probe( source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
@@ -350,13 +260,35 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
     err = MPI_Recv( getPtr( data ), count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
     return data;
-#else
-    NULL_USE( source );
-    NULL_USE( tag );
-    ERROR_MSG( "Calling MPI routine in no-mpi build" );
-    return std::vector<TYPE>();
-#endif
 }
+#else
+static inline int comm_size() { return 1; }
+static inline int comm_rank() { return 0; }
+static inline void comm_barrier() {}
+static inline double comm_max_reduce( const double val ) { return val; }
+template<class TYPE>
+static inline void comm_send1( const TYPE*, size_t, int, int )
+{
+    throw std::logic_error( "Calling MPI routine in no-mpi build" );
+}
+template<class TYPE>
+static inline TYPE* comm_recv1( int, int )
+{
+    throw std::logic_error( "Calling MPI routine in no-mpi build" );
+    return nullptr;
+}
+template<class TYPE>
+static inline void comm_send2( const std::vector<TYPE>&, int, int )
+{
+    throw std::logic_error( "Calling MPI routine in no-mpi build" );
+}
+template<class TYPE>
+static inline std::vector<TYPE> comm_recv2( int, int )
+{
+    throw std::logic_error( "Calling MPI routine in no-mpi build" );
+    return std::vector<TYPE>();
+}
+#endif
 
 
 /***********************************************************************
@@ -386,7 +318,7 @@ static inline void unset_trace_bit( unsigned int i, unsigned int N, ProfilerApp:
  * Note: The timer is only a calling timer if it was active before and  *
  *   after the current timer (hence the & of the two values)            *
  ***********************************************************************/
-static inline uint64_t get_trace_id(
+static inline uint64_t getTraceId(
     const ProfilerApp::TRACE_TYPE* active, const ProfilerApp::TRACE_TYPE* trace )
 {
     static_assert( ProfilerApp::TRACE_SIZE % 4 == 0, "TRACE_SIZE must be a multiple of 4" );
@@ -425,7 +357,7 @@ static inline id_struct convert_timer_id( size_t key )
         else if ( sizeof( size_t ) == 8 )
             id2 = ( key * 0x9E3779B97F4A7C15 ) >> ( 64 - N_BITS_ID );
         else
-            ERROR_MSG( "Unhandled case" );
+            throw std::logic_error( "Unhandled case" );
     }
     // Convert the new key to a string
     char id[20] = { 0 };
@@ -476,7 +408,7 @@ TraceResults::TraceResults()
       N( 0 ),
       mem( nullptr )
 {
-    STATIC_ASSERT( sizeof( id_struct ) == sizeof( double ) );
+    static_assert( sizeof( id_struct ) == sizeof( double ) );
 }
 TraceResults::~TraceResults()
 {
@@ -783,23 +715,12 @@ bool TimerMemoryResults::operator==( const TimerMemoryResults& rhs ) const
 
 
 /***********************************************************************
- * Consructor                                                           *
+ * Constructor                                                          *
  ***********************************************************************/
 ProfilerApp::ProfilerApp()
 {
-#if defined( TIMER_ENABLE_THREAD_LOCAL ) && !defined( DISABLE_TIMER_THREAD_LOCAL_MAP )
-    d_level_map = RecursiveFunctionMap();
-#endif
     d_construct_time = now();
-    if ( sizeof( id_struct ) != 8 )
-        ERROR_MSG( "id_struct is an unexpected size\n" );
-#ifdef USE_WINDOWS
-    lock = CreateMutex( nullptr, FALSE, nullptr );
-#elif defined( USE_LINUX ) || defined( USE_MAC )
-    pthread_mutex_init( &lock, nullptr );
-#else
-#error Unknown OS
-#endif
+    static_assert( sizeof( id_struct ) == 8, "id_struct is an unexpected size" );
     for ( auto& i : thread_table )
         i = nullptr;
     for ( auto& i : timer_table )
@@ -816,19 +737,19 @@ ProfilerApp::ProfilerApp()
     d_size_memory         = nullptr;
     d_bytes               = sizeof( ProfilerApp );
 }
-void ProfilerApp::set_store_trace( bool profile )
+void ProfilerApp::setStoreTrace( bool profile )
 {
     if ( N_timers == 0 )
         d_store_trace_data = profile;
     else
-        ERROR_MSG( "Cannot change trace status after a timer is started\n" );
+        throw std::logic_error( "Cannot change trace status after a timer is started" );
 }
-void ProfilerApp::set_store_memory( bool memory )
+void ProfilerApp::setStoreMemory( bool memory )
 {
     if ( N_timers == 0 )
         d_store_memory_data = memory;
     else
-        ERROR_MSG( "Cannot change memory status after a timer is started\n" );
+        throw std::logic_error( "Cannot change memory status after a timer is started" );
 }
 
 
@@ -847,34 +768,37 @@ ProfilerApp::~ProfilerApp()
  ***********************************************************************/
 void ProfilerApp::synchronize()
 {
-    GET_LOCK( &lock );
+    d_lock.lock();
     comm_barrier();
     auto sync_time_local = now();
     int64_t ns           = diff_ns( sync_time_local, d_construct_time );
     double offset        = comm_max_reduce( static_cast<double>( ns ) );
     d_shift              = static_cast<int64_t>( offset ) - ns;
-    RELEASE_LOCK( &lock );
+    d_lock.unlock();
 }
 
 
 /***********************************************************************
  * Function to start profiling a block of code                          *
  ***********************************************************************/
+void ProfilerApp::activeErrStart( thread_info* thread, store_timer* timer )
+{
+    if ( d_disable_timer_error ) {
+        // Stop the timer before starting
+        this->stop( thread, timer );
+    } else {
+        // Throw an error
+        std::stringstream msg;
+        const auto& data = *( timer->timer_data );
+        msg << "Timer is already active, did you forget to call stop? (" << data.message
+            << " in " << data.filename << " at line " << data.start_line << ")\n";
+        throw std::logic_error( msg.str() );
+    }
+}
 void ProfilerApp::start( thread_info* thread, store_timer* timer )
 {
-    if ( timer->is_active ) {
-        if ( d_disable_timer_error ) {
-            // Stop the timer before starting
-            this->stop( thread, timer );
-        } else {
-            // Throw an error
-            std::stringstream msg;
-            const auto& data = *( timer->timer_data );
-            msg << "Timer is already active, did you forget to call stop? (" << data.message
-                << " in " << data.filename << " at line " << data.start_line << ")\n";
-            ERROR_MSG( msg.str() );
-        }
-    }
+    if ( timer->is_active )
+        activeErrStart( thread, timer );
     // Get the memory usage
     if ( d_store_memory_data && thread->N_memory_steps < d_max_trace_remaining ) {
         size_t* N_alloc = &thread->N_memory_alloc;
@@ -901,57 +825,45 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
         thread->N_memory_steps++;
     }
 }
-void ProfilerApp::start(
-    const char* message, const char* filename, int line, int level, uint64_t timer_id )
-{
-    if ( level < 0 || level >= 128 )
-        ERROR_MSG( "level must be in the range 0-127" );
-    if ( this->d_level < level )
-        return;
-    // Get the thread data
-    thread_info* thread_data = get_thread_data();
-    // Get the appropriate timer
-    if ( timer_id == 0 )
-        timer_id = get_timer_id( message, filename );
-    store_timer* timer = get_block( thread_data, timer_id, true, message, filename, line, -1 );
-    // Start the timer
-    start( thread_data, timer );
-}
 
 
 /***********************************************************************
  * Function to stop profiling a block of code                           *
  ***********************************************************************/
+void ProfilerApp::activeErrStop( thread_info* thread, store_timer* timer )
+{
+    if ( d_disable_timer_error ) {
+        // Start the timer before stopping
+        this->start( thread, timer );
+    } else {
+        const auto& data = *( timer->timer_data );
+        std::string msg  = "Timer is not active, did you forget to call start? (" +
+                          data.message + " in " + data.filename + " at line " +
+                          std::to_string( data.stop_line ) + ")\n";
+        throw std::logic_error( msg );
+    }
+
+}
 void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_time )
 {
     if ( !timer->is_active ) {
-        if ( d_disable_timer_error ) {
-            // Start the timer before starting
-            this->start( thread, timer );
-            // Use the current time as the new stop
-            end_time = now();
-        } else {
-            std::stringstream msg;
-            const auto& data = *( timer->timer_data );
-            msg << "Timer is not active, did you forget to call start? (" << data.message << " in "
-                << data.filename << " at line " << data.stop_line << ")\n";
-            ERROR_MSG( msg.str() );
-        }
+        activeErrStop( thread, timer );
+        end_time = now();
     }
     timer->is_active = false;
     // Update the active trace log
     unset_trace_bit( timer->trace_index, TRACE_SIZE, thread->active );
-    uint64_t trace_id = get_trace_id( thread->active, timer->trace );
+    uint64_t trace_id = getTraceId( thread->active, timer->trace );
     // Find the trace to save
-    store_trace* trace = timer->trace_head;
+    auto trace = timer->trace_head;
     while ( trace != nullptr ) {
         if ( trace_id == trace->id )
             break;
         trace = trace->next;
     }
     if ( trace == nullptr ) {
-        trace                                   = new store_trace;
-        TimerUtility::atomic::int64_atomic size = sizeof( store_trace );
+        trace     = new store_trace;
+        auto size = sizeof( store_trace );
         TimerUtility::atomic::atomic_add( &d_bytes, size );
         for ( size_t i = 0; i < TRACE_SIZE; i++ )
             trace->trace[i] = thread->active[i] & timer->trace[i];
@@ -1004,24 +916,6 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
         thread->N_memory_steps++;
     }
 }
-void ProfilerApp::stop(
-    const char* message, const char* filename, int line, int level, uint64_t timer_id )
-{
-    if ( level < 0 || level >= 128 )
-        ERROR_MSG( "level must be in the range 0-127" );
-    if ( this->d_level < level )
-        return;
-    // Use the current time (minimize the effects of the overhead of the timer)
-    auto end_time = now();
-    // Get the thread data
-    thread_info* thread_data = get_thread_data();
-    // Get the appropriate timer
-    if ( timer_id == 0 )
-        timer_id = get_timer_id( message, filename );
-    store_timer* timer = get_block( thread_data, timer_id, true, message, filename, -1, line );
-    // Stop the timer
-    stop( thread_data, timer, end_time );
-}
 
 
 /***********************************************************************
@@ -1031,15 +925,15 @@ void ProfilerApp::enable( int level )
 {
     // This is a blocking function so it cannot be called at the same time as disable
     if ( level < 0 || level >= 128 )
-        ERROR_MSG( "level must be in the range 0-127" );
-    GET_LOCK( &lock );
+        throw std::logic_error( "level must be in the range 0-127" );
+    d_lock.lock();
     d_level = level;
-    RELEASE_LOCK( &lock );
+    d_lock.unlock();
 }
 void ProfilerApp::disable()
 {
     // First, change the status flag
-    GET_LOCK( &lock );
+    d_lock.lock();
     d_level = -1;
     // delete the thread structures
     for ( auto& i : thread_table ) {
@@ -1061,11 +955,7 @@ void ProfilerApp::disable()
     d_size_memory = nullptr;
     // d_bytes = sizeof(ProfilerApp);
     d_bytes = 0;
-    RELEASE_LOCK( &lock );
-// Delete scoped variables
-#if defined( TIMER_ENABLE_THREAD_LOCAL ) && !defined( DISABLE_TIMER_THREAD_LOCAL_MAP )
-    d_level_map.clear();
-#endif
+    d_lock.unlock();
 }
 
 
@@ -1120,7 +1010,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             add_trace = true;
             time      = diff_ns( end_time, timer->start_time );
             unset_trace_bit( timer->trace_index, TRACE_SIZE, timer->trace );
-            trace_id = get_trace_id( thread_data->active, timer->trace );
+            trace_id = getTraceId( thread_data->active, timer->trace );
             set_trace_bit( timer->trace_index, TRACE_SIZE, timer->trace );
         }
         // Loop through the trace entries
@@ -1131,11 +1021,9 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             // Get the running times of the trace
             size_t N_stored_trace = 0;
             if ( d_store_trace_data )
-                N_stored_trace =
-                    std::min<size_t>( trace->N_calls, static_cast<size_t>( MAX_TRACE_TRACE ) );
-            std::vector<id_struct> list =
-                get_active_list( trace->trace, timer->trace_index, thread_data );
-            results.trace[k].id       = results.id;
+                N_stored_trace = std::min<size_t>( trace->N_calls, MAX_TRACE_TRACE );
+            auto list = getActiveList( trace->trace, timer->trace_index, thread_data );
+            results.trace[k].id = results.id;
             results.trace[k].thread   = thread_id;
             results.trace[k].rank     = rank;
             results.trace[k].N        = trace->N_calls;
@@ -1177,8 +1065,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             for ( size_t i = 0; i < TRACE_SIZE; i++ )
                 active[i] = thread_data->active[i] & timer->trace[i];
             unset_trace_bit( timer->trace_index, TRACE_SIZE, active );
-            std::vector<id_struct> list =
-                get_active_list( active, timer->trace_index, thread_data );
+            auto list = getActiveList( active, timer->trace_index, thread_data );
             results.trace[k].id       = results.id;
             results.trace[k].thread   = thread_id;
             results.trace[k].rank     = rank;
@@ -1208,7 +1095,7 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
     auto end_time = now();
     int rank      = comm_rank();
     // Get a lock
-    GET_LOCK( &lock );
+    d_lock.lock();
     // Get the thread data
     // This can safely be done lock-free
     std::vector<const thread_info*> thread_list;
@@ -1226,13 +1113,13 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
         }
     }
     if ( (int) ids.size() != N_timers )
-        ERROR_MSG( "Not all timers were found" );
+        throw std::logic_error( "Not all timers were found" );
     // Begin storing the timers
     std::vector<TimerResults> results( ids.size() );
     for ( size_t i = 0; i < ids.size(); i++ )
         getTimerResultsID( ids[i], thread_list, rank, end_time, results[i] );
     // Release the mutex
-    RELEASE_LOCK( &lock );
+    d_lock.unlock();
     return results;
 }
 TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
@@ -1241,7 +1128,7 @@ TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
     auto end_time = now();
     int rank      = comm_rank();
     // Get a lock
-    GET_LOCK( &lock );
+    d_lock.lock();
     // Get the thread data
     // This can safely be done lock-free
     std::vector<const thread_info*> thread_list;
@@ -1253,7 +1140,7 @@ TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
     TimerResults results;
     getTimerResultsID( id, thread_list, rank, end_time, results );
     // Release the mutex
-    RELEASE_LOCK( &lock );
+    d_lock.unlock();
     return results;
 }
 
@@ -1362,12 +1249,12 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         sprintf( filename_memory, "%s.0.memory", filename.c_str() );
     }
     // Get the current results
-    std::vector<TimerResults> results = getTimerResults();
+    auto results = getTimerResults();
     if ( (int) results.size() != N_timers )
-        ERROR_MSG( "Not all timers were found" );
+        throw std::logic_error( "Not all timers were found" );
     if ( global ) {
         // Gather the timers from all files (rank 0 will do all writing)
-        gather_timers( results );
+        gatherTimers( results );
     }
     if ( !results.empty() ) {
         // Get the timer ids and sort the ids by the total time
@@ -1377,7 +1264,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         for ( size_t i = 0; i < results.size(); i++ ) {
             id_order[i]   = i;
             total_time[i] = 0.0;
-            int N_threads = TimerUtility::ProfilerThreadIndex::getNThreads();
+            int N_threads = d_N_threads;
             std::vector<double> time_thread( N_threads, 0 );
             for ( auto& j : results[i].trace )
                 time_thread[j.thread] += j.tot;
@@ -1410,7 +1297,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         // Loop through the list of timers, storing the most expensive first
         for ( int ii = static_cast<int>( results.size() ) - 1; ii >= 0; ii-- ) {
             size_t i      = id_order[ii];
-            int N_threads = TimerUtility::ProfilerThreadIndex::getNThreads();
+            int N_threads = d_N_threads;
             std::vector<int> N_thread( N_threads, 0 );
             std::vector<float> min_thread( N_threads, 1e38f );
             std::vector<float> max_thread( N_threads, 0.0f );
@@ -1480,18 +1367,21 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
     if ( d_store_memory_data ) {
         FILE* memoryFile = fopen( filename_memory, "wb" );
         if ( memoryFile == nullptr ) {
-            RELEASE_LOCK( &lock );
+            d_lock.unlock();
             std::cerr << "Error opening memory file" << std::endl;
             return;
         }
         // Get the memory usage
         std::vector<MemoryResults> data( 1, getMemoryResults() );
         if ( global ) {
-            gather_memory( data );
+            gatherMemory( data );
         }
         for ( auto& k : data ) {
             size_t count = k.time.size();
-            ASSERT( k.bytes.size() == count );
+            if ( k.bytes.size() != count ) {
+                fclose( memoryFile );
+                throw std::logic_error( "data size does not match count" );
+            }
             // Determine a scale factor so we can use unsigned int to store the memory
             size_t max_mem_size = 0;
             for ( size_t i = 0; i < count; i++ )
@@ -1528,8 +1418,10 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             fprintf( memoryFile, "\n" );
             delete[] time;
             delete[] size;
-            if ( N1 != (size_t) count || N2 != (size_t) count )
-                ERROR_MSG( "Failed to write memory results\n" );
+            if ( N1 != (size_t) count || N2 != (size_t) count ) {
+                fclose( memoryFile );
+                throw std::logic_error( "Failed to write memory results" );
+            }
         }
         fclose( memoryFile );
     }
@@ -1539,7 +1431,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
 /***********************************************************************
  * Load the timer and trace data                                        *
  ***********************************************************************/
-static inline void get_field( const char* line, size_t N, const char* name, char* data )
+static inline void getField( const char* line, size_t N, const char* name, char* data )
 {
     const char* ptr = strstr( line, name );
     if ( ptr == nullptr ) {
@@ -1573,21 +1465,18 @@ static inline char* getFieldArray( char* line, std::vector<std::pair<char*, char
     line++;
     while ( *line >= 32 ) {
         int j1, j2;
-        for ( j1 = 0; line[j1] != '='; j1++ ) {
-        }
+        for ( j1 = 0; line[j1] != '='; j1++ ) {}
         line[j1] = 0;
         j1++;
         if ( line[j1] == e ) {
             line[j1] = 0;
             j1++;
-            for ( j2 = j1; line[j2] != e; j2++ ) {
-            }
+            for ( j2 = j1; line[j2] != e; j2++ ) {}
             line[j2]     = 0;
             line[j2 + 1] = 0;
             j2++;
         } else {
-            for ( j2 = j1; line[j2] != '>' && line[j2] != ','; j2++ ) {
-            }
+            for ( j2 = j1; line[j2] != '>' && line[j2] != ','; j2++ ) {}
             line[j2] = 0;
         }
         data.emplace_back( line, &line[j1] );
@@ -1595,7 +1484,7 @@ static inline char* getFieldArray( char* line, std::vector<std::pair<char*, char
     }
     return line + 1;
 }
-static inline void get_active_ids( const char* active_list, std::vector<id_struct>& ids )
+static inline void getActiveIds( const char* active_list, std::vector<id_struct>& ids )
 {
     ids.resize( 0 );
     const char* p1 = active_list;
@@ -1617,13 +1506,6 @@ static inline void get_active_ids( const char* active_list, std::vector<id_struc
         }
     }
 }
-/*static inline std::vector<id_struct> get_active_ids( const char* active_list )
-{
-    std::vector<id_struct> ids;
-    get_active_ids( active_list, ids );
-    std::sort(ids.begin(),ids.end());
-    return ids;
-}*/
 int ProfilerApp::loadFiles( const std::string& filename, int index, TimerMemoryResults& data )
 {
     int N_procs = 0;
@@ -1633,11 +1515,11 @@ int ProfilerApp::loadFiles( const std::string& filename, int index, TimerMemoryR
     sprintf( timer, "%s.%i.timer", filename.c_str(), index );
     sprintf( trace, "%s.%i.trace", filename.c_str(), index );
     sprintf( memory, "%s.%i.memory", filename.c_str(), index );
-    load_timer( timer, data.timers, N_procs, date, trace_data, memory_data );
+    loadTimer( timer, data.timers, N_procs, date, trace_data, memory_data );
     if ( trace_data )
-        load_trace( trace, data.timers );
+        loadTrace( trace, data.timers );
     if ( memory_data )
-        load_memory( memory, data.memory );
+        loadMemory( memory, data.memory );
     return N_procs;
 }
 template<class TYPE>
@@ -1682,20 +1564,19 @@ TimerMemoryResults ProfilerApp::load( const std::string& filename, int rank, boo
     data.N_procs = N_procs;
     return data;
 }
-void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResults>& data,
+void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResults>& data,
     int& N_procs, std::string& date, bool& trace_data, bool& memory_data )
 {
     // Load the file to memory for reading
     FILE* fid = fopen( filename.c_str(), "rb" );
     if ( fid == nullptr )
-        ERROR_MSG( "Error opening file: " + filename );
+        throw std::logic_error( "Error opening file: " + filename );
     fseek( fid, 0, SEEK_END );
     size_t file_length = ftell( fid );
     if ( file_length > 0x80000000 ) {
         // We do not yet support large files, we need to read the data in chunks
         fclose( fid );
-        ERROR_MSG( "Large timer files are not yet supported (likely to exhaust ram)" );
-        return; // This is unnecessary but suppresses warnings from cppcheck
+        throw std::logic_error( "Large timer files are not yet supported (likely to exhaust ram)" );
     }
     auto* buffer = new char[file_length + 10];
     memset( buffer, 0, file_length + 10 );
@@ -1704,8 +1585,7 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
     if ( result != file_length ) {
         delete[] buffer;
         fclose( fid );
-        ERROR_MSG( "error reading file" );
-        return;
+        throw std::logic_error( "error reading file" );
     }
     fclose( fid );
     // Create a map of the ids and indicies of the timers (used for searching)
@@ -1751,7 +1631,8 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
                     // Load the date (optional)
                     date = std::string( fields[i].second );
                 } else {
-                    ERROR_MSG( std::string( "Unknown field (header): " ) + fields[i].first );
+                    throw std::logic_error(
+                        std::string( "Unknown field (header): " ) + fields[i].first );
                 }
             }
         } else if ( strcmp( fields[0].first, "timer:id" ) == 0 ) {
@@ -1790,7 +1671,8 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
                                 strcmp( fields[i].first, "tot" ) == 0 ) {
                         // Obsolete fields
                     } else {
-                        ERROR_MSG( std::string( "Unknown field (timer): " ) + fields[i].first );
+                        throw std::logic_error(
+                            std::string( "Unknown field (timer): " ) + fields[i].first );
                     }
                 }
             }
@@ -1800,7 +1682,7 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
             // Find the trace
             auto it = id_map.find( id );
             if ( it == id_map.end() )
-                ERROR_MSG( "trace did not find matching timer" );
+                throw std::logic_error( "trace did not find matching timer" );
             size_t index = it->second;
             data[index].trace.resize( data[index].trace.size() + 1 );
             TraceResults& trace = data[index].trace.back();
@@ -1829,22 +1711,23 @@ void ProfilerApp::load_timer( const std::string& filename, std::vector<TimerResu
                     trace.tot = static_cast<float>( atof( fields[i].second ) );
                 } else if ( strcmp( fields[i].first, "active" ) == 0 ) {
                     // Load the active timers
-                    get_active_ids( fields[i].second, active );
+                    getActiveIds( fields[i].second, active );
                     trace.N_active = static_cast<unsigned short>( active.size() );
                     trace.allocate();
                     for ( size_t j = 0; j < active.size(); j++ )
                         trace.active()[j] = active[j];
                 } else {
-                    ERROR_MSG( std::string( "Unknown field (trace): " ) + fields[i].first );
+                    throw std::logic_error(
+                        std::string( "Unknown field (trace): " ) + fields[i].first );
                 }
             }
         } else {
-            ERROR_MSG( "Unknown data field" );
+            throw std::logic_error( "Unknown data field" );
         }
     }
     delete[] buffer;
 }
-void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResults>& data )
+void ProfilerApp::loadTrace( const std::string& filename, std::vector<TimerResults>& data )
 {
     // Create a map of the ids and indicies of the timers (used for searching)
     std::map<id_struct, size_t> id_map;
@@ -1853,7 +1736,7 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
     // Open the file for reading
     FILE* fid = fopen( filename.c_str(), "rb" );
     if ( fid == nullptr )
-        ERROR_MSG( "Error opening file: " + filename );
+        throw std::logic_error( "Error opening file: " + filename );
     std::vector<id_struct> active;
     const size_t MAX_LINE = 0x10000;
     auto* line            = new char[MAX_LINE];
@@ -1868,24 +1751,24 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
         if ( line[0] <= 10 )
             continue;
         // Get the id and find the appropriate timer
-        get_field( line, MAX_LINE, "id=", field );
+        getField( line, MAX_LINE, "id=", field );
         ASSERT( field[0] != 0 );
         id_struct id( field );
         auto it = id_map.find( id );
         if ( it == id_map.end() )
-            ERROR_MSG( "Did not find matching timer" );
+            throw std::logic_error( "Did not find matching timer" );
         TimerResults& timer = data[it->second];
         // Read the remaining trace header data
-        get_field( line, MAX_LINE, "thread=", field );
+        getField( line, MAX_LINE, "thread=", field );
         ASSERT( field[0] != 0 );
         auto thread = static_cast<unsigned int>( atoi( field ) );
-        get_field( line, MAX_LINE, "rank=", field );
+        getField( line, MAX_LINE, "rank=", field );
         ASSERT( field[0] != 0 );
         auto rank = static_cast<unsigned int>( atoi( field ) );
-        get_field( line, MAX_LINE, "active=", field );
+        getField( line, MAX_LINE, "active=", field );
         ASSERT( field[0] != 0 );
-        get_active_ids( field, active );
-        get_field( line, MAX_LINE, "N=", field );
+        getActiveIds( field, active );
+        getField( line, MAX_LINE, "N=", field );
         ASSERT( field[0] != 0 );
         unsigned long int N = strtoul( field, nullptr, 10 );
         // Find the appropriate trace
@@ -1919,7 +1802,7 @@ void ProfilerApp::load_trace( const std::string& filename, std::vector<TimerResu
     delete[] line;
     delete[] field;
 }
-inline size_t get_scale( const std::string& units )
+inline size_t getScale( const std::string& units )
 {
     size_t scale = 1;
     if ( units == "bytes" ) {
@@ -1931,16 +1814,16 @@ inline size_t get_scale( const std::string& units )
     } else if ( units == "GB" ) {
         scale = 1024 * 1024 * 1024;
     } else {
-        ERROR_MSG( "Not finished\n" );
+        throw std::logic_error( "Not finished\n" );
     }
     return scale;
 }
-void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryResults>& data )
+void ProfilerApp::loadMemory( const std::string& filename, std::vector<MemoryResults>& data )
 {
     // Open the file for reading
     FILE* fid = fopen( filename.c_str(), "rb" );
     if ( fid == nullptr )
-        ERROR_MSG( "Error opening file: " + filename );
+        throw std::logic_error( "Error opening file: " + filename );
     const size_t MAX_LINE = 0x10000;
     auto* line            = new char[MAX_LINE];
     auto* field           = new char[MAX_LINE];
@@ -1956,19 +1839,19 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
         data.resize( data.size() + 1 );
         MemoryResults& memory = data.back();
         // Get the header fields
-        get_field( line, MAX_LINE, "N=", field );
+        getField( line, MAX_LINE, "N=", field );
         ASSERT( field[0] != 0 );
         unsigned long int N = strtoul( field, nullptr, 10 );
-        get_field( line, MAX_LINE, "type1=", field );
+        getField( line, MAX_LINE, "type1=", field );
         ASSERT( field[0] != 0 );
         std::string type1( field );
-        get_field( line, MAX_LINE, "type2=", field );
+        getField( line, MAX_LINE, "type2=", field );
         ASSERT( field[0] != 0 );
         std::string type2( field );
-        get_field( line, MAX_LINE, "units=", field );
+        getField( line, MAX_LINE, "units=", field );
         ASSERT( field[0] != 0 );
-        size_t scale = get_scale( field );
-        get_field( line, MAX_LINE, "rank=", field );
+        size_t scale = getScale( field );
+        getField( line, MAX_LINE, "rank=", field );
         ASSERT( field[0] != 0 );
         memory.rank = atoi( field );
         // Get the data
@@ -1977,7 +1860,11 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
             auto* size = new unsigned int[N];
             size_t N1  = fread( time, sizeof( double ), N, fid );
             size_t N2  = fread( size, sizeof( unsigned int ), N, fid );
-            ASSERT( N1 == N && N2 == N );
+            if ( N1 != N || N2 != N ) {
+                delete[] time;
+                delete[] size;
+                throw std::logic_error( "error in memory" );
+            }
             memory.time.resize( N );
             memory.bytes.resize( N );
             for ( size_t i = 0; i < N; i++ ) {
@@ -1987,7 +1874,7 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
             delete[] time;
             delete[] size;
         } else {
-            ERROR_MSG( "Not finished\n" );
+            throw std::logic_error( "Not finished" );
         }
     }
     fclose( fid );
@@ -1999,7 +1886,7 @@ void ProfilerApp::load_memory( const std::string& filename, std::vector<MemoryRe
 /***********************************************************************
  * Function to get the list of active timers                            *
  ***********************************************************************/
-std::vector<id_struct> ProfilerApp::get_active_list(
+std::vector<id_struct> ProfilerApp::getActiveList(
     TRACE_TYPE* active, unsigned int myIndex, const thread_info* head )
 {
     std::vector<id_struct> active_list;
@@ -2023,7 +1910,7 @@ std::vector<id_struct> ProfilerApp::get_active_list(
                         break;
                 }
                 if ( timer_tmp == nullptr )
-                    ERROR_MSG( "Internal Error" );
+                    throw std::logic_error( "Internal Error" );
                 active_list.push_back( convert_timer_id( timer_tmp->id ) );
             }
         }
@@ -2039,24 +1926,22 @@ std::vector<id_struct> ProfilerApp::get_active_list(
  *    the std::strings since the assignment operator and the destructor *
  *    may not be thread safe (see Note 1).                              *
  ***********************************************************************/
-ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data(
+ProfilerApp::store_timer_data_info* ProfilerApp::getTimerData(
     uint64_t id, const char* message, const char* filename, int start, int stop )
 {
     size_t key = GET_TIMER_HASH( id ); // Get the hash index
     if ( timer_table[key] == nullptr ) {
         // The global timer does not exist, create it (requires blocking)
         // Acquire the lock (neccessary for modifying the timer_table)
-        bool error = GET_LOCK( &lock );
-        if ( error )
-            return nullptr;
+        d_lock.lock();
         // Check if the entry is still nullptr
         if ( timer_table[key] == nullptr ) {
             // Create a new entry
             // Note: we must initialize the std::string within a lock for thread safety
-            auto* info_tmp                          = new store_timer_data_info;
-            TimerUtility::atomic::int64_atomic size = sizeof( store_timer_data_info );
+            auto* info_tmp = new store_timer_data_info;
+            auto size      = sizeof( store_timer_data_info );
             TimerUtility::atomic::atomic_add( &d_bytes, size );
-            const char* filename2 = strip_path( filename );
+            const char* filename2 = stripPath( filename );
             info_tmp->id          = id;
             info_tmp->start_line  = start;
             info_tmp->stop_line   = stop;
@@ -2068,7 +1953,7 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data(
             N_timers++;
         }
         // Release the lock
-        RELEASE_LOCK( &lock );
+        d_lock.unlock();
     }
     volatile store_timer_data_info* info = timer_table[key];
     while ( info->id != id ) {
@@ -2076,15 +1961,13 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data(
         if ( info->next == nullptr ) {
             // Acquire the lock
             // Acquire the lock (neccessary for modifying the timer_table)
-            bool error = GET_LOCK( &lock );
-            if ( error )
-                return nullptr;
+            d_lock.lock();
             // Check if another thread created an entry while we were waiting for the lock
             if ( info->next == nullptr ) {
                 // Create a new entry
                 // Note: we must initialize the std::string within a lock for thread safety
                 auto* info_tmp        = new store_timer_data_info;
-                const char* filename2 = strip_path( filename );
+                const char* filename2 = stripPath( filename );
                 info_tmp->id          = id;
                 info_tmp->start_line  = start;
                 info_tmp->stop_line   = stop;
@@ -2096,7 +1979,7 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data(
                 N_timers++;
             }
             // Release the lock
-            RELEASE_LOCK( &lock );
+            d_lock.unlock();
         }
         // Advance to the next entry
         info = info->next;
@@ -2108,7 +1991,7 @@ ProfilerApp::store_timer_data_info* ProfilerApp::get_timer_data(
 /***********************************************************************
  * Gather all timers on rank 0                                          *
  ***********************************************************************/
-void ProfilerApp::gather_timers( std::vector<TimerResults>& timers )
+void ProfilerApp::gatherTimers( std::vector<TimerResults>& timers )
 {
     comm_barrier();
     int rank    = comm_rank();
@@ -2126,7 +2009,7 @@ void ProfilerApp::gather_timers( std::vector<TimerResults>& timers )
                 i.unpack( &buffer[pos] );
                 pos += i.size();
             }
-            add_timers( timers, add );
+            addTimers( timers, add );
             delete[] buffer;
         }
     } else {
@@ -2149,7 +2032,7 @@ void ProfilerApp::gather_timers( std::vector<TimerResults>& timers )
     }
     comm_barrier();
 }
-void ProfilerApp::gather_memory( std::vector<MemoryResults>& memory )
+void ProfilerApp::gatherMemory( std::vector<MemoryResults>& memory )
 {
     comm_barrier();
     int rank    = comm_rank();
@@ -2170,7 +2053,7 @@ void ProfilerApp::gather_memory( std::vector<MemoryResults>& memory )
     }
     comm_barrier();
 }
-void ProfilerApp::add_timers(
+void ProfilerApp::addTimers(
     std::vector<TimerResults>& timers, const std::vector<TimerResults>& add )
 {
     std::map<id_struct, size_t> id_map;
@@ -2313,7 +2196,7 @@ static inline void mergeArrays( size_t N_list, size_t* N, type_a** arr, type_b**
     for ( size_t i = 0; i < N_list; i++ ) {
         for ( size_t j = 1; j < N[i]; j++ ) {
             if ( arr[i][j] < arr[i][j - 1] )
-                ERROR_MSG( "Input arrays must be sorted\n" );
+                throw std::logic_error( "Input arrays must be sorted" );
         }
     }
     // Allocate enough memory to store the results
@@ -2359,10 +2242,10 @@ static inline void mergeArrays( size_t N_list, size_t* N, type_a** arr, type_b**
 extern "C" {
 void global_profiler_enable( int level ) { global_profiler.enable( level ); }
 void global_profiler_disable() { global_profiler.disable(); }
-int global_profiler_get_level() { return global_profiler.get_level(); }
+int global_profiler_get_level() { return global_profiler.getLevel(); }
 void global_profiler_synchronize() { global_profiler.synchronize(); }
-void global_profiler_set_store_trace( int flag ) { global_profiler.set_store_trace( flag != 0 ); }
-void global_profiler_set_store_memory( int flag ) { global_profiler.set_store_memory( flag != 0 ); }
+void global_profiler_set_store_trace( int flag ) { global_profiler.setStoreTrace( flag != 0 ); }
+void global_profiler_set_store_memory( int flag ) { global_profiler.setStoreMemory( flag != 0 ); }
 void global_profiler_start( const char* name, const char* file, int line, int level )
 {
     global_profiler.start( name, file, line, level );
