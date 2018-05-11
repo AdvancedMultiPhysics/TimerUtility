@@ -180,6 +180,7 @@ MACRO( CONFIGURE_SYSTEM )
         MESSAGE( FATAL_ERROR "OS not detected" )
     ENDIF()
     # Set the compile flags based on the build
+    SET_CXX_STD()
     SET_COMPILER_FLAGS()
     # Add the static flag if necessary
     IF ( USE_STATIC )
@@ -215,6 +216,50 @@ MACRO( CONFIGURE_MATLAB )
         MESSAGE( "   Matlab_LIBRARIES = ${Matlab_LIBRARIES}" )
         MESSAGE( "   Matlab_INCLUDE_DIRS = ${Matlab_INCLUDE_DIRS}" )
     ENDIF()
+ENDMACRO()
+
+
+# Macro to add user c++ std 
+MACRO( SET_CXX_STD )
+    # Set the C++ standard
+    SET( CMAKE_CXX_EXTENSIONS OFF )
+    IF ( NOT CMAKE_CXX_STANDARD )
+        IF ( CXX_STD )
+            IF ( ${CXX_STD} STREQUAL "NONE" )
+                # Do nothing
+            ELSEIF ( (${CXX_STD} STREQUAL "98") OR (${CXX_STD} STREQUAL "11") OR (${CXX_STD} STREQUAL "14") OR (${CXX_STD} STREQUAL "17") )
+                SET( CMAKE_CXX_STANDARD ${CXX_STD} )
+                SET( CXX_STD_FLAG ${CMAKE_CXX${CXX_STD}_STANDARD_COMPILE_OPTION} )
+            ELSE()
+                MESSAGE( FATAL_ERROR "Unknown C++ standard (98,11,14,17,NONE)" )
+            ENDIF()
+        ELSE()
+            MESSAGE( FATAL_ERROR "C++ standard is not set" )
+        ENDIF()
+    ENDIF()
+    # Set the C standard
+    IF ( NOT CMAKE_C_STANDARD )
+        IF ( C_STD )
+            IF ( ${C_STD} STREQUAL "NONE" )
+                # Do nothing
+            ELSEIF ( (${C_STD} STREQUAL "90") OR (${C_STD} STREQUAL "99") OR (${C_STD} STREQUAL "11") )
+                SET( CMAKE_C_STANDARD ${C_STD} )
+            ELSE()
+                MESSAGE( FATAL_ERROR "Unknown C standard (90,98,11,NONE)" )
+            ENDIF()
+        ELSEIF ( CMAKE_CXX_STANDARD )
+            IF ( ${CXX_STD} STREQUAL "98" )
+                SET( CMAKE_C_STANDARD 99 )
+            ELSEIF ((${CXX_STD} STREQUAL "11") OR (${CXX_STD} STREQUAL "14") OR (${CXX_STD} STREQUAL "17") )
+                SET( CMAKE_C_STANDARD 11 )
+            ELSE()
+                MESSAGE( FATAL_ERROR "Unknown C++ standard" )
+            ENDIF()
+        ELSE()
+            MESSAGE( FATAL_ERROR "C standard is not set" )
+        ENDIF()
+    ENDIF()
+    ADD_DEFINITIONS( -DCXX_STD=${CXX_STD} )
 ENDMACRO()
 
 

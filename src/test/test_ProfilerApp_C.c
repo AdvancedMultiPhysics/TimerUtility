@@ -3,21 +3,6 @@
 #include <stdlib.h>
 
 
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-    #include <windows.h>
-    #define TIME_TYPE LARGE_INTEGER
-    #define get_time(x) QueryPerformanceCounter(x)
-    #define get_diff(start,end,f) (((double)(end.QuadPart-start.QuadPart))/((double)f.QuadPart))
-    #define get_frequency(f) QueryPerformanceFrequency(f)
-#else
-    #include <sys/time.h>
-    #define TIME_TYPE struct timeval
-    #define get_time(x) gettimeofday(x,NULL);
-    #define get_diff(start,end,f) (((double)end.tv_sec-start.tv_sec)+1e-6*((double)end.tv_usec-start.tv_usec))
-    #define get_frequency(f) (*f=timeval())
-#endif
-
-
 // Define NULL_USE
 #define NULL_USE(variable) do {                         \
     if(0) {char *temp = (char *)&variable; temp++;}     \
@@ -38,7 +23,6 @@ int run_tests( bool enable_trace, const char* save_name )
     int N_errors = 0;
     int i, j;
     double *tmp;
-    TIME_TYPE time1;
     printf("Sizeof size_t* = %i\n",(int)sizeof(size_t*));
 
     PROFILE_ENABLE(0);
@@ -59,11 +43,6 @@ int run_tests( bool enable_trace, const char* save_name )
 
     // Check the performance
     for (i=0; i<N_it; i++) {
-        // Test how long it takes to get the time
-        PROFILE_START("gettime");
-        for (j=0; j<N_timers; j++)
-            get_time(&time1);
-        PROFILE_STOP("gettime");
         // Test how long it takes to start/stop the timers
         PROFILE_START("level 0");
         for (j=0; j<N_timers; j++) {

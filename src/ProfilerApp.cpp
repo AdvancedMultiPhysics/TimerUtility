@@ -408,7 +408,7 @@ TraceResults::TraceResults()
       N( 0 ),
       mem( nullptr )
 {
-    static_assert( sizeof( id_struct ) == sizeof( double ) );
+    static_assert( sizeof( id_struct ) == sizeof( double ), "Unexpected size for id_struct" );
 }
 TraceResults::~TraceResults()
 {

@@ -48,12 +48,13 @@ ENDIF()
 
 # Set the default C++ standard
 IF ( NOT CXX_STD )
-    MESSAGE( WARNING "CXX_STD not set, defaulting to c++11" )
+    MESSAGE( WARNING "CXX_STD not set, defaulting to c++14" )
     SET( CXX_STD 14 )
 ENDIF()
 IF ( "${CXX_STD}" STREQUAL "98" OR "${CXX_STD}" STREQUAL "11" )
     MESSAGE( FATAL_ERROR "c++14 or higher is required" )
 ENDIF()
+
 
 
 # Include CMake files

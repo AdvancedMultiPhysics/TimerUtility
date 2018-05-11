@@ -1,10 +1,8 @@
 #ifndef included_ProfilerAppMacros
 #define included_ProfilerAppMacros
 
-
 // Define some helper functions
-#define GET_LEVEL( _0, N, ... ) N
-#define PROFILE_START_LEVEL( NAME, FILE, LINE, LEVEL )                                         \
+#define PROFILE_START_LEVEL( FILE, LINE, NAME, LEVEL, ... )                                    \
     do {                                                                                       \
         if ( LEVEL <= global_profiler.getLevel() ) {                                           \
             static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" );    \
@@ -15,7 +13,7 @@
             global_profiler.start( id, ProfilerApp::getString( NAME ), FILE, LINE, LEVEL );    \
         }                                                                                      \
     } while ( 0 )
-#define PROFILE_STOP_LEVEL( NAME, FILE, LINE, LEVEL )                                          \
+#define PROFILE_STOP_LEVEL( FILE, LINE, NAME, LEVEL, ... )                                     \
     do {                                                                                       \
         if ( LEVEL <= global_profiler.getLevel() ) {                                           \
             static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" );    \
@@ -26,11 +24,11 @@
             global_profiler.stop( id, ProfilerApp::getString( NAME ), FILE, LINE, LEVEL );     \
         }                                                                                      \
     } while ( 0 )
-#define PROFILE_SCOPED_LEVEL( OBJ, NAME, FILE, LINE, LEVEL )                                \
+#define PROFILE_SCOPED_LEVEL( FILE, LINE, OBJ, NAME, LEVEL, ... )                           \
     ScopedTimer OBJ( ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ),             \
         ProfilerApp::hashString( NAME ), ProfilerApp::getString( NAME ), FILE, LINE, LEVEL, \
         global_profiler )
-#define PROFILE_SAVE_GLOBAL( NAME, GLOB ) global_profiler.save( NAME, GLOB )
+#define PROFILE_SAVE_GLOBAL( NAME, GLOB, ... ) global_profiler.save( NAME, GLOB )
 
 
 /*! \addtogroup Macros
@@ -38,63 +36,68 @@
  */
 
 
-/*! \def PROFILE_START(NAME,..)
+/*! \def PROFILE_START(NAME,LEVEL)
  *  \brief Start the profiler
  *  \details This is the primary call to start a timer.  Only one call within a file
  *      may call the timer.  Any other calls must use PROFILE_START2(X).
  *      This call will automatically add the file and line number to the timer.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
- *  \param NAME  Name of the timer
+ *  \param NAME     Name of the timer
+ *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_START( NAME, ... ) \
-    PROFILE_START_LEVEL( NAME, __FILE__, __LINE__, GET_LEVEL( _0, ##__VA_ARGS__, 0 ) )
+#define PROFILE_START( ... ) \
+    PROFILE_START_LEVEL(  __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
 
 
-/*! \def PROFILE_STOP(NAME,..)
+/*! \def PROFILE_STOP(NAME,LEVEL)
  *  \brief Stop the profiler
  *  \details This is the primary call to stop a timer.  Only one call within a file
  *      may call the timer.  Any other calls must use PROFILE_STOP2(X).
  *      This call will automatically add the file and line number to the timer.
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
- *  \param NAME  Name of the timer
+ *  \param NAME     Name of the timer
+ *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_STOP( NAME, ... ) \
-    PROFILE_STOP_LEVEL( NAME, __FILE__, __LINE__, GET_LEVEL( _0, ##__VA_ARGS__, 0 ) )
+#define PROFILE_STOP( ... ) \
+    PROFILE_STOP_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
 
 
-/*! \def PROFILE_START2(NAME,..)
+/*! \def PROFILE_START2(NAME,LEVEL)
  *  \brief Start the profiler
  *  \details This is a call to start a timer without the line number.
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
- *  \param NAME  Name of the timer
+ *  \param NAME     Name of the timer
+ *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_START2( NAME, ... ) \
-    PROFILE_START_LEVEL( NAME, __FILE__, -1, GET_LEVEL( _0, ##__VA_ARGS__, 0 ) )
+#define PROFILE_START2( ... ) \
+    PROFILE_START_LEVEL( __FILE__, -1, __VA_ARGS__, 0, 0 )
 
 
-/*! \def PROFILE_STOP2(NAME,..)
+/*! \def PROFILE_STOP2(NAME,LEVEL)
  *  \brief Start the profiler
  *  \details This is a call to start a timer without the line number.
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
- *  \param NAME  Name of the timer
+ *  \param NAME     Name of the timer
+ *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_STOP2( NAME, ... ) \
-    PROFILE_STOP_LEVEL( NAME, __FILE__, -1, GET_LEVEL( _0, ##__VA_ARGS__, 0 ) )
+#define PROFILE_STOP2( ... ) \
+    PROFILE_STOP_LEVEL( __FILE__, -1, __VA_ARGS__, 0, 0 )
 
 
-/*! \def PROFILE_SCOPED(OBJ,NAME,..)
+/*! \def PROFILE_SCOPED(OBJ,NAME,LEVEL)
  *  \brief Create and start a scoped timer
  *  \details This create and start a ScopedTimer
  *      See  \ref ProfilerApp "ProfilerApp" and
  *     \ref ProfilerApp "ProfilerApp" for more info.
- *  \param OBJ   Name of the object
- *  \param NAME  Name of the timer
+ *  \param OBJ      Name of the object
+ *  \param NAME     Name of the timer
+ *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_SCOPED( OBJ, NAME, ... ) \
-    PROFILE_SCOPED_LEVEL( OBJ, NAME, __FILE__, __LINE__, GET_LEVEL( _0, ##__VA_ARGS__, 0 ) )
+#define PROFILE_SCOPED( ... ) \
+    PROFILE_SCOPED_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
 
 
 /*! \def PROFILE_SYNCHRONIZE()
@@ -112,7 +115,7 @@
 #define PROFILE_SYNCHRONIZE() global_profiler.synchronize()
 
 
-/*! \def PROFILE_SAVE(FILE,...)
+/*! \def PROFILE_SAVE(FILE,GLOBAL)
  *  \brief Save the profile results
  *  \details This will save the results of the timers the file provided
  *      An optional argument specifying the level to enable may be included.
@@ -120,7 +123,7 @@
  *  \param FILE     Name of the file to save
  *  \param GLOBAL   Optional variable to save all ranks in a single file (default is false)
  */
-#define PROFILE_SAVE( FILE, ... ) PROFILE_SAVE_GLOBAL( FILE, GET_LEVEL( _0, ##__VA_ARGS__, false ) )
+#define PROFILE_SAVE( ... ) PROFILE_SAVE_GLOBAL( __VA_ARGS__, false, 0 )
 
 
 /*! \def PROFILE_STORE_TRACE(X)
@@ -132,13 +135,13 @@
 #define PROFILE_STORE_TRACE( X ) global_profiler.setStoreTrace( X )
 
 
-/*! \def PROFILE_ENABLE(...)
+/*! \def PROFILE_ENABLE(LEVEL)
  *  \brief Enable the timers
  *  \details This will enable the timers.
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE( ... ) global_profiler.enable( __VA_ARGS__ )
+#define PROFILE_ENABLE global_profiler.enable
 
 
 /*! \def PROFILE_DISABLE()
