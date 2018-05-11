@@ -194,10 +194,10 @@ struct TimerMemoryResults {
  * Note that these commands are global and will create a global profiler.  It is possible
  * for a user to create multiple profilers and this should not create any problems, but the
  * class interface should be used. <BR>
- * All start/stop and enable support an optional argument level that specifies the level of detail
+ * All start/stop and enable support an optional argument level (>=0) that specifies the level of detail
  * for the timers.  All timers with a number greater than the current level in the profiler will be
  * ignored. The macros PROFILE_START and PROFILE_STOP automatically check the level for performance
- * and calling an unused timer adds ~5ns per call. <BR>
+ * and calling an unused timer adds 2-5ns per call. <BR>
  * For repeated calls the timer adds ~ 200ns per call with without trace info, and ~1-10us per call
  * with full trace info. Most of this overhead is not in the time returned by the timer.
  * The resolution is ~ 1us for a single timer call. <BR>

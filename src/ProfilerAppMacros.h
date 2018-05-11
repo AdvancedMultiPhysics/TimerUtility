@@ -5,7 +5,6 @@
 #define PROFILE_START_LEVEL( FILE, LINE, NAME, LEVEL, ... )                                    \
     do {                                                                                       \
         if ( LEVEL <= global_profiler.getLevel() ) {                                           \
-            static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" );    \
             constexpr uint64_t v1 = ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ); \
             static_assert( v1 != 0, "Invalid FILE hash" );                                     \
             uint64_t v2 = ProfilerApp::hashString( NAME );                                     \
@@ -16,7 +15,6 @@
 #define PROFILE_STOP_LEVEL( FILE, LINE, NAME, LEVEL, ... )                                     \
     do {                                                                                       \
         if ( LEVEL <= global_profiler.getLevel() ) {                                           \
-            static_assert( LEVEL >= 0 && LEVEL < 128, "level must be in the range 0-127" );    \
             constexpr uint64_t v1 = ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ); \
             static_assert( v1 != 0, "Invalid FILE hash" );                                     \
             uint64_t v2 = ProfilerApp::hashString( NAME );                                     \
