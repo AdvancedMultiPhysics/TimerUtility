@@ -42,8 +42,7 @@ extern void global_profiler_save( const char* name, int global );
  *  \param NAME     Name of the timer
  *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_START( ... ) \
-    PROFILE_START_LEVEL(  __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
+#define PROFILE_START( ... ) PROFILE_START_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
 
 
 /*! \def PROFILE_STOP(NAME,LEVEL)
@@ -56,8 +55,7 @@ extern void global_profiler_save( const char* name, int global );
  *  \param NAME     Name of the timer
  *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_STOP( ... ) \
-    PROFILE_STOP_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
+#define PROFILE_STOP( ... ) PROFILE_STOP_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
 
 
 /*! \def PROFILE_START2(NAME,LEVEL)
@@ -68,8 +66,7 @@ extern void global_profiler_save( const char* name, int global );
  *  \param NAME     Name of the timer
  *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_START2( ... ) \
-    PROFILE_START_LEVEL( __FILE__, -1, __VA_ARGS__, 0, 0 )
+#define PROFILE_START2( ... ) PROFILE_START_LEVEL( __FILE__, -1, __VA_ARGS__, 0, 0 )
 
 
 /*! \def PROFILE_STOP2(NAME,LEVEL)
@@ -80,8 +77,7 @@ extern void global_profiler_save( const char* name, int global );
  *  \param NAME     Name of the timer
  *  \param LEVEL    Level at which to enable the timer
  */
-#define PROFILE_STOP2( ... ) \
-    PROFILE_STOP_LEVEL( __FILE__, -1, __VA_ARGS__, 0, 0 )
+#define PROFILE_STOP2( ... ) PROFILE_STOP_LEVEL( __FILE__, -1, __VA_ARGS__, 0, 0 )
 
 
 /*! \def PROFILE_SYNCHRONIZE()

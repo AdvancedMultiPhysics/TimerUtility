@@ -87,6 +87,22 @@ bool check( const MemoryResults &memory )
 }
 
 
+// Test performance of clock
+template<typename TYPE>
+static inline void test_clock( int N )
+{
+    int64_t ns;
+    std::chrono::time_point<TYPE> t1, t2;
+    for ( int j = 0; j < N; j++ ) {
+        t1 = TYPE::now();
+        t2 = TYPE::now();
+        ns += std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+    }
+    NULL_USE( ns );
+}
+
+
+// Run all tests
 int run_tests( bool enable_trace, std::string save_name )
 {
     PROFILE_ENABLE();
@@ -142,22 +158,26 @@ int run_tests( bool enable_trace, std::string save_name )
         PROFILE_START( "dummy1" );
         PROFILE_STOP( "dummy1" );
     } catch ( ... ) {
+        std::cerr << "Error: dummy1\n";
         N_errors++;
     }
     try { // Check stop call before start
         PROFILE_STOP( "dummy2" );
+        std::cerr << "Error: dummy2\n";
         N_errors++;
     } catch ( ... ) {
     }
     try { // Check multiple calls to start
         PROFILE_START( "dummy3" );
         PROFILE_START2( "dummy3" );
+        std::cerr << "Error: dummy3\n";
         N_errors++;
     } catch ( ... ) {
         PROFILE_STOP( "dummy3" );
     }
     try { // Check multiple calls to start with different line numbers
         PROFILE_START( "dummy1" );
+        std::cerr << "Error: dummy4\n";
         N_errors++;
     } catch ( ... ) {
     }
@@ -170,11 +190,15 @@ int run_tests( bool enable_trace, std::string save_name )
     // Check the performance
     for ( int i = 0; i < N_it; i++ ) {
         // Test how long it takes to get the time
-        PROFILE_START( "gettime" );
-        ProfilerApp::time_point time1;
-        for ( int j = 0; j < N_timers; j++ )
-            time1 = ProfilerApp::now();
-        PROFILE_STOP( "gettime" );
+        PROFILE_START( "system_clock" );
+        test_clock<std::chrono::system_clock>( N_timers );
+        PROFILE_STOP( "system_clock" );
+        PROFILE_START( "steady_clock" );
+        test_clock<std::chrono::steady_clock>( N_timers );
+        PROFILE_STOP( "steady_clock" );
+        PROFILE_START( "high_resolution_clock" );
+        test_clock<std::chrono::high_resolution_clock>( N_timers );
+        PROFILE_STOP( "high_resolution_clock" );
         // Test how long it takes to start/stop the timers
         PROFILE_START( "single" );
         for ( int j = 0; j < N_timers; j++ ) {
@@ -255,6 +279,9 @@ int run_tests( bool enable_trace, std::string save_name )
         PROFILE_STOP( "allocate1" );
     }
     printf( "\nProfiler overhead:\n" );
+    printOverhead( "system_clock", N_it * N_timers );
+    printOverhead( "steady_clock", N_it * N_timers );
+    printOverhead( "high_resolution_clock", N_it * N_timers );
     printOverhead( "single", N_it * N_timers );
     printOverhead( "static", N_it * N_timers );
     printOverhead( "dynamic", N_it * N_timers );
@@ -312,9 +339,9 @@ int run_tests( bool enable_trace, std::string save_name )
 
     // Find and check MAIN
     const TraceResults *trace = nullptr;
-    for ( auto &i : data1 ) {
-        if ( i.message == "MAIN" )
-            trace = &i.trace[0];
+    for ( auto &timer : data1 ) {
+        if ( timer.message == "MAIN" )
+            trace = timer.trace.data();
     }
     if ( trace != nullptr ) {
         if ( trace->tot == 0 ) {
@@ -432,7 +459,7 @@ int main( int argc, char *argv[] )
         // Run the tests
         std::vector<std::pair<bool, std::string>> tests;
         tests.emplace_back( false, "test_ProfilerApp" );
-        // tests.push_back( std::pair<bool,std::string>(true,"test_ProfilerApp-trace"));
+        tests.emplace_back( true, "test_ProfilerApp-trace" );
         for ( auto &test : tests ) {
             int m1 = getMemoryUsage();
             int m2 = global_profiler.getMemoryUsed();

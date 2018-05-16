@@ -70,14 +70,14 @@ private:
  */
 struct TraceResults {
     id_struct id;                                   //!<  ID of parent timer
-    short unsigned int N_active;                    //!<  Number of active timers
-    short unsigned int thread;                      //!<  Active thread
-    unsigned int rank;                              //!<  Rank
-    unsigned int N_trace;                           //!<  Number of calls that we trace
+    uint16_t N_active;                              //!<  Number of active timers
+    uint16_t thread;                                //!<  Active thread
+    uint32_t rank;                                  //!<  Rank
+    uint32_t N_trace;                               //!<  Number of calls that we trace
     float min;                                      //!<  Minimum call time
     float max;                                      //!<  Maximum call time
     float tot;                                      //!<  Total call time
-    size_t N;                                       //!<  Total number of calls
+    uint64_t N;                                     //!<  Total number of calls
     id_struct* active();                            //!<  List of active timers
     const id_struct* active() const;                //!<  List of active timers
     double* start();                                //!<  Start times for each call
@@ -198,7 +198,7 @@ struct TimerMemoryResults {
  * for the timers.  All timers with a number greater than the current level in the profiler will be
  * ignored. The macros PROFILE_START and PROFILE_STOP automatically check the level for performance
  * and calling an unused timer adds 2-5ns per call. <BR>
- * For repeated calls the timer adds ~ 200ns per call with without trace info, and ~1-10us per call
+ * For repeated calls the timer adds ~100ns per call with without trace info, and ~1us per call
  * with full trace info. Most of this overhead is not in the time returned by the timer.
  * The resolution is ~ 1us for a single timer call. <BR>
  * Note: PROFILE_START and PROFILE_STOP require compile time string constants for the
@@ -244,14 +244,6 @@ struct TimerMemoryResults {
 // clang-format on
 class ProfilerApp final
 {
-public:
-    //! Convience typedef for storing a point in time
-    typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
-
-    //! Return the current time
-    static inline time_point now() { return std::chrono::steady_clock::now(); }
-
-
 public:
     //! Constructor
     ProfilerApp();
@@ -495,7 +487,7 @@ public: // Fast interface to start/stop
     inline void stop( uint64_t id, const char* message, const char* filename, int line, int level )
     {
         if ( level <= d_level && level >= 0 ) {
-            auto end_time    = now();
+            auto end_time    = std::chrono::steady_clock::now();
             auto thread_data = getThreadData();
             auto timer       = getBlock( thread_data, id, true, message, filename, -1, line );
             stop( thread_data, timer, end_time );
@@ -515,15 +507,6 @@ public: // Fast interface to start/stop
 
 
 public: // Constants to determine parameters that affect performance/memory
-    // Type to use for storing trace (should be largest native unsigned integer)
-    using TRACE_TYPE                        = uint64_t;
-    constexpr static size_t TRACE_TYPE_size = sizeof( TRACE_TYPE );
-
-    // The maximum number of timers that will be checked for the trace logs
-    // The actual number of timers is TRACE_SIZE * number of bits of TRACE_TYPE
-    // Note: this only affects the trace logs, the number of timers is unlimited
-    constexpr static size_t TRACE_SIZE = 64;
-
     // The maximum number of stored start and stop times per trace
     // Note: this is only used if store_trace is set, and should be a power of 2
     // Note: the maximum ammount of memory used per trace is 16*MAX_TRACE_TRACE bytes (plus the
@@ -541,12 +524,39 @@ public: // Constants to determine parameters that affect performance/memory
 
 
 private: // Member classes
+    //! Convience typedef for storing a point in time
+    typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+    // Structure to store the active trace data
+    class StoreActive
+    {
+    public:
+        StoreActive() { memset( this, 0, sizeof( *this ) ); }
+        inline void set( size_t index );
+        inline void unset( size_t index );
+        inline StoreActive( const StoreActive& rhs ) = default;
+        inline StoreActive& operator                 =( const StoreActive& rhs );
+        inline StoreActive& operator&=( const StoreActive& rhs );
+        inline bool operator==( const StoreActive& rhs ) { return hash == rhs.hash; }
+        inline uint64_t id() const { return hash; }
+        std::vector<uint32_t> getSet() const;
+
+    private:
+        // The maximum number of timers that will be checked for the trace logs
+        // The actual number of timers is 64*TRACE_SIZE
+        // Note: this only affects the trace logs, the number of timers is unlimited
+        constexpr static size_t TRACE_SIZE = 64;
+        // Store a hash id for fast access
+        uint64_t hash;
+        // Store the active trace
+        uint64_t trace[TRACE_SIZE];
+    };
+
     // Structure to store the info for a trace log
     struct store_trace {
-        size_t N_calls; // Number of calls to this block
-        uint64_t id;    // This is a (hopefully) unique id that we can use for comparison
-        TRACE_TYPE trace[TRACE_SIZE]; // Store the trace
-        store_trace* next;            // Pointer to the next entry in the list
+        size_t N_calls;       // Number of calls to this block
+        StoreActive trace;    // Store the trace
+        store_trace* next;    // Pointer to the next entry in the list
         int64_t min_time;     // Store the minimum time spent in the given block (nano-seconds)
         int64_t max_time;     // Store the maximum time spent in the given block (nano-seconds)
         int64_t total_time;   // Store the total time spent in the given block (nano-seconds)
@@ -558,7 +568,6 @@ private: // Member classes
         // Constructor
         store_trace()
             : N_calls( 0 ),
-              id( 0 ),
               next( NULL ),
               min_time( std::numeric_limits<int64_t>::max() ),
               max_time( 0 ),
@@ -567,7 +576,6 @@ private: // Member classes
               start_time( NULL ),
               end_time( NULL )
         {
-            memset( trace, 0, TRACE_SIZE * sizeof( TRACE_TYPE ) );
         }
         // Destructor
         ~store_trace()
@@ -610,7 +618,7 @@ private: // Member classes
         unsigned int trace_index;          // The index of the current timer in the trace
         int N_calls;                       // Number of calls to this block
         uint64_t id;                       // A unique id for each timer
-        TRACE_TYPE trace[TRACE_SIZE];      // Store the current trace
+        StoreActive trace;                 // Store the active trace
         int64_t min_time;                  // Store the minimum time spent in the given block (ns)
         int64_t max_time;                  // Store the maximum time spent in the given block (ns)
         int64_t total_time;                // Store the total time spent in the given block (ns)
@@ -632,7 +640,6 @@ private: // Member classes
               timer_data( NULL ),
               start_time( time_point() )
         {
-            memset( trace, 0, sizeof( trace ) );
         }
         // Destructor
         ~store_timer()
@@ -648,7 +655,7 @@ private: // Member classes
     struct thread_info {
         int id;                             // The id of the thread
         unsigned int N_timers;              // The number of timers seen by the current thread
-        TRACE_TYPE active[TRACE_SIZE];      // Store the current active traces
+        StoreActive active;                 // Store the active trace
         store_timer* head[TIMER_HASH_SIZE]; // Store the timers in a hash table
         size_t N_memory_steps;              // The number of steps we have for the memory usage
         size_t N_memory_alloc; // The size of the arrays allocated for time_memory and size_memory
@@ -663,17 +670,15 @@ private: // Member classes
               time_memory( nullptr ),
               size_memory( nullptr )
         {
-            for ( size_t i = 0; i < TRACE_SIZE; i++ )
-                active[i] = 0;
             for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ )
-                head[i] = NULL;
+                head[i] = nullptr;
         }
         // Destructor
         ~thread_info()
         {
             for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ ) {
                 delete head[i];
-                head[i] = NULL;
+                head[i] = nullptr;
             }
             delete[] time_memory;
             delete[] size_memory;
@@ -688,7 +693,7 @@ private: // Member data
     typedef TimerUtility::atomic::int64_atomic int64_atomic;
 
     // Store thread specific info
-    static volatile int32_atomic d_N_threads;
+    volatile int32_atomic d_N_threads;
     thread_info* thread_table[MAX_THREADS];
 
     // Store the global timer info in a hash table
@@ -715,10 +720,10 @@ private: // Member data
 private: // Private member functions
     // Function to return a pointer to the thread info (or create it if necessary)
     // Note: this function does not require any blocking
-    thread_info* getThreadData()
+    inline thread_info* getThreadData()
     {
-        thread_local static int id = TimerUtility::atomic::atomic_increment( &d_N_threads ) - 1;
-        if ( thread_table[id] == NULL )
+        thread_local int id = TimerUtility::atomic::atomic_increment( &d_N_threads ) - 1;
+        if ( !thread_table[id] )
             thread_table[id] = new thread_info( id );
         return thread_table[id];
     }
@@ -739,13 +744,14 @@ private: // Private member functions
 
     // Start/stop the timer
     void start( thread_info* thread, store_timer* timer );
-    void stop( thread_info* thread, store_timer* timer, time_point end_time = now() );
+    void stop( thread_info* thread, store_timer* timer,
+        time_point end_time = std::chrono::steady_clock::now() );
     void activeErrStart( thread_info*, store_timer* );
     void activeErrStop( thread_info*, store_timer* );
 
     // Function to return the string of active timers
     static std::vector<id_struct> getActiveList(
-        TRACE_TYPE* active, unsigned int myIndex, const thread_info* head );
+        const StoreActive& active, unsigned int myIndex, const thread_info* head );
 
     // Function to get the current memory usage
     static inline size_t getMemoryUsage();
