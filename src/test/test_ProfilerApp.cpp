@@ -91,7 +91,7 @@ bool check( const MemoryResults &memory )
 template<typename TYPE>
 static inline void test_clock( int N )
 {
-    int64_t ns;
+    int64_t ns = 0;
     std::chrono::time_point<TYPE> t1, t2;
     for ( int j = 0; j < N; j++ ) {
         t1 = TYPE::now();
