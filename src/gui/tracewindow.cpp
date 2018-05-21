@@ -211,8 +211,8 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ )
     timerPlots.resize( 0 );
 
     // Create the memory plot
-    memory                        = new MemoryPlot( this, parent->d_data.memory );
-    std::function<void( void )> f = std::bind( &TraceWindow::resizeMemory, this );
+    memory = new MemoryPlot( this, parent->d_data.memory );
+    auto f = std::bind( &TraceWindow::resizeMemory, this );
     timerGrid->registerResizeCallback( f );
 
     // Create the layout
@@ -317,7 +317,7 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
     PROFILE_START( "getTraceData" );
     // Get the active timers/traces
     // std::vector<std::shared_ptr<TimerSummary>> timers = parent->getTimers();
-    const std::vector<TimerResults> &timers = parent->d_data.timers;
+    const auto &timers = parent->d_data.timers;
     // Create a timeline for the time of interest
     std::vector<std::shared_ptr<TimerTimeline>> data( timers.size() );
     int Np          = selected_rank == -1 ? N_procs : 1;
@@ -334,13 +334,13 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
         array.resize( resolution, Nt, Np );
         data[i]->tot = 0;
         for ( size_t j = 0; j < timers[i].trace.size(); j++ ) {
-            const int rank      = timers[i].trace[j].rank;
-            const int thread    = timers[i].trace[j].thread;
-            const int N_trace   = timers[i].trace[j].N_trace;
-            const double *start = timers[i].trace[j].start();
-            const double *stop  = timers[i].trace[j].stop();
-            int it              = Nt == 1 ? 0 : thread;
-            int ip              = Np == 1 ? 0 : rank;
+            const int rank    = timers[i].trace[j].rank;
+            const int thread  = timers[i].trace[j].thread;
+            const int N_trace = timers[i].trace[j].N_trace;
+            const auto start  = timers[i].trace[j].start();
+            const auto stop   = timers[i].trace[j].stop();
+            int it            = Nt == 1 ? 0 : thread;
+            int ip            = Np == 1 ? 0 : rank;
             if ( selected_thread != -1 && thread != selected_thread )
                 continue;
             if ( selected_rank != -1 && rank != selected_rank )
@@ -384,7 +384,7 @@ void TraceWindow::updateTimeline()
     PROFILE_START( "updateTimeline" );
     const uint64_t rgb0 = jet( -1 );
     // Get the data for the entire window
-    std::vector<std::shared_ptr<TimerTimeline>> data = TraceWindow::getTraceData( t_global );
+    auto data = TraceWindow::getTraceData( t_global );
     // Create the global id map
     for ( const auto &timer : parent->d_data.timers )
         idRgbMap[timer.id] = rgb0;
@@ -448,12 +448,12 @@ void TraceWindow::updateTimers()
 {
     PROFILE_START( "updateTimers" );
     // Get the data
-    std::vector<std::shared_ptr<TimerTimeline>> data = TraceWindow::getTraceData( t_current );
+    auto data = TraceWindow::getTraceData( t_current );
     // Clear the existing data from the table
     int rowHeight = 30;
     if ( !timerGrid->getRowHeight().empty() )
         rowHeight = timerGrid->getRowHeight()[0];
-    std::vector<int> columnWidth = timerGrid->getColumnWidth();
+    auto columnWidth = timerGrid->getColumnWidth();
     timerGrid->reset();
     timerLabels.clear();
     timerPlots.clear();
@@ -468,6 +468,7 @@ void TraceWindow::updateTimers()
     timerPlots.resize( data.size() );
     timerPixelMap.resize( data.size() );
     for ( size_t i = 0; i < data.size(); i++ ) {
+        PROFILE_START( "updateTimers-labels" );
         timerLabels[i] = new QLabel();
         timerLabels[i]->setMinimumWidth( 30 );
         std::string label = R"(<font size="3" color="black">)" + data[i]->message +
@@ -475,21 +476,27 @@ void TraceWindow::updateTimers()
                             "</font>";
         timerLabels[i]->setText( label.c_str() );
         timerGrid->addWidget( timerLabels[i], i, 0 );
+        PROFILE_STOP( "updateTimers-labels" );
+        PROFILE_START( "updateTimers-pixelMap" );
         QImage image( resolution, Np * Nt, QImage::Format_RGB32 );
-        uint64_t rgb            = idRgbMap[data[i]->id];
-        const BoolArray &active = data[i]->active;
+        uint64_t rgb       = idRgbMap[data[i]->id];
+        const auto &active = data[i]->active;
         for ( int j = 0; j < resolution; j++ ) {
             for ( int k = 0; k < Np * Nt; k++ ) {
                 uint64_t value = active( j, k ) ? rgb : rgb0;
                 image.setPixel( j, k, value );
             }
         }
+
         timerPixelMap[i].reset( new QPixmap( QPixmap::fromImage( image ) ) );
+        PROFILE_STOP( "updateTimers-pixelMap" );
+        PROFILE_START( "updateTimers-plot" );
         timerPlots[i] = new QLabelMouse( this );
         timerPlots[i]->setScaledContents( true );
         timerPlots[i]->setMinimumSize( 200, 20 );
         timerPlots[i]->setPixmap( *timerPixelMap[i] );
         timerGrid->addWidget( timerPlots[i], i, 1 );
+        PROFILE_STOP( "updateTimers-plot" );
     }
     timerGrid->setRowHeight( rowHeight );
     timerGrid->setColumnWidth( columnWidth );
@@ -703,13 +710,13 @@ std::array<double, 2> TraceWindow::getGlobalTime( const std::vector<TimerResults
     t_global[0] = 1e100;
     t_global[1] = -1e100;
     for ( const auto &timer : timers ) {
-        for ( const auto &j : timer.trace ) {
-            const int N_trace = j.N_trace;
+        for ( const auto &trace : timer.trace ) {
+            const int N_trace = trace.N_trace;
             if ( N_trace > 0 ) {
-                const double *start = j.start();
-                const double *stop  = j.stop();
-                t_global[0]         = std::min( t_global[0], start[0] );
-                t_global[1]         = std::max( t_global[1], stop[N_trace - 1] );
+                auto start  = trace.start();
+                auto stop   = trace.stop();
+                t_global[0] = std::min( t_global[0], start[0] );
+                t_global[1] = std::max( t_global[1], stop[N_trace - 1] );
             }
         }
     }

@@ -17,9 +17,6 @@
 #endif
 
 
-// Check the limits of the define variables
-static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY must be < 2^32" );
-
 #define ASSERT( EXP )                                                                    \
     do {                                                                                 \
         if ( !( EXP ) ) {                                                                \
@@ -35,53 +32,18 @@ static_assert( ProfilerApp::MAX_TRACE_MEMORY <= 0xFFFFFFFF, "MAX_TRACE_MEMORY mu
 
 
 /******************************************************************
- * Special Notes                                                   *
- * Note 1: When using std::string in parallel, prior to C++11      *
- *    std::string had a reference count.  This makes the copy      *
- *    constructor and assignment operator unsafe when copying from *
- *    a common object.  For example the following pseudo code is   *
- *    not thread-safe because the reference counter in 'a' is      *
- *    modified and not thread safe for all enviornments:           *
- *       const std::string a;                                      *
- *       for all threads                                           *
- *           std::string b = a;      // Not thread safe            *
- ******************************************************************/
-
-
-/******************************************************************
  * Define global variables                                         *
  ******************************************************************/
 ProfilerApp global_profiler;
 constexpr size_t ProfilerApp::StoreActive::TRACE_SIZE;
 constexpr size_t ProfilerApp::MAX_TRACE_TRACE;
-constexpr size_t ProfilerApp::MAX_TRACE_MEMORY;
 constexpr size_t ProfilerApp::MAX_THREADS;
 constexpr size_t ProfilerApp::TIMER_HASH_SIZE;
-
-
-/******************************************************************
- * Define some helper functions                                    *
- ******************************************************************/
-template<class TYPE>
-inline TYPE* getPtr( std::vector<TYPE>& x )
-{
-    return x.empty() ? nullptr : &x[0];
-}
-template<class TYPE>
-inline const TYPE* getPtr( const std::vector<TYPE>& x )
-{
-    return x.empty() ? nullptr : &x[0];
-}
 
 
 // Declare quicksort
 template<class type_a, class type_b>
 static inline void quicksort2( int n, type_a* arr, type_b* brr );
-
-template<class type_a, class type_b>
-static inline void mergeArrays( size_t N_list, size_t* N, type_a** arr, type_b** brr,
-    size_t* N_result, type_a** arr_result, type_b** brr_result );
-
 
 // Inline function to get the current time/date string (without the newline character)
 static inline std::string getDateString()
@@ -90,44 +52,6 @@ static inline std::string getDateString()
     time( &rawtime );
     std::string tmp( ctime( &rawtime ) );
     return tmp.substr( 0, tmp.length() - 1 );
-}
-
-
-// Helper function to check (and if necessary resize) an array
-template<class type1, class type2>
-void check_allocate_arrays( size_t* N_allocated, size_t N_current, size_t N_max, type1** data1,
-    type2** data2, TimerUtility::atomic::int64_atomic volatile* bytes_used )
-{
-    int64_t size_old = *N_allocated;
-    int64_t size_new = std::max<size_t>( size_old, 256 );
-    while ( size_new <= (int64_t) N_current )
-        size_new *= 2;
-    // Stop allocating memory if we reached the limit
-    if ( size_new > (int64_t) N_max )
-        size_new = N_max;
-    if ( size_old != size_new ) {
-        // Expand the vector
-        auto* data1_new = new type1[size_new];
-        auto* data2_new = new type2[size_new];
-        ASSERT( data1_new != nullptr && data2_new != nullptr );
-        constexpr int64_t size1  = sizeof( type1 );
-        constexpr int64_t size2  = sizeof( type2 );
-        constexpr int64_t size12 = size1 + size2;
-        int64_t size             = ( size_new - size_old ) * size12;
-        TimerUtility::atomic::atomic_add( bytes_used, size );
-        memset( data1_new, 0, size_new * size1 );
-        memset( data2_new, 0, size_new * size2 );
-        if ( size_old != 0 ) {
-            size_t N_copy = std::min<size_t>( size_old, size_new );
-            memcpy( data1_new, *data1, N_copy * size1 );
-            memcpy( data2_new, *data2, N_copy * size2 );
-            delete[] * data1;
-            delete[] * data2;
-        }
-        *data1       = data1_new;
-        *data2       = data2_new;
-        *N_allocated = size_new;
-    }
 }
 
 
@@ -237,7 +161,7 @@ template<class TYPE>
 static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag )
 {
     int err =
-        MPI_Send( getPtr( data ), (int) data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
+        MPI_Send( data.data(), (int) data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
 }
 template<class TYPE>
@@ -249,7 +173,7 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
     int count;
     MPI_Get_count( &status, getType<TYPE>(), &count );
     std::vector<TYPE> data( count );
-    err = MPI_Recv( getPtr( data ), count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
+    err = MPI_Recv( data.data(), count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
     return data;
 }
@@ -355,13 +279,107 @@ std::vector<uint32_t> ProfilerApp::StoreActive::getSet() const
  ***********************************************************************/
 inline void ProfilerApp::StoreTimes::push_back( uint64_t time )
 {
-    if ( size == capacity ) {
-        auto old = data;
-        capacity = std::max<size_t>( capacity * 2, 1024 );
-        data     = new uint64_t[capacity];
-        memcpy( data, old, size * sizeof( int64_t ) );
+    if ( d_size == d_capacity ) {
+        auto old   = d_data;
+        d_capacity = std::max<size_t>( d_capacity * 2, 1024 );
+        d_data     = new uint64_t[d_capacity];
+        memcpy( d_data, old, d_size * sizeof( int64_t ) );
+        delete[] old;
     }
-    data[size++] = time;
+    d_data[d_size++] = time;
+}
+
+
+/***********************************************************************
+ * StoreMemory                                                          *
+ ***********************************************************************/
+constexpr size_t ProfilerApp::StoreMemory::MAX_ENTRIES;
+inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLevel level,
+    volatile TimerUtility::atomic::int64_atomic* bytes_profiler )
+{
+    static_assert( MAX_ENTRIES <= 0xFFFFFFFF, "MAX_ENTRIES must be < 2^32" );
+    // Get the current memory usage
+    uint64_t bytes = 0;
+#ifndef TIMER_DISABLE_NEW_OVERLOAD
+    if ( level == MemoryLevel::Fast )
+        bytes = MemoryApp::getMemoryUsage();
+    else
+#endif
+        bytes = MemoryApp::getTotalMemoryUsage();
+    bytes -= *bytes_profiler;
+    // Check if we need to allocate more memory
+    if ( d_size == MAX_ENTRIES )
+        return;
+    lock();
+    if ( d_size == d_capacity ) {
+        auto old_t = d_time;
+        auto old_b = d_bytes;
+        auto old_c = d_capacity;
+        d_capacity *= 2;
+        d_capacity = std::max<size_t>( d_capacity, 1024 );
+        d_capacity = std::min<size_t>( d_capacity, MAX_ENTRIES );
+        d_time     = new uint64_t[d_capacity];
+        d_bytes    = new uint64_t[d_capacity];
+        memcpy( d_time, old_t, d_size * sizeof( uint64_t ) );
+        memcpy( d_bytes, old_b, d_size * sizeof( uint64_t ) );
+        delete[] old_t;
+        delete[] old_b;
+        TimerUtility::atomic::atomic_add( bytes_profiler, ( d_capacity - old_c ) * 16 );
+    }
+    // Store the entry
+    size_t i   = d_size++;
+    d_time[i]  = time;
+    d_bytes[i] = bytes;
+    // Release the lock
+    unlock();
+}
+void ProfilerApp::StoreMemory::reset()
+{
+    lock();
+    d_size     = 0;
+    d_capacity = 0;
+    delete[] d_time;
+    delete[] d_bytes;
+    d_time  = nullptr;
+    d_bytes = nullptr;
+    unlock();
+}
+MemoryResults ProfilerApp::StoreMemory::get() const
+{
+    if ( d_size == 0 )
+        return MemoryResults();
+    // Copy the data (requires blocking)
+    lock();
+    size_t N   = d_size;
+    auto time  = new uint64_t[N];
+    auto bytes = new uint64_t[N];
+    memcpy( time, d_time, d_size * sizeof( uint64_t ) );
+    memcpy( bytes, d_bytes, d_size * sizeof( uint64_t ) );
+    unlock();
+    // Compress the results by removing values that have not changed
+    // Note: we will always keep the first and last values
+    size_t i = 1;
+    for ( size_t j = 1; j < N - 1; j++ ) {
+        if ( bytes[j] == bytes[i - 1] && bytes[j] == bytes[j + 1] )
+            continue;
+        time[i]  = time[j];
+        bytes[i] = bytes[j];
+        i++;
+    }
+    time[i]  = time[N - 1];
+    bytes[i] = bytes[N - 1];
+    N        = i + 1;
+    // Create the memory results
+    MemoryResults data;
+    data.time.resize( N );
+    data.bytes.resize( N );
+    for ( size_t i = 0; i < N; i++ ) {
+        data.time[i]  = 1e-9 * static_cast<double>( time[i] );
+        data.bytes[i] = bytes[i];
+    }
+    delete[] time;
+    delete[] bytes;
+    return data;
 }
 
 
@@ -737,10 +755,6 @@ ProfilerApp::ProfilerApp() : d_N_threads( 0 ), d_construct_time( std::chrono::st
     d_store_trace_data    = false;
     d_store_memory_data   = MemoryLevel::None;
     d_disable_timer_error = false;
-    d_max_trace_remaining = static_cast<size_t>( MAX_TRACE_MEMORY );
-    d_N_memory_steps      = 0;
-    d_time_memory         = nullptr;
-    d_size_memory         = nullptr;
     d_bytes               = sizeof( ProfilerApp );
 }
 ProfilerApp::~ProfilerApp() { disable(); }
@@ -796,38 +810,16 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
 {
     if ( timer->is_active )
         activeErrStart( thread, timer );
-    // Get the memory usage
-    if ( d_store_memory_data != MemoryLevel::None &&
-         thread->N_memory_steps < d_max_trace_remaining ) {
-        size_t* N_alloc = &thread->N_memory_alloc;
-        size_t N_size   = thread->N_memory_steps;
-        size_t N_max    = d_max_trace_remaining;
-        // Check the memory allocation
-        check_allocate_arrays(
-            N_alloc, N_size, N_max, &thread->time_memory, &thread->size_memory, &d_bytes );
-        // Get the current memory usage
-        size_t memory = 0;
-#ifndef TIMER_DISABLE_NEW_OVERLOAD
-        if ( d_store_memory_data == MemoryLevel::Fast )
-            memory = MemoryApp::getMemoryUsage();
-        else
-#endif
-            memory = MemoryApp::getTotalMemoryUsage();
-        thread->time_memory[N_size] = 0;
-        thread->size_memory[N_size] = memory - d_bytes;
-    }
     // Start the timer
     timer->trace     = thread->active;
     timer->is_active = true;
     timer->N_calls++;
     thread->active.set( timer->trace_index );
     timer->start_time = std::chrono::steady_clock::now();
-    // Record the time of the memory usage
-    if ( d_store_memory_data != MemoryLevel::None &&
-         thread->N_memory_steps < d_max_trace_remaining ) {
+    // Record the memory usage
+    if ( d_store_memory_data != MemoryLevel::None ) {
         int64_t ns = diff_ns( timer->start_time, d_construct_time );
-        thread->time_memory[thread->N_memory_steps] = ns;
-        thread->N_memory_steps++;
+        d_memory.add( ns, d_store_memory_data, &d_bytes );
     }
 }
 
@@ -884,7 +876,7 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     // Save the starting and ending time if we are storing the detailed traces
     if ( d_store_trace_data && trace->N_calls < MAX_TRACE_TRACE ) {
         int64_t start = diff_ns( timer->start_time, d_construct_time );
-        int64_t stop  = diff_ns( timer->start_time, d_construct_time );
+        int64_t stop  = diff_ns( end_time, d_construct_time );
         trace->times.push_back( start );
         trace->times.push_back( stop );
     }
@@ -898,26 +890,9 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     trace->total_time += ns;
     trace->N_calls++;
     // Get the memory usage
-    if ( d_store_memory_data != MemoryLevel::None &&
-         thread->N_memory_steps < d_max_trace_remaining ) {
-        size_t* N_alloc = &thread->N_memory_alloc;
-        size_t N_size   = thread->N_memory_steps;
-        size_t N_max    = d_max_trace_remaining;
-        // Check the memory allocation
-        check_allocate_arrays(
-            N_alloc, N_size, N_max, &thread->time_memory, &thread->size_memory, &d_bytes );
-        // Get the current memory usage
-        int64_t ns    = diff_ns( end_time, d_construct_time );
-        size_t memory = 0;
-#ifndef TIMER_DISABLE_NEW_OVERLOAD
-        if ( d_store_memory_data == MemoryLevel::Fast )
-            memory = MemoryApp::getMemoryUsage();
-        else
-#endif
-            memory = MemoryApp::getTotalMemoryUsage();
-        thread->time_memory[N_size] = ns;
-        thread->size_memory[N_size] = memory - d_bytes;
-        thread->N_memory_steps++;
+    if ( d_store_memory_data != MemoryLevel::None ) {
+        int64_t ns = diff_ns( end_time, d_construct_time );
+        d_memory.add( ns, d_store_memory_data, &d_bytes );
     }
 }
 
@@ -950,15 +925,9 @@ void ProfilerApp::disable()
         i = nullptr;
     }
     N_timers = 0;
-    // delete the memory info
-    d_max_trace_remaining = static_cast<size_t>( MAX_TRACE_MEMORY );
-    d_N_memory_steps      = 0;
-    delete[] d_time_memory;
-    delete[] d_size_memory;
-    d_time_memory = nullptr;
-    d_size_memory = nullptr;
-    d_bytes       = 0;
+    d_bytes  = 0;
     d_lock.unlock();
+    d_memory.reset();
 }
 
 
@@ -1147,87 +1116,6 @@ TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
     // Release the mutex
     d_lock.unlock();
     return results;
-}
-
-
-/***********************************************************************
- * Function to return the memory usage as a function of time            *
- ***********************************************************************/
-MemoryResults ProfilerApp::getMemoryResults() const
-{
-    MemoryResults data;
-    data.rank = comm_rank();
-    // Get the thread data
-    // This can safely be done lock-free
-    std::vector<const thread_info*> thread_list;
-    for ( auto i : thread_table ) {
-        if ( i != nullptr )
-            thread_list.push_back( i );
-    }
-    // First unify the memory info from the different threads
-    // Technically there should be a lock, but we do not use locks on individual threads
-    int64_t bytes_changed = 0;
-    std::vector<size_t> N_time;
-    std::vector<int64_t*> data_time;
-    std::vector<int64_t*> size_time;
-    constexpr size_t size_entry = sizeof( double ) + sizeof( size_t );
-    for ( auto& i : thread_list ) {
-        volatile auto* thread_data = const_cast<volatile thread_info*>( i );
-        // Copy the pointers so that we minimize the chance of the data being modified
-        size_t N_steps              = thread_data->N_memory_steps;
-        size_t N_alloc              = thread_data->N_memory_alloc;
-        int64_t* time               = thread_data->time_memory;
-        int64_t* size               = thread_data->size_memory;
-        thread_data->N_memory_steps = 0;
-        thread_data->N_memory_alloc = 0;
-        thread_data->time_memory    = nullptr;
-        thread_data->size_memory    = nullptr;
-        bytes_changed -= N_alloc * size_entry;
-        if ( N_steps > 0 ) {
-            N_time.push_back( N_steps );
-            data_time.push_back( time );
-            size_time.push_back( size );
-        }
-    }
-    if ( d_N_memory_steps > 0 ) {
-        N_time.push_back( d_N_memory_steps );
-        data_time.push_back( d_time_memory );
-        size_time.push_back( d_size_memory );
-    }
-    size_t N_memory_steps_old = d_N_memory_steps;
-    mergeArrays<int64_t, int64_t>( N_time.size(), getPtr( N_time ), getPtr( data_time ),
-        getPtr( size_time ), &d_N_memory_steps, &d_time_memory, &d_size_memory );
-    for ( size_t i = 0; i < data_time.size(); i++ ) {
-        delete[] data_time[i];
-        delete[] size_time[i];
-    }
-    // Compress the results by removing values that have not changed
-    // Note: we will always keep the first and last values
-    if ( d_N_memory_steps > 2 ) {
-        size_t i = 1;
-        for ( size_t j = 1; j < d_N_memory_steps - 1; j++ ) {
-            if ( d_size_memory[j] == d_size_memory[i - 1] &&
-                 d_size_memory[j] == d_size_memory[j + 1] )
-                continue;
-            d_time_memory[i] = d_time_memory[j];
-            d_size_memory[i] = d_size_memory[j];
-            i++;
-        }
-        d_time_memory[i] = d_time_memory[d_N_memory_steps - 1];
-        d_size_memory[i] = d_size_memory[d_N_memory_steps - 1];
-        d_N_memory_steps = i + 1;
-    }
-    d_max_trace_remaining = std::max<size_t>( (size_t) MAX_TRACE_MEMORY - d_N_memory_steps, 0 );
-    bytes_changed += ( d_N_memory_steps - N_memory_steps_old ) * size_entry;
-    TimerUtility::atomic::atomic_add( &d_bytes, bytes_changed );
-    // Copy the results to the output vector
-    data.time.resize( d_N_memory_steps );
-    data.bytes.resize( d_N_memory_steps );
-    for ( size_t i = 0; i < d_N_memory_steps; i++ ) {
-        data.time[i]  = 1e-9 * static_cast<double>( d_time_memory[i] );
-        data.bytes[i] = d_size_memory[i];
-    }
-    return data;
 }
 
 
@@ -2181,57 +2069,6 @@ static inline void quicksort2( int n, type_a* arr, type_b* brr )
                 l                  = i;
             }
         }
-    }
-}
-
-
-/***********************************************************************
- * Subroutine to perform a merge between two or more sorted lists       *
- ***********************************************************************/
-template<class type_a, class type_b>
-static inline void mergeArrays( size_t N_list, size_t* N, type_a** arr, type_b** brr,
-    size_t* N_result, type_a** arr_result, type_b** brr_result )
-{
-    // Check that the inputs are sorted
-    for ( size_t i = 0; i < N_list; i++ ) {
-        for ( size_t j = 1; j < N[i]; j++ ) {
-            if ( arr[i][j] < arr[i][j - 1] )
-                throw std::logic_error( "Input arrays must be sorted" );
-        }
-    }
-    // Allocate enough memory to store the results
-    *N_result = 0;
-    for ( size_t i = 0; i < N_list; i++ )
-        *N_result += N[i];
-    if ( *N_result == 0 ) {
-        *arr_result = nullptr;
-        *brr_result = nullptr;
-        return;
-    }
-    *arr_result = new type_a[*N_result];
-    *brr_result = new type_b[*N_result];
-    // Get the global max
-    type_a max_v = arr[0][N[0] - 1];
-    for ( size_t j = 1; j < N_list; j++ ) {
-        if ( arr[j][N[j] - 1] > max_v )
-            max_v = arr[j][N[j] - 1];
-    }
-    // Merge the lists
-    std::vector<size_t> index( N_list, 0 );
-    for ( size_t i = 0; i < *N_result; i++ ) {
-        size_t index2 = 0;
-        type_a min_v  = max_v + 1;
-        for ( size_t j = 0; j < N_list; j++ ) {
-            if ( index[j] == N[j] )
-                continue;
-            if ( arr[j][index[j]] < min_v ) {
-                index2 = j;
-                min_v  = arr[j][index[j]];
-            }
-        }
-        ( *arr_result )[i] = arr[index2][index[index2]];
-        ( *brr_result )[i] = brr[index2][index[index2]];
-        index[index2]++;
     }
 }
 

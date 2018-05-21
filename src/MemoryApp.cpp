@@ -49,7 +49,7 @@ static size_t getPhysicalMemory()
     u_int namelen = sizeof( mib ) / sizeof( mib[0] );
     uint64_t size;
     size_t len = sizeof( size );
-    if ( sysctl( mib, namelen, &size, &len, NULL, 0 ) == 0 )
+    if ( sysctl( mib, namelen, &size, &len, nullptr, 0 ) == 0 )
         N_bytes = size;
 #elif defined( USE_WINDOWS )
     MEMORYSTATUSEX status;
@@ -85,7 +85,7 @@ void* MemoryApp::d_base_frame = 0;
  * Functions to overload new/delete                                     *
  ***********************************************************************/
 #ifndef TIMER_DISABLE_NEW_OVERLOAD
-void* operator new( size_t size )
+void* operator new( std::size_t size )
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -95,7 +95,7 @@ void* operator new( size_t size )
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
 }
-void* operator new[]( size_t size )
+void* operator new[]( std::size_t size )
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -105,7 +105,7 @@ void* operator new[]( size_t size )
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
 }
-void* operator new( size_t size, const std::nothrow_t& ) noexcept
+void* operator new( std::size_t size, const std::nothrow_t& ) noexcept
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -115,7 +115,7 @@ void* operator new( size_t size, const std::nothrow_t& ) noexcept
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
 }
-void* operator new[]( size_t size, const std::nothrow_t& ) noexcept
+void* operator new[]( std::size_t size, const std::nothrow_t& ) noexcept
 {
     void* ret = malloc( size );
     if ( !ret )
@@ -163,7 +163,7 @@ void operator delete[]( void* data, const std::nothrow_t& ) noexcept
 }
 void operator delete( void* data, std::size_t ) noexcept
 {
-    if ( data != NULL ) {
+    if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
@@ -172,7 +172,7 @@ void operator delete( void* data, std::size_t ) noexcept
 }
 void operator delete[]( void* data, std::size_t ) noexcept
 {
-    if ( data != NULL ) {
+    if ( data != nullptr ) {
         const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );

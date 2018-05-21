@@ -128,7 +128,7 @@ struct MemoryResults {
     int rank;                          //!<  Rank
     std::vector<double> time;          //!<  Time
     std::vector<uint64_t> bytes;       //!<  Memory in use
-    size_t size() const;               //!< The number of bytes needed to pack the trace
+    size_t size() const;               //!<  The number of bytes needed to pack the trace
     size_t pack( char* data ) const;   //!<  Pack the data to a buffer
     size_t unpack( const char* data ); //!<  Unpack the data from a buffer
     bool operator==( const MemoryResults& rhs ) const; //! Comparison operator
@@ -443,7 +443,7 @@ public:
      * \details  This function will return a vector containing the
      *   memory usage as a function of time
      */
-    MemoryResults getMemoryResults() const;
+    inline MemoryResults getMemoryResults() const { return d_memory.get(); }
 
     /*!
      * \brief  Get the memory used by the profiler
@@ -519,9 +519,6 @@ public: // Constants to determine parameters that affect performance/memory
     // trace itself)
     constexpr static size_t MAX_TRACE_TRACE = 1e6;
 
-    // The maximum number of times to store the memory usage
-    constexpr static size_t MAX_TRACE_MEMORY = 0x6000000;
-
     // The maximum number of threads supported
     constexpr static size_t MAX_THREADS = 1024;
 
@@ -538,11 +535,11 @@ private: // Member classes
     {
     public:
         StoreActive() { memset( this, 0, sizeof( *this ) ); }
-        inline void set( size_t index );
-        inline void unset( size_t index );
         inline StoreActive( const StoreActive& rhs ) = default;
         inline StoreActive& operator                 =( const StoreActive& rhs );
         inline StoreActive& operator&=( const StoreActive& rhs );
+        inline void set( size_t index );
+        inline void unset( size_t index );
         inline bool operator==( const StoreActive& rhs ) { return hash == rhs.hash; }
         inline uint64_t id() const { return hash; }
         std::vector<uint32_t> getSet() const;
@@ -558,24 +555,68 @@ private: // Member classes
         uint64_t trace[TRACE_SIZE];
     };
 
-    // Structure to store a sorted list of times (use unsigned LEB128)
+    // Structure to store a sorted list of times (future work: unsigned LEB128)
     class StoreTimes
     {
     public:
-        StoreTimes() : capacity( 0 ), size( 0 ), data( nullptr ) {}
-        ~StoreTimes() { delete[] data; }
+        StoreTimes() : d_capacity( 0 ), d_size( 0 ), d_data( nullptr ) {}
+        ~StoreTimes() { delete[] d_data; }
+        inline StoreTimes( const StoreTimes& rhs ) = delete;
+        inline StoreTimes& operator=( const StoreTimes& rhs ) = delete;
         inline void push_back( uint64_t time );
-        inline const uint64_t* begin() const { return data; }
-        inline const uint64_t* end() const { return &data[size]; }
+        inline const uint64_t* begin() const { return d_data; }
+        inline const uint64_t* end() const { return &d_data[d_size]; }
 
     private:
         // The minimum resolution to store (log2(ns))
         // Minimum timer resolution is 64 ns
         // constexpr static uint8_t RESOLUTION = 6;
         // Internal data
-        size_t capacity;
-        size_t size;
-        uint64_t* data;
+        size_t d_capacity;
+        size_t d_size;
+        uint64_t* d_data;
+    };
+
+    // Structure to store memory usage
+    class StoreMemory
+    {
+    public:
+        StoreMemory()
+            : d_capacity( 0 ), d_size( 0 ), d_time( nullptr ), d_bytes( nullptr ), d_lock( 0 )
+        {
+        }
+        ~StoreMemory()
+        {
+            delete[] d_time;
+            delete[] d_bytes;
+        }
+        inline StoreMemory( const StoreMemory& rhs ) = delete;
+        inline StoreMemory& operator=( const StoreMemory& rhs ) = delete;
+        inline void add( uint64_t time, MemoryLevel level,
+            volatile TimerUtility::atomic::int64_atomic* bytes_profiler );
+        void reset();
+        void swap( StoreMemory& rhs );
+        MemoryResults get() const;
+
+    private:
+        inline void lock() const
+        {
+            int tmp = 1;
+            do {
+                tmp = TimerUtility::atomic::atomic_fetch_and_and( &d_lock, 1 );
+            } while ( tmp == 1 );
+        }
+        inline void unlock() const { TimerUtility::atomic::atomic_fetch_and_or( &d_lock, 0 ); }
+
+    private:
+        // The maximum number of memory traces allowed
+        constexpr static size_t MAX_ENTRIES = 0x6000000;
+        // Internal data
+        size_t d_capacity;
+        size_t d_size;
+        uint64_t* d_time;  // The times at which we know the memory usage (ns from start)
+        uint64_t* d_bytes; // The memory usage at each time
+        mutable volatile TimerUtility::atomic::int32_atomic d_lock; // Internal lock
     };
 
     // Structure to store the info for a trace log
@@ -591,7 +632,7 @@ private: // Member classes
         // Constructor
         store_trace()
             : N_calls( 0 ),
-              next( NULL ),
+              next( nullptr ),
               min_time( std::numeric_limits<int64_t>::max() ),
               max_time( 0 ),
               total_time( 0 ),
@@ -602,7 +643,7 @@ private: // Member classes
         ~store_trace()
         {
             delete next;
-            next = NULL;
+            next = nullptr;
         }
         store_trace( const store_trace& rhs ) = delete;
         store_trace& operator=( const store_trace& rhs ) = delete;
@@ -618,12 +659,12 @@ private: // Member classes
         std::string path;                     // The path to the file (if availible)
         volatile store_timer_data_info* next; // Pointer to the next entry in the list
         // Constructor used to initialize key values
-        store_timer_data_info() : start_line( -1 ), stop_line( -1 ), id( 0 ), next( NULL ) {}
+        store_timer_data_info() : start_line( -1 ), stop_line( -1 ), id( 0 ), next( nullptr ) {}
         // Destructor
         ~store_timer_data_info()
         {
             delete next;
-            next = NULL;
+            next = nullptr;
         }
         store_timer_data_info( const store_timer_data_info& rhs ) = delete;
         store_timer_data_info& operator=( const store_timer_data_info& rhs ) = delete;
@@ -652,9 +693,9 @@ private: // Member classes
               min_time( std::numeric_limits<int64_t>::max() ),
               max_time( 0 ),
               total_time( 0 ),
-              trace_head( NULL ),
-              next( NULL ),
-              timer_data( NULL ),
+              trace_head( nullptr ),
+              next( nullptr ),
+              timer_data( nullptr ),
               start_time( time_point() )
         {
         }
@@ -674,18 +715,8 @@ private: // Member classes
         unsigned int N_timers;              // The number of timers seen by the current thread
         StoreActive active;                 // Store the active trace
         store_timer* head[TIMER_HASH_SIZE]; // Store the timers in a hash table
-        size_t N_memory_steps;              // The number of steps we have for the memory usage
-        size_t N_memory_alloc; // The size of the arrays allocated for time_memory and size_memory
-        int64_t* time_memory;  // The times at which we know the memory usage (ns from start)
-        int64_t* size_memory;  // The memory usage at each time
         // Constructor used to initialize key values
-        explicit thread_info( int id_ )
-            : id( id_ ),
-              N_timers( 0 ),
-              N_memory_steps( 0 ),
-              N_memory_alloc( 0 ),
-              time_memory( nullptr ),
-              size_memory( nullptr )
+        explicit thread_info( int id_ ) : id( id_ ), N_timers( 0 )
         {
             for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ )
                 head[i] = nullptr;
@@ -697,8 +728,6 @@ private: // Member classes
                 delete head[i];
                 head[i] = nullptr;
             }
-            delete[] time_memory;
-            delete[] size_memory;
         }
         thread_info()                         = delete;
         thread_info( const thread_info& rhs ) = delete;
@@ -727,12 +756,8 @@ private: // Member data
     int8_t d_level;                        // Timer level (default is 0, -1 is disabled)
     time_point d_construct_time;           // Constructor time
     int64_t d_shift;                       // Offset to synchronize the trace data
-    mutable size_t d_max_trace_remaining;  // The number of traces remaining
-    mutable size_t d_N_memory_steps;       // The number of steps for memory usage
-    mutable int64_t* d_time_memory;        // Times at which we know the memory usage (ns)
-    mutable int64_t* d_size_memory;        // The memory usage at each time
     mutable volatile int64_atomic d_bytes; // The current memory used by the profiler
-
+    StoreMemory d_memory;                  // Memory usage information
 
 private: // Private member functions
     // Function to return a pointer to the thread info (or create it if necessary)

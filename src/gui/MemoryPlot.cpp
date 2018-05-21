@@ -121,14 +121,14 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
         // Dummy plot
     } else if ( rank == -1 ) {
         for ( int i = 0; i < d_N_procs; i++ ) {
-            std::array<size_t, 2> tmp = updateRankData( i );
-            range[0]                  = std::min<double>( range[0], tmp[0] );
-            range[1]                  = std::max<double>( range[1], tmp[1] );
+            auto tmp = updateRankData( i );
+            range[0] = std::min<double>( range[0], tmp[0] );
+            range[1] = std::max<double>( range[1], tmp[1] );
         }
     } else {
-        std::array<size_t, 2> tmp = updateRankData( rank );
-        range[0]                  = std::min<double>( range[0], tmp[0] );
-        range[1]                  = std::max<double>( range[1], tmp[1] );
+        auto tmp = updateRankData( rank );
+        range[0] = std::min<double>( range[0], tmp[0] );
+        range[1] = std::max<double>( range[1], tmp[1] );
     }
 
     // Scale and plot the data for each rank

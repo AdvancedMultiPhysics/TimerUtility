@@ -132,7 +132,7 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
         } else {
             // Get the file and line number by calling DBSTACK
             mxArray *lhs[1];
-            int error = mexCallMATLAB( 1, lhs, 0, NULL, "dbstack" );
+            int error = mexCallMATLAB( 1, lhs, 0, nullptr, "dbstack" );
             if ( error != 0 )
                 mexErrMsgTxt( "Error calling dbstack" );
             if ( mxGetNumberOfElements( lhs[0] ) == 0 )

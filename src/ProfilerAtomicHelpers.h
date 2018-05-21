@@ -51,55 +51,97 @@ namespace atomic {
 
 
 // Define int32_atomic, int64_atomic
-#include <stdint.h>
 #if defined( USE_WINDOWS )
 typedef long int32_atomic;
 typedef __int64 int64_atomic;
-#define NO_INST_ATTR
+#define NO_INST_ATTR_ATOMIC
 #elif defined( USE_MAC )
 typedef int32_t int32_atomic;
 typedef int64_t int64_atomic;
-#define NO_INST_ATTR
+#define NO_INST_ATTR_ATOMIC
 #elif defined( __GNUC__ )
 typedef int int32_atomic;
 typedef long int int64_atomic;
-#define NO_INST_ATTR __attribute__( ( no_instrument_function ) )
+#define NO_INST_ATTR_ATOMIC __attribute__( ( no_instrument_function ) )
 #elif defined( USE_PTHREAD_ATOMIC_LOCK )
 typedef int int32_atomic;
 typedef long int int64_atomic;
-#define NO_INST_ATTR
+#define NO_INST_ATTR_ATOMIC
 #else
 #error Unknown OS
 #endif
 
 
 /**
- * \brief Increment returning the new value
- * \details Increment x and return the new value
- * \param[in] x     The pointer to the value to increment
+ * \brief Get the value
+ * \details Read the data in x
+ * \param[in] x     The pointer to the value to get
  */
-inline int32_atomic atomic_increment( int32_atomic volatile *x ) NO_INST_ATTR;
+inline int32_atomic atomic_get( const int32_atomic volatile *x );
+
+
+/**
+ * \brief Get the value
+ * \details Read the data in x
+ * \param[in] x     The pointer to the value to get
+ */
+inline int64_atomic atomic_get( const int64_atomic volatile *x );
+
+
+/**
+ * \brief Get the value
+ * \details Read the data in x
+ * \param[in] x     The pointer to the value to get
+ */
+template<class TYPE>
+inline TYPE *atomic_get( volatile TYPE **x );
+
+
+/**
+ * \brief Set the value
+ * \details Set the data in x to y (*x=y)
+ * \param[in] x     The pointer to the value to set
+ * \param[in] y     The value to set
+ */
+inline void atomic_set( int32_atomic volatile *x, int32_atomic y );
+
+
+/**
+ * \brief Set the value
+ * \details Set the data in x to y (*x=y)
+ * \param[in] x     The pointer to the value to set
+ * \param[in] y     The value to set
+ */
+inline void atomic_set( int64_atomic volatile *x, int64_atomic y );
+
 
 /**
  * \brief Increment returning the new value
  * \details Increment x and return the new value
  * \param[in] x     The pointer to the value to increment
  */
-inline int64_atomic atomic_increment( int64_atomic volatile *x ) NO_INST_ATTR;
+inline int32_atomic atomic_increment( int32_atomic volatile *x ) NO_INST_ATTR_ATOMIC;
+
+/**
+ * \brief Increment returning the new value
+ * \details Increment x and return the new value
+ * \param[in] x     The pointer to the value to increment
+ */
+inline int64_atomic atomic_increment( int64_atomic volatile *x ) NO_INST_ATTR_ATOMIC;
 
 /**
  * \brief Decrement returning the new value
  * \details Decrement x and return the new value
  * \param[in] x     The pointer to the value to decrement
  */
-inline int32_atomic atomic_decrement( int32_atomic volatile *x ) NO_INST_ATTR;
+inline int32_atomic atomic_decrement( int32_atomic volatile *x ) NO_INST_ATTR_ATOMIC;
 
 /**
  * \brief Decrement returning the new value
  * \details Decrement x and return the new value
  * \param[in] x     The pointer to the value to decrement
  */
-inline int64_atomic atomic_decrement( int64_atomic volatile *x ) NO_INST_ATTR;
+inline int64_atomic atomic_decrement( int64_atomic volatile *x ) NO_INST_ATTR_ATOMIC;
 
 /**
  * \brief Add returning the new value
@@ -107,7 +149,7 @@ inline int64_atomic atomic_decrement( int64_atomic volatile *x ) NO_INST_ATTR;
  * \param[in] x     The pointer to the value to add to
  * \param[in] y     The value to add
  */
-inline int32_atomic atomic_add( int32_atomic volatile *x, int32_atomic y ) NO_INST_ATTR;
+inline int32_atomic atomic_add( int32_atomic volatile *x, int32_atomic y ) NO_INST_ATTR_ATOMIC;
 
 /**
  * \brief Add returning the new value
@@ -115,7 +157,7 @@ inline int32_atomic atomic_add( int32_atomic volatile *x, int32_atomic y ) NO_IN
  * \param[in] x     The pointer to the value to add to
  * \param[in] y     The value to add
  */
-inline int64_atomic atomic_add( int64_atomic volatile *x, int64_atomic y ) NO_INST_ATTR;
+inline int64_atomic atomic_add( int64_atomic volatile *x, int64_atomic y ) NO_INST_ATTR_ATOMIC;
 
 /**
  * \brief Compare the given value and swap
@@ -136,6 +178,99 @@ inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, i
  * \param[in] y     The value to swap iff *v==x
  */
 inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y );
+
+/**
+ * \brief Compare the given value and swap
+ * \details Compare the existing value and swap if it matches.
+ * \return Returns true if the swap was performed
+ * \param[in] v     The pointer to the value to check and swap
+ * \param[in] x     The value to compare
+ * \param[in] y     The value to swap iff *v==x
+ */
+inline bool atomic_compare_and_swap( void *volatile *v, void *x, void *y );
+
+/**
+ * \brief Fetch the current value and "and" with given value
+ * \details Perform *v = (*v) & x, returning the previous value
+ * \return Returns the previous value before the "and" operation
+ * \param[in] v     The pointer to the value to check and and
+ * \param[in] x     The value to and
+ */
+inline int32_atomic atomic_fetch_and_and( int32_atomic volatile *v, int32_atomic x );
+
+/**
+ * \brief Fetch the current value and "and" with given value
+ * \details Perform *v = (*v) & x, returning the previous value
+ * \return Returns the previous value before the "and" operation
+ * \param[in] v     The pointer to the value to check and and
+ * \param[in] x     The value to and
+ */
+inline int64_atomic atomic_fetch_and_and( int64_atomic volatile *v, int64_atomic x );
+
+/**
+ * \brief Fetch the current value and "or" with given value
+ * \details Perform *v = (*v) | x, returning the previous value
+ * \return Returns the previous value before the "and" operation
+ * \param[in] v     The pointer to the value to check and or
+ * \param[in] x     The value to or
+ */
+inline int32_atomic atomic_fetch_and_or( int32_atomic volatile *v, int32_atomic x );
+
+/**
+ * \brief Fetch the current value and "ou" with given value
+ * \details Perform *v = (*v) | x, returning the previous value
+ * \return Returns the previous value before the "and" operation
+ * \param[in] v     The pointer to the value to check and swap
+ * \param[in] v     The pointer to the value to check and or
+ * \param[in] x     The value to or
+ */
+inline int64_atomic atomic_fetch_and_or( int64_atomic volatile *v, int64_atomic x );
+
+
+/**
+ * \brief Class to store a pool of objects
+ * \details This class stores a pool of objects that can be added/removed in a thread-safe way
+ */
+template<class TYPE, int N_MAX>
+class pool
+{
+public:
+    pool()
+    {
+        d_data = new volatile TYPE *[N_MAX];
+        for ( int i = 0; i < N_MAX; i++ )
+            d_data[i] = new TYPE;
+    }
+    ~pool()
+    {
+        for ( int i = 0; i < N_MAX; i++ )
+            if ( d_data[i] != nullptr )
+                delete d_data[i];
+        delete[] d_data;
+    }
+    inline TYPE *get()
+    {
+        int i = 0;
+        while ( true ) {
+            TYPE *tmp    = const_cast<TYPE *>( d_data[i] );
+            bool swapped = atomic_compare_and_swap( (void *volatile *) &d_data[i], tmp, nullptr );
+            if ( swapped && ( tmp != nullptr ) )
+                return tmp;
+            i = ( i + 1 ) % N_MAX;
+        }
+    }
+    inline void put( TYPE *ptr )
+    {
+        int i = 0;
+        while ( !atomic_compare_and_swap( (void *volatile *) &d_data[i], nullptr, ptr ) )
+            i = ( i + 1 ) % N_MAX;
+    }
+
+private:
+    volatile TYPE **d_data;
+    pool( const pool &rhs );
+    pool &operator=( const pool &rhs );
+};
 
 
 // Define increment/decrement/add operators for int32, int64
@@ -172,6 +307,10 @@ inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, i
 {
     return InterlockedCompareExchange64( v, y, x ) == x;
 }
+inline bool atomic_compare_and_swap( void *volatile *v, void *x, void *y )
+{
+    return InterlockedCompareExchangePointer( v, x, y ) == x;
+}
 #elif defined( USE_MAC )
 inline int32_atomic atomic_increment( int32_atomic volatile *x )
 {
@@ -189,6 +328,24 @@ inline int64_atomic atomic_decrement( int64_atomic volatile *x )
 {
     return OSAtomicDecrement64Barrier( x );
 }
+int32_atomic atomic_fetch_and_or( int32_atomic volatile *v, int32_atomic x )
+{
+    return OSAtomicOr32Orig( x, (volatile uint32_t *) v );
+}
+int32_atomic atomic_fetch_and_and( int32_atomic volatile *v, int32_atomic x )
+{
+    return OSAtomicAnd32Orig( x, (volatile uint32_t *) v );
+}
+int64_atomic atomic_fetch_and_or( int64_atomic volatile *v, int64_atomic x )
+{
+    throw std::logic_error( "Not availible for this OS" );
+    return 0;
+}
+int64_atomic atomic_fetch_and_and( int64_atomic volatile *v, int64_atomic x )
+{
+    throw std::logic_error( "Not availible for this OS" );
+    return 0;
+}
 inline int32_atomic atomic_add( int32_atomic volatile *x, int32_atomic y )
 {
     return OSAtomicAdd32Barrier( y, x );
@@ -205,11 +362,31 @@ inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, i
 {
     return OSAtomicCompareAndSwap64Barrier( x, y, v );
 }
+inline bool atomic_compare_and_swap( void *volatile *v, void *x, void *y )
+{
+    return OSAtomicCompareAndSwapPtrBarrier( x, y, v );
+}
 #elif defined( __GNUC__ )
 int32_atomic atomic_increment( int32_atomic volatile *x ) { return __sync_add_and_fetch( x, 1 ); }
 int64_atomic atomic_increment( int64_atomic volatile *x ) { return __sync_add_and_fetch( x, 1 ); }
 int32_atomic atomic_decrement( int32_atomic volatile *x ) { return __sync_sub_and_fetch( x, 1 ); }
 int64_atomic atomic_decrement( int64_atomic volatile *x ) { return __sync_sub_and_fetch( x, 1 ); }
+int32_atomic atomic_fetch_and_or( int32_atomic volatile *v, int32_atomic x )
+{
+    return __sync_fetch_and_or( v, x );
+}
+int64_atomic atomic_fetch_and_or( int64_atomic volatile *v, int64_atomic x )
+{
+    return __sync_fetch_and_or( v, x );
+}
+int32_atomic atomic_fetch_and_and( int32_atomic volatile *v, int32_atomic x )
+{
+    return __sync_fetch_and_and( v, x );
+}
+int64_atomic atomic_fetch_and_and( int64_atomic volatile *v, int64_atomic x )
+{
+    return __sync_fetch_and_and( v, x );
+}
 inline int32_atomic atomic_add( int32_atomic volatile *x, int32_atomic y )
 {
     return __sync_add_and_fetch( x, y );
@@ -223,6 +400,10 @@ inline bool atomic_compare_and_swap( int32_atomic volatile *v, int32_atomic x, i
     return __sync_bool_compare_and_swap( v, x, y );
 }
 inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, int64_atomic y )
+{
+    return __sync_bool_compare_and_swap( v, x, y );
+}
+inline bool atomic_compare_and_swap( void *volatile *v, void *x, void *y )
 {
     return __sync_bool_compare_and_swap( v, x, y );
 }
@@ -288,9 +469,63 @@ inline bool atomic_compare_and_swap( int64_atomic volatile *v, int64_atomic x, i
     pthread_mutex_unlock( &atomic_pthread_lock );
     return test;
 }
+inline bool atomic_compare_and_swap( void *volatile *v, void *x, void *y )
+{
+    pthread_mutex_lock( &atomic_pthread_lock );
+    bool test = *v == x;
+    *v        = test ? y : x;
+    pthread_mutex_unlock( &atomic_pthread_lock );
+    return test;
+}
 #else
 #error Unknown OS
 #endif
+
+
+inline int32_atomic atomic_get( const int32_atomic volatile *x )
+{
+    return atomic_add( const_cast<int32_atomic volatile *>( x ), 0 );
+}
+inline int64_atomic atomic_get( const int64_atomic volatile *x )
+{
+    return atomic_add( const_cast<int64_atomic volatile *>( x ), 0 );
+}
+template<class TYPE>
+inline TYPE *atomic_get( volatile TYPE **x )
+{
+    return reinterpret_cast<TYPE *>(
+        atomic_add( reinterpret_cast<int64_atomic volatile *>( x ), 0 ) );
+}
+inline void atomic_set( int32_atomic volatile *x, int32_atomic y )
+{
+    int32_atomic tmp = *x;
+    while ( !atomic_compare_and_swap( x, tmp, y ) ) {
+        tmp = *x;
+    }
+}
+inline void atomic_set( int64_atomic volatile *x, int64_atomic y )
+{
+    int64_atomic tmp = *x;
+    while ( !atomic_compare_and_swap( x, tmp, y ) ) {
+        tmp = *x;
+    }
+}
+inline void atomic_swap( int32_atomic volatile *x, int32_atomic *y )
+{
+    int32_atomic tmp = *x;
+    while ( !atomic_compare_and_swap( x, tmp, *y ) ) {
+        tmp = *x;
+    }
+    *y = tmp;
+}
+inline void atomic_swap( int64_atomic volatile *x, int64_atomic *y )
+{
+    int64_atomic tmp = *x;
+    while ( !atomic_compare_and_swap( x, tmp, *y ) ) {
+        tmp = *x;
+    }
+    *y = tmp;
+}
 
 
 // Define an atomic counter

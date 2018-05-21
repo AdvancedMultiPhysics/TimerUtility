@@ -38,7 +38,7 @@ private:
     int d_last_rank;
 
 private:
-    MemoryPlot() : d_memory( NULL ), d_N_procs( 0 ) {}
+    MemoryPlot() : d_memory( nullptr ), d_N_procs( 0 ) {}
     const std::vector<MemoryResults> *d_memory;
     const int d_N_procs;
 };

@@ -129,8 +129,8 @@ LoadBalance::~LoadBalance()
 void LoadBalance::plot( const std::vector<float>& time_ )
 {
     PROFILE_START( "plot" );
-    N_procs                  = static_cast<int>( time_.size() );
-    QVector<double> new_time = toQVector( time_ );
+    N_procs       = static_cast<int>( time_.size() );
+    auto new_time = toQVector( time_ );
     if ( new_time == time ) {
         replot();
         PROFILE_STOP2( "plot" );
@@ -268,12 +268,12 @@ void LoadBalance::mouseReleaseEvent( QMouseEvent* event )
         QPoint pos = canvas->mapFromGlobal( event->globalPos() );
         if ( abs( start.x() - pos.x() ) < 10 || abs( start.y() - pos.y() ) < 10 )
             return;
-        QwtScaleMap xmap = canvasMap( QwtPlot::xBottom );
-        QwtScaleMap ymap = canvasMap( QwtPlot::yLeft );
-        double x1        = xmap.invTransform( std::min( start.x(), pos.x() ) );
-        double x2        = xmap.invTransform( std::max( start.x(), pos.x() ) );
-        double y1        = ymap.invTransform( std::max( start.y(), pos.y() ) );
-        double y2        = ymap.invTransform( std::min( start.y(), pos.y() ) );
+        auto xmap = canvasMap( QwtPlot::xBottom );
+        auto ymap = canvasMap( QwtPlot::yLeft );
+        double x1 = xmap.invTransform( std::min( start.x(), pos.x() ) );
+        double x2 = xmap.invTransform( std::max( start.x(), pos.x() ) );
+        double y1 = ymap.invTransform( std::max( start.y(), pos.y() ) );
+        double y2 = ymap.invTransform( std::min( start.y(), pos.y() ) );
         std::array<double, 4> range;
         range[0] = std::max( x1, global_range[0] );
         range[1] = std::min( x2, global_range[1] );

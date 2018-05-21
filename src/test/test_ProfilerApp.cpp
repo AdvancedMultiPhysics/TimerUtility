@@ -144,14 +144,14 @@ static inline int test_getTotalMemoryUsage()
 
 
 // Run all tests
-int run_tests( bool enable_trace, std::string save_name )
+int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
 {
     PROFILE_ENABLE();
     PROFILE_SYNCHRONIZE();
-    if ( enable_trace ) {
+    if ( enable_trace )
         PROFILE_ENABLE_TRACE();
+    if ( enable_memory )
         PROFILE_ENABLE_MEMORY();
-    }
     PROFILE_START( "MAIN" );
 
     const int N_it     = 200;
@@ -309,7 +309,7 @@ int run_tests( bool enable_trace, std::string save_name )
         delete[] tmp;
         PROFILE_STOP( "allocate1" );
     }
-    printf( "\nProfiler overhead:\n" );
+    printf( "\nProfiler overhead (%i,%i):\n", enable_trace ? 1 : 0, enable_memory ? 1 : 0 );
     printOverhead( "single", N_it * N_timers );
     printOverhead( "static", N_it * N_timers );
     printOverhead( "dynamic", N_it * N_timers );
@@ -465,7 +465,6 @@ int run_tests( bool enable_trace, std::string save_name )
 
     PROFILE_SAVE( save_name );
     PROFILE_SAVE( save_name, true );
-    MemoryApp::print( std::cout );
     PROFILE_STOP( "MAIN" );
     return N_errors;
 }
@@ -503,31 +502,20 @@ int main( int argc, char *argv[] )
         printf( "getTotalMemoryUsage: %i\n\n", test_getTotalMemoryUsage() );
 
         // Run the tests
-        std::vector<std::pair<bool, std::string>> tests;
-        tests.emplace_back( false, "test_ProfilerApp" );
-        tests.emplace_back( true, "test_ProfilerApp-trace" );
+        std::vector<std::tuple<bool, bool, std::string>> tests;
+        tests.emplace_back( false, false, "test_ProfilerApp" );
+        tests.emplace_back( true, false, "test_ProfilerApp-trace" );
+        tests.emplace_back( true, true, "test_ProfilerApp-memory" );
         for ( auto &test : tests ) {
-            int m1 = getMemoryUsage();
-            int m2 = global_profiler.getMemoryUsed();
-            printf( "%i %i %i\n", m1 - m2, m1, m2 );
-            N_errors += run_tests( test.first, test.second );
-            m1 = getMemoryUsage();
-            m2 = global_profiler.getMemoryUsed();
-            printf( "%i %i %i\n", m1 - m2, m1, m2 );
+            N_errors += run_tests( std::get<0>( test ), std::get<1>( test ), std::get<2>( test ) );
             PROFILE_DISABLE();
         }
-        int m1 = getMemoryUsage();
-        int m2 = global_profiler.getMemoryUsed();
-        printf( "%i %i %i\n\n", m1 - m2, m1, m2 );
     }
 
     // Print the memory stats
     MemoryApp::print( std::cout );
-    std::cout << "Stack size 1: " << getStackSize1() << std::endl;
-    std::cout << "Stack size 2: " << getStackSize2() << std::endl;
-    std::cout << std::endl;
 
-    // Finalize MPI and SAMRAI
+    // Finalize MPI
     if ( N_errors == 0 )
         std::cout << "All tests passed" << std::endl;
     else

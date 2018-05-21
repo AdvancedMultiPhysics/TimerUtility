@@ -44,19 +44,6 @@ inline std::vector<int> getActive(
 }
 
 
-// Get a ptr from std::vector
-template<class TYPE>
-inline TYPE* getPtr( std::vector<TYPE>& x )
-{
-    return x.empty() ? NULL : &x[0];
-}
-template<class TYPE>
-inline const TYPE* getPtr( const std::vector<TYPE>& x )
-{
-    return x.empty() ? NULL : &x[0];
-}
-
-
 // Save a single array
 template<class TYPE>
 inline mxArray* saveSingleMatrix( size_t N, size_t M, const TYPE* x )
@@ -126,7 +113,7 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
         mxSetFieldByNumber( plhs[1], i, 4, mxCreateDoubleScalar( timer.start ) );
         mxSetFieldByNumber( plhs[1], i, 5, mxCreateDoubleScalar( timer.stop ) );
         if ( timer.trace.empty() ) {
-            mxSetFieldByNumber( plhs[1], i, 6, mxCreateStructMatrix( 0, 1, 0, NULL ) );
+            mxSetFieldByNumber( plhs[1], i, 6, mxCreateStructMatrix( 0, 1, 0, nullptr ) );
             continue;
         }
         // Get a list of all trace ids
@@ -194,10 +181,8 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
         ASSERT( data.memory[i].time.size() == data.memory[i].bytes.size() );
         size_t N = data.memory[i].time.size();
         mxSetFieldByNumber( plhs[2], i, 0, mxCreateDoubleScalar( data.memory[i].rank ) );
-        mxSetFieldByNumber(
-            plhs[2], i, 1, saveSingleMatrix( 1, N, getPtr( data.memory[i].time ) ) );
-        mxSetFieldByNumber(
-            plhs[2], i, 2, saveSingleMatrix( 1, N, getPtr( data.memory[i].bytes ) ) );
+        mxSetFieldByNumber( plhs[2], i, 1, saveSingleMatrix( 1, N, data.memory[i].time.data() ) );
+        mxSetFieldByNumber( plhs[2], i, 2, saveSingleMatrix( 1, N, data.memory[i].bytes.data() ) );
     }
 
     // Clear data

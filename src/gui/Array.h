@@ -10,11 +10,11 @@
 class BoolArray
 {
 public:
-    BoolArray( int Nx = 0, int Ny = 1, int Nz = 1 ) : Ni( 0 ), data( NULL )
+    BoolArray( int Nx = 0, int Ny = 1, int Nz = 1 ) : Ni( 0 ), data( nullptr )
     {
         resize( Nx, Ny, Nz );
     }
-    BoolArray( const BoolArray& rhs ) : Ni( rhs.Ni ), data( NULL )
+    BoolArray( const BoolArray& rhs ) : Ni( rhs.Ni ), data( nullptr )
     {
         resize( N[0], N[1], N[2] );
         memcpy( data, rhs.data, Ni * sizeof( uint64_t ) );
@@ -31,7 +31,7 @@ public:
     void resize( int Nx, int Ny = 1, int Nz = 1 )
     {
         delete[] data;
-        data = NULL;
+        data = nullptr;
         N[0] = Nx;
         N[1] = Ny;
         N[2] = Nz;
@@ -79,7 +79,7 @@ public:
     int N;
     int M;
     TYPE* data;
-    Matrix() : N( 0 ), M( 0 ), data( NULL ) {}
+    Matrix() : N( 0 ), M( 0 ), data( nullptr ) {}
     Matrix( int N_, int M_ ) : N( N_ ), M( M_ ), data( new TYPE[N_ * M_] ) { fill( 0 ); }
     ~Matrix() { delete[] data; }
     TYPE& operator()( int i, int j ) { return data[i + j * N]; }

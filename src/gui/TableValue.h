@@ -29,7 +29,7 @@ public:
     virtual bool operator<( const QTableWidgetItem& other ) const
     {
         const TableValue* rhs = dynamic_cast<const TableValue*>( &other );
-        if ( rhs != NULL )
+        if ( rhs )
             return x < rhs->x;
         return QTableWidgetItem::operator<( other );
     }

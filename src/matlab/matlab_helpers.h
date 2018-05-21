@@ -24,7 +24,7 @@ inline std::string stringf( const char *format, ... )
 
 inline std::string loadMexString( const mxArray *ptr )
 {
-    if ( ptr == NULL )
+    if ( ptr == nullptr )
         return std::string();
     if ( !mxIsChar( ptr ) )
         return std::string();
@@ -56,16 +56,16 @@ mxArray *mxCreateClassArray( mwSize ndim, const mwSize *dims, const char *classn
     }
     mxArray *rhs = mxCreateString( arg.c_str() );
     // Call MATLAB
-    mxArray *mx     = NULL;
+    mxArray *mx     = nullptr;
     mxArray *mxtrap = mexCallMATLABWithTrap( 1, &mx, 1, &rhs, "mxCreateClassArrayHelper" );
     mxDestroyArray( rhs );
     // Check for errors and return
-    if ( mxtrap != NULL ) {
+    if ( mxtrap ) {
         std::string msg = stringf( "Error creating class %s (1): %s\n", classname, arg.c_str() );
         msg += "  identifier: " + loadMexString( mxGetProperty( mxtrap, 0, "identifier" ) ) + "\n";
         msg += "  message: " + loadMexString( mxGetProperty( mxtrap, 0, "message" ) ) + "\n";
         mxDestroyArray( mxtrap );
-        mx = NULL;
+        mx = nullptr;
         mexErrMsgTxt( msg.c_str() );
     }
     const std::string className( mxGetClassName( mx ) );
