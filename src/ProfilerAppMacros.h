@@ -173,7 +173,7 @@
  *      the application.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE_MEMORY() global_profiler.setStoreMemory( true )
+#define PROFILE_ENABLE_MEMORY( X ) global_profiler.setStoreMemory( X )
 
 
 /*! \def PROFILE_DISABLE_MEMORY()
@@ -183,7 +183,7 @@
  *      the application.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_DISABLE_MEMORY() global_profiler.setStoreMemory( false )
+#define PROFILE_DISABLE_MEMORY() global_profiler.setStoreMemory( ProfilerApp::MemoryLevel::None )
 
 
 /*! @} */

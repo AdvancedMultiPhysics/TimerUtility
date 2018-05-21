@@ -381,17 +381,23 @@ public:
      */
     void setStoreTrace( bool profile );
 
+    //! Enum defining the level of memory detail
+    enum class MemoryLevel : int8_t { None, Fast, Full };
+
     /*!
      * \brief  Function to change if we are storing memory information
      * \details  This function will change if we are storing information about the memory usage
-     *  as a function of time (must be called before any start).
+     *    as a function of time (must be called before any start).
+     *    If the level is set to Fast, it will only track new/delete calls
+     *    (requires overloading new/delete).  If the level is set to Full, it will attempt
+     *    to count all memory usage.
      *  Note: Enabling this option will check the memory usage evergy time we enter or leave
-     *  timer.  This data will be combined from all timers/threads to get the memory usage
-     *  of the application over time.  Combined with the trace level data, we can determine
-     *  when memory is allocated and which timers are active.
+     *    timer.  This data will be combined from all timers/threads to get the memory usage
+     *    of the application over time.  Combined with the trace level data, we can determine
+     *    when memory is allocated and which timers are active.
      * @param[in] memory    Do we want to store detailed profiling data
      */
-    void setStoreMemory( bool memory );
+    void setStoreMemory( MemoryLevel level = MemoryLevel::Fast );
 
     //! Return the current timer level
     inline int getLevel() const { return d_level; }
@@ -552,6 +558,26 @@ private: // Member classes
         uint64_t trace[TRACE_SIZE];
     };
 
+    // Structure to store a sorted list of times (use unsigned LEB128)
+    class StoreTimes
+    {
+    public:
+        StoreTimes() : capacity( 0 ), size( 0 ), data( nullptr ) {}
+        ~StoreTimes() { delete[] data; }
+        inline void push_back( uint64_t time );
+        inline const uint64_t* begin() const { return data; }
+        inline const uint64_t* end() const { return &data[size]; }
+
+    private:
+        // The minimum resolution to store (log2(ns))
+        // Minimum timer resolution is 64 ns
+        // constexpr static uint8_t RESOLUTION = 6;
+        // Internal data
+        size_t capacity;
+        size_t size;
+        uint64_t* data;
+    };
+
     // Structure to store the info for a trace log
     struct store_trace {
         size_t N_calls;       // Number of calls to this block
@@ -561,10 +587,7 @@ private: // Member classes
         int64_t max_time;     // Store the maximum time spent in the given block (nano-seconds)
         int64_t total_time;   // Store the total time spent in the given block (nano-seconds)
         size_t N_trace_alloc; // The size of the arrays for start_time and stop_time
-        int64_t* start_time;  // Store when start was called for the given trace (nano-seconds from
-                              // constructor call)
-        int64_t* end_time;    // Store when stop was called for the given trace (nano-seconds from
-                              // constructor call)
+        StoreTimes times;     // Store when start/stop was called (nano-seconds from constructor)
         // Constructor
         store_trace()
             : N_calls( 0 ),
@@ -572,18 +595,12 @@ private: // Member classes
               min_time( std::numeric_limits<int64_t>::max() ),
               max_time( 0 ),
               total_time( 0 ),
-              N_trace_alloc( 0 ),
-              start_time( NULL ),
-              end_time( NULL )
+              N_trace_alloc( 0 )
         {
         }
         // Destructor
         ~store_trace()
         {
-            delete[] start_time;
-            delete[] end_time;
-            start_time = NULL;
-            end_time   = NULL;
             delete next;
             next = NULL;
         }
@@ -705,7 +722,7 @@ private: // Member data
 
     // Misc variables
     bool d_store_trace_data;               // Store trace information?
-    bool d_store_memory_data;              // Store memory information?
+    MemoryLevel d_store_memory_data;       // Store memory information?
     bool d_disable_timer_error;            // Disable the timer errors for start/stop?
     int8_t d_level;                        // Timer level (default is 0, -1 is disabled)
     time_point d_construct_time;           // Constructor time

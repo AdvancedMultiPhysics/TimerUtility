@@ -125,13 +125,11 @@ private:
  ***********************************************************************/
 inline size_t MemoryApp::getTotalMemoryUsage()
 {
-    size_t N_bytes = 0;
 #if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
     // Windows
     PROCESS_MEMORY_COUNTERS memCounter;
     GetProcessMemoryInfo( GetCurrentProcess(), &memCounter, sizeof( memCounter ) );
-    N_bytes = memCounter.WorkingSetSize;
-
+    size_t N_bytes = memCounter.WorkingSetSize;
 #elif defined( __APPLE__ )
     // MAC
     struct task_basic_info t_info;
@@ -140,13 +138,13 @@ inline size_t MemoryApp::getTotalMemoryUsage()
         task_info( mach_task_self(), TASK_BASIC_INFO, (task_info_t) &t_info, &t_info_count );
     if ( rtn != KERN_SUCCESS )
         return 0;
-    N_bytes = t_info.virtual_size;
+    size_t N_bytes = t_info.virtual_size;
 #else
     // Linux
     struct mallinfo meminfo = mallinfo();
     size_t size_hblkhd      = static_cast<unsigned int>( meminfo.hblkhd );
     size_t size_uordblks    = static_cast<unsigned int>( meminfo.uordblks );
-    N_bytes                 = size_hblkhd + size_uordblks;
+    size_t N_bytes          = size_hblkhd + size_uordblks;
     // Correct for possible 32-bit wrap around
     size_t N_bytes_new = d_bytes_allocated - d_bytes_deallocated;
     while ( N_bytes < N_bytes_new )

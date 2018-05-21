@@ -284,7 +284,7 @@ static inline std::vector<TYPE> comm_recv2( int, int )
 
 
 /***********************************************************************
- * Modify the active bitset                                             *
+ * StoreActive                                                          *
  ***********************************************************************/
 inline void ProfilerApp::StoreActive::set( size_t i )
 {
@@ -347,6 +347,21 @@ std::vector<uint32_t> ProfilerApp::StoreActive::getSet() const
         }
     }
     return x;
+}
+
+
+/***********************************************************************
+ * StoreTimes                                                           *
+ ***********************************************************************/
+inline void ProfilerApp::StoreTimes::push_back( uint64_t time )
+{
+    if ( size == capacity ) {
+        auto old = data;
+        capacity = std::max<size_t>( capacity * 2, 1024 );
+        data     = new uint64_t[capacity];
+        memcpy( data, old, size * sizeof( int64_t ) );
+    }
+    data[size++] = time;
 }
 
 
@@ -720,7 +735,7 @@ ProfilerApp::ProfilerApp() : d_N_threads( 0 ), d_construct_time( std::chrono::st
     d_level               = 0;
     d_shift               = 0;
     d_store_trace_data    = false;
-    d_store_memory_data   = false;
+    d_store_memory_data   = MemoryLevel::None;
     d_disable_timer_error = false;
     d_max_trace_remaining = static_cast<size_t>( MAX_TRACE_MEMORY );
     d_N_memory_steps      = 0;
@@ -736,7 +751,7 @@ void ProfilerApp::setStoreTrace( bool profile )
     else
         throw std::logic_error( "Cannot change trace status after a timer is started" );
 }
-void ProfilerApp::setStoreMemory( bool memory )
+void ProfilerApp::setStoreMemory( MemoryLevel memory )
 {
     if ( N_timers == 0 )
         d_store_memory_data = memory;
@@ -782,7 +797,8 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
     if ( timer->is_active )
         activeErrStart( thread, timer );
     // Get the memory usage
-    if ( d_store_memory_data && thread->N_memory_steps < d_max_trace_remaining ) {
+    if ( d_store_memory_data != MemoryLevel::None &&
+         thread->N_memory_steps < d_max_trace_remaining ) {
         size_t* N_alloc = &thread->N_memory_alloc;
         size_t N_size   = thread->N_memory_steps;
         size_t N_max    = d_max_trace_remaining;
@@ -790,7 +806,13 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
         check_allocate_arrays(
             N_alloc, N_size, N_max, &thread->time_memory, &thread->size_memory, &d_bytes );
         // Get the current memory usage
-        size_t memory               = MemoryApp::getTotalMemoryUsage();
+        size_t memory = 0;
+#ifndef TIMER_DISABLE_NEW_OVERLOAD
+        if ( d_store_memory_data == MemoryLevel::Fast )
+            memory = MemoryApp::getMemoryUsage();
+        else
+#endif
+            memory = MemoryApp::getTotalMemoryUsage();
         thread->time_memory[N_size] = 0;
         thread->size_memory[N_size] = memory - d_bytes;
     }
@@ -801,7 +823,8 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
     thread->active.set( timer->trace_index );
     timer->start_time = std::chrono::steady_clock::now();
     // Record the time of the memory usage
-    if ( d_store_memory_data && thread->N_memory_steps < d_max_trace_remaining ) {
+    if ( d_store_memory_data != MemoryLevel::None &&
+         thread->N_memory_steps < d_max_trace_remaining ) {
         int64_t ns = diff_ns( timer->start_time, d_construct_time );
         thread->time_memory[thread->N_memory_steps] = ns;
         thread->N_memory_steps++;
@@ -860,15 +883,10 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     int64_t ns = diff_ns( end_time, timer->start_time );
     // Save the starting and ending time if we are storing the detailed traces
     if ( d_store_trace_data && trace->N_calls < MAX_TRACE_TRACE ) {
-        // Check if we need to allocate more memory to store the times
-        size_t* N_alloc = &trace->N_trace_alloc;
-        size_t N_size   = trace->N_calls;
-        auto N_max      = static_cast<size_t>( MAX_TRACE_TRACE );
-        check_allocate_arrays(
-            N_alloc, N_size, N_max, &trace->start_time, &trace->end_time, &d_bytes );
-        // Calculate the time elapsed since the profiler was created
-        trace->start_time[trace->N_calls] = diff_ns( timer->start_time, d_construct_time );
-        trace->end_time[trace->N_calls]   = diff_ns( end_time, d_construct_time );
+        int64_t start = diff_ns( timer->start_time, d_construct_time );
+        int64_t stop  = diff_ns( timer->start_time, d_construct_time );
+        trace->times.push_back( start );
+        trace->times.push_back( stop );
     }
     // Save the minimum, maximum, and total times
     timer->max_time = std::max( timer->max_time, ns );
@@ -880,7 +898,8 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     trace->total_time += ns;
     trace->N_calls++;
     // Get the memory usage
-    if ( d_store_memory_data && thread->N_memory_steps < d_max_trace_remaining ) {
+    if ( d_store_memory_data != MemoryLevel::None &&
+         thread->N_memory_steps < d_max_trace_remaining ) {
         size_t* N_alloc = &thread->N_memory_alloc;
         size_t N_size   = thread->N_memory_steps;
         size_t N_max    = d_max_trace_remaining;
@@ -888,8 +907,14 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
         check_allocate_arrays(
             N_alloc, N_size, N_max, &thread->time_memory, &thread->size_memory, &d_bytes );
         // Get the current memory usage
-        int64_t ns                  = diff_ns( end_time, d_construct_time );
-        size_t memory               = MemoryApp::getTotalMemoryUsage();
+        int64_t ns    = diff_ns( end_time, d_construct_time );
+        size_t memory = 0;
+#ifndef TIMER_DISABLE_NEW_OVERLOAD
+        if ( d_store_memory_data == MemoryLevel::Fast )
+            memory = MemoryApp::getMemoryUsage();
+        else
+#endif
+            memory = MemoryApp::getTotalMemoryUsage();
         thread->time_memory[N_size] = ns;
         thread->size_memory[N_size] = memory - d_bytes;
         thread->N_memory_steps++;
@@ -1025,9 +1050,12 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             // Save the detailed trace results (this is a binary file)
             double* start = results.trace[k].start();
             double* stop  = results.trace[k].stop();
+            auto it       = trace->times.begin();
             for ( size_t m = 0; m < N_trace; m++ ) {
-                start[m] = 1e-9 * ( trace->start_time[m] + d_shift );
-                stop[m]  = 1e-9 * ( trace->end_time[m] + d_shift );
+                start[m] = 1e-9 * ( *it + d_shift );
+                ++it;
+                stop[m] = 1e-9 * ( *it + d_shift );
+                ++it;
             }
             // Advance to the next trace
             trace = trace->next;
@@ -1302,7 +1330,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         fprintf( timerFile, "\n\n\n" );
         fprintf( timerFile, "<N_procs=%i,id=%i", N_procs, rank );
         fprintf( timerFile, ",store_trace=%i", d_store_trace_data ? 1 : 0 );
-        fprintf( timerFile, ",store_memory=%i", d_store_memory_data ? 1 : 0 );
+        fprintf( timerFile, ",store_memory=%i", d_store_memory_data != MemoryLevel::None ? 1 : 0 );
         fprintf( timerFile, ",date='%s'>\n", getDateString().c_str() );
         // Loop through the list of timers, storing the most expensive first
         for ( int ii = static_cast<int>( results.size() ) - 1; ii >= 0; ii-- ) {
@@ -1341,7 +1369,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
     }
     results.clear();
     // Store the memory trace info
-    if ( d_store_memory_data ) {
+    if ( d_store_memory_data != MemoryLevel::None ) {
         FILE* memoryFile = fopen( filename_memory, "wb" );
         if ( memoryFile == nullptr ) {
             d_lock.unlock();
@@ -2217,7 +2245,11 @@ void global_profiler_disable() { global_profiler.disable(); }
 int global_profiler_get_level() { return global_profiler.getLevel(); }
 void global_profiler_synchronize() { global_profiler.synchronize(); }
 void global_profiler_set_store_trace( int flag ) { global_profiler.setStoreTrace( flag != 0 ); }
-void global_profiler_set_store_memory( int flag ) { global_profiler.setStoreMemory( flag != 0 ); }
+void global_profiler_set_store_memory( int flag )
+{
+    auto memory = flag != 0 ? ProfilerApp::MemoryLevel::Full : ProfilerApp::MemoryLevel::None;
+    global_profiler.setStoreMemory( memory );
+}
 void global_profiler_start( const char* name, const char* file, int line, int level )
 {
     global_profiler.start( name, file, line, level );

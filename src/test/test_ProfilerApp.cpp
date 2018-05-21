@@ -89,16 +89,57 @@ bool check( const MemoryResults &memory )
 
 // Test performance of clock
 template<typename TYPE>
-static inline void test_clock( int N )
+static inline int test_clock()
 {
-    int64_t ns = 0;
+    auto start = TYPE::now();
     std::chrono::time_point<TYPE> t1, t2;
+    const int N = 1000000;
     for ( int j = 0; j < N; j++ ) {
         t1 = TYPE::now();
         t2 = TYPE::now();
-        ns += std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+        NULL_USE( t1 );
+        NULL_USE( t2 );
     }
-    NULL_USE( ns );
+    auto stop = TYPE::now();
+    auto ns   = std::chrono::duration_cast<std::chrono::nanoseconds>( stop - start ).count();
+    return ns / N;
+}
+template<typename TYPE>
+static inline int get_clock_resolution()
+{
+    int resolution = 1000000;
+    for ( int i = 0; i < 10; i++ ) {
+        int ns  = 0;
+        auto t0 = TYPE::now();
+        while ( ns == 0 )
+            ns = std::chrono::duration_cast<std::chrono::nanoseconds>( TYPE::now() - t0 ).count();
+        resolution = std::min( resolution, ns );
+    }
+    return resolution;
+}
+static inline int test_getMemoryUsage()
+{
+    auto t1 = std::chrono::steady_clock::now();
+    int N   = 1000000;
+    for ( int j = 0; j < N; j++ ) {
+        auto bytes = MemoryApp::getMemoryUsage();
+        NULL_USE( bytes );
+    }
+    auto t2 = std::chrono::steady_clock::now();
+    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+    return ns / N;
+}
+static inline int test_getTotalMemoryUsage()
+{
+    auto t1 = std::chrono::steady_clock::now();
+    int N   = 1000000;
+    for ( int j = 0; j < N; j++ ) {
+        auto bytes = MemoryApp::getTotalMemoryUsage();
+        NULL_USE( bytes );
+    }
+    auto t2 = std::chrono::steady_clock::now();
+    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+    return ns / N;
 }
 
 
@@ -189,16 +230,6 @@ int run_tests( bool enable_trace, std::string save_name )
 
     // Check the performance
     for ( int i = 0; i < N_it; i++ ) {
-        // Test how long it takes to get the time
-        PROFILE_START( "system_clock" );
-        test_clock<std::chrono::system_clock>( N_timers );
-        PROFILE_STOP( "system_clock" );
-        PROFILE_START( "steady_clock" );
-        test_clock<std::chrono::steady_clock>( N_timers );
-        PROFILE_STOP( "steady_clock" );
-        PROFILE_START( "high_resolution_clock" );
-        test_clock<std::chrono::high_resolution_clock>( N_timers );
-        PROFILE_STOP( "high_resolution_clock" );
         // Test how long it takes to start/stop the timers
         PROFILE_START( "single" );
         for ( int j = 0; j < N_timers; j++ ) {
@@ -279,9 +310,6 @@ int run_tests( bool enable_trace, std::string save_name )
         PROFILE_STOP( "allocate1" );
     }
     printf( "\nProfiler overhead:\n" );
-    printOverhead( "system_clock", N_it * N_timers );
-    printOverhead( "steady_clock", N_it * N_timers );
-    printOverhead( "high_resolution_clock", N_it * N_timers );
     printOverhead( "single", N_it * N_timers );
     printOverhead( "static", N_it * N_timers );
     printOverhead( "dynamic", N_it * N_timers );
@@ -455,6 +483,24 @@ int main( int argc, char *argv[] )
 
     int N_errors = 0;
     { // Limit scope
+
+        printf( "\nClock resolution:\n" );
+        printf( "  system_clock: %i\n", get_clock_resolution<std::chrono::system_clock>() );
+        printf( "  steady_clock: %i\n", get_clock_resolution<std::chrono::steady_clock>() );
+        printf( "  high_resolution_clock: %i\n",
+            get_clock_resolution<std::chrono::high_resolution_clock>() );
+        printf( "\n" );
+
+        // Test how long it takes to get the time
+        printf( "Clock performance:\n" );
+        printf( "  system_clock: %i\n", test_clock<std::chrono::system_clock>() );
+        printf( "  steady_clock: %i\n", test_clock<std::chrono::steady_clock>() );
+        printf( "  high_resolution_clock: %i\n", test_clock<std::chrono::high_resolution_clock>() );
+        printf( "\n" );
+
+        // Test how long it takes to get memory usage
+        printf( "getMemoryUsage: %i\n", test_getMemoryUsage() );
+        printf( "getTotalMemoryUsage: %i\n\n", test_getTotalMemoryUsage() );
 
         // Run the tests
         std::vector<std::pair<bool, std::string>> tests;
