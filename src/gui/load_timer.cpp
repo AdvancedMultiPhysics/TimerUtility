@@ -33,6 +33,8 @@ int main( int argc, char *argv[] )
     bool run_unit_tests = argc > 1;
     int rtn             = 0;
     PROFILE_ENABLE();
+    PROFILE_ENABLE_TRACE();
+    PROFILE_ENABLE_MEMORY();
     { // Limit scope for MemoryApp
         // Load the application
         // Q_INIT_RESOURCE(application);

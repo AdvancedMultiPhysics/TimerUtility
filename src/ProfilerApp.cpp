@@ -331,9 +331,9 @@ inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLev
         d_time[i]  = time;
         d_bytes[i] = bytes;
         d_size++;
-    } else if ( bytes == d_bytes[i-1] && bytes == d_bytes[i-2] ) {
-        d_time[i-1] = time;
-        d_bytes[i] = bytes;
+    } else if ( bytes == d_bytes[i - 1] && bytes == d_bytes[i - 2] ) {
+        d_time[i - 1] = time;
+        d_bytes[i]    = bytes;
     } else {
         d_time[i]  = time;
         d_bytes[i] = bytes;
@@ -349,7 +349,8 @@ void ProfilerApp::StoreMemory::reset()
     d_time  = nullptr;
     d_bytes = nullptr;
 }
-void ProfilerApp::StoreMemory::get(std::vector<uint64_t> &time, std::vector<uint64_t> &bytes ) const
+void ProfilerApp::StoreMemory::get(
+    std::vector<uint64_t>& time, std::vector<uint64_t>& bytes ) const
 {
     if ( d_size == 0 ) {
         time.clear();
@@ -1105,7 +1106,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     // Get the current memory usage
     if ( d_store_memory_data != MemoryLevel::None ) {
         auto thread = const_cast<ProfilerApp*>( this )->getThreadData();
-        int64_t ns = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
+        int64_t ns  = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
         thread->memory.add( ns, d_store_memory_data, &d_bytes );
     }
     // Get the memory info for each thread
@@ -1130,18 +1131,18 @@ MemoryResults ProfilerApp::getMemoryResults() const
         std::swap( time, time_list[0] );
         std::swap( bytes, bytes_list[0] );
     } else {
-        time.reserve(N);
-        bytes.reserve(N);
-        int N2 = time_list.size();
+        time.reserve( N );
+        bytes.reserve( N );
+        int N2                    = time_list.size();
         size_t index[MAX_THREADS] = { 0 };
-        for (size_t i=0; i<N; i++) {
-            int k = 0;
+        for ( size_t i = 0; i < N; i++ ) {
+            int k        = 0;
             uint64_t val = std::numeric_limits<uint64_t>::max();
-            for (int j=0; j<N2; j++) {
+            for ( int j = 0; j < N2; j++ ) {
                 if ( index[j] == time_list[j].size() )
                     continue;
                 if ( time_list[j][index[j]] < val ) {
-                    k = j;
+                    k   = j;
                     val = time_list[j][index[j]];
                 }
             }

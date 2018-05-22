@@ -117,7 +117,7 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
     d_offset = 0.0;
     if ( fabs( d_t[1] - d_t[0] ) < 10e-3 ) {
         d_offset = 1e-3 * floor( d_t[0] * 1e3 );
-        d_scale = 1e3;
+        d_scale  = 1e3;
     }
 
     // Get the memory usage for each rank
@@ -208,8 +208,8 @@ std::array<size_t, 2> MemoryPlot::updateRankData( int rank )
     size_t i0  = std::max<uint64_t>( i1, 1 ) - 1;
     d_time[rank].clear();
     d_size[rank].clear();
-    d_time[rank].reserve( 2*N + 2 );
-    d_size[rank].reserve( 2*N + 2 );
+    d_time[rank].reserve( 2 * N + 2 );
+    d_size[rank].reserve( 2 * N + 2 );
     d_time[rank].push_back( d_t[0] );
     d_size[rank].push_back( size[i0] );
     std::array<size_t, 2> range = { { size[i0], size[i0] } };
@@ -222,8 +222,8 @@ std::array<size_t, 2> MemoryPlot::updateRankData( int rank )
     d_time[rank].push_back( d_t[1] );
     d_size[rank].push_back( d_size[rank].back() );
     if ( d_offset != 0.0 ) {
-        for ( auto &t : d_time[rank] )
-            t = d_scale*( t - d_offset );
+        for ( auto& t : d_time[rank] )
+            t = d_scale * ( t - d_offset );
     }
     return range;
 }

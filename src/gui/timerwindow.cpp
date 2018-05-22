@@ -472,8 +472,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                 QMenu* rank_menu         = nullptr;
                 for ( int i = 0; i < N_procs; i++ ) {
                     if ( i % ranks_per_menu == 0 ) {
-                        std::string name = stringf( "Ranks %i-%i", i, i + ranks_per_menu - 1 );
-                        rank_menu        = processorButtonMenu->addMenu( name.c_str() );
+                        auto name = stringf( "Ranks %i-%i", i, i + ranks_per_menu - 1 );
+                        rank_menu = processorButtonMenu->addMenu( name.c_str() );
                     }
                     ADD_MENU_ACTION( rank_menu, stringf( "%5i", i ).c_str(), i );
                 }
@@ -718,8 +718,8 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
             ids[i] = timers[i]->id;
         std::vector<bool> keep( timers.size(), false );
         for ( size_t i = 0; i < ids.size(); i++ ) {
-            TimerSummary* timer                     = timers[i].get();
-            std::vector<const TraceSummary*> trace2 = timer->trace;
+            auto timer  = timers[i].get();
+            auto trace2 = timer->trace;
             timer->trace.resize( 0 );
             for ( auto& j : trace2 ) {
                 const std::vector<id_struct>& id2 = j->active;

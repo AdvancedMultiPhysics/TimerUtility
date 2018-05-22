@@ -33,6 +33,12 @@ public:
     //! Set the table size
     void tableSize( int N_rows, int N_columns );
 
+    //! Get the number of rows
+    inline int numberRows() const { return row_size.size(); }
+
+    //! Get the number of columns
+    inline int numberColumns() const { return col_size.size(); }
+
     //! Add a widget at the given row, column (note: takes ownership)
     void addWidget( QWidget* widget, int row, int column );
 
@@ -57,6 +63,9 @@ public:
     //! Set the row height for all rows
     void setRowHeight( const std::vector<int>& size );
 
+    //! Set the row visibility
+    void setRowVisible( const std::vector<bool>& visible );
+
     //! Get the row height for all rows
     const std::vector<int>& getRowHeight() const { return row_size; }
 
@@ -68,6 +77,9 @@ public:
 
     //! Set the column width for all columns
     void setColumnWidth( const std::vector<int>& size );
+
+    //! Set the column visibility
+    void setColumnVisible( const std::vector<bool>& visible );
 
     //! Get the column width for all columns
     inline const std::vector<int>& getColumnWidth() const { return col_size; }
@@ -103,6 +115,8 @@ private:
     std::map<std::pair<int, int>, QWidget*> widget_map;
     std::vector<QSplitterGridLineClass*> row_boundaries;
     std::vector<QSplitterGridLineClass*> col_boundaries;
+    std::vector<bool> row_visible;
+    std::vector<bool> col_visible;
     std::vector<int> row_size;
     std::vector<int> col_size;
     std::vector<int> min_row_size;

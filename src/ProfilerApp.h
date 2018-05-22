@@ -580,10 +580,7 @@ private: // Member classes
     class StoreMemory
     {
     public:
-        StoreMemory()
-            : d_capacity( 0 ), d_size( 0 ), d_time( nullptr ), d_bytes( nullptr )
-        {
-        }
+        StoreMemory() : d_capacity( 0 ), d_size( 0 ), d_time( nullptr ), d_bytes( nullptr ) {}
         ~StoreMemory()
         {
             delete[] d_time;
@@ -595,7 +592,7 @@ private: // Member classes
             volatile TimerUtility::atomic::int64_atomic* bytes_profiler );
         void reset();
         void swap( StoreMemory& rhs );
-        void get( std::vector<uint64_t> &time, std::vector<uint64_t> &bytes ) const;
+        void get( std::vector<uint64_t>& time, std::vector<uint64_t>& bytes ) const;
 
     private:
         // The maximum number of memory traces allowed

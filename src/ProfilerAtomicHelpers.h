@@ -1,5 +1,6 @@
 #ifndef included_TimerUtilityAtomicHelpers
 #define included_TimerUtilityAtomicHelpers
+#include <stdexcept>
 #include <stdint.h>
 #include <stdio.h>
 #include <typeinfo>

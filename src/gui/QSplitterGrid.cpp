@@ -6,14 +6,7 @@
 
 #include <iostream>
 
-// Define NULL_USE
-#define NULL_USE( variable )                \
-    do {                                    \
-        if ( 0 ) {                          \
-            char* temp = (char*) &variable; \
-            temp++;                         \
-        }                                   \
-    } while ( 0 )
+#include "ProfilerApp.h"
 
 
 template<class T>
@@ -94,8 +87,11 @@ void QSplitterGrid::setHorizontalSpacing( int spacing )
  ***********************************************************************/
 void QSplitterGrid::tableSize( int N_rows, int N_columns )
 {
+    PROFILE_START( "tableSize" );
     reset();
-    QSize box = frame_widget->size();
+    QSize box   = frame_widget->size();
+    col_visible = std::vector<bool>( N_columns, true );
+    row_visible = std::vector<bool>( N_rows, true );
     row_size.resize( N_rows );
     for ( int i = 0; i < N_rows; i++ )
         row_size[i] = box.height() / N_rows;
@@ -112,6 +108,7 @@ void QSplitterGrid::tableSize( int N_rows, int N_columns )
     for ( size_t i = 0; i < col_boundaries.size(); i++ )
         col_boundaries[i] =
             new QSplitterGridLineClass( Qt::SizeHorCursor, -( i + 1 ), frame_widget, this );
+    PROFILE_STOP( "tableSize" );
 }
 void QSplitterGrid::addWidget( QWidget* widget, int row, int col )
 {
@@ -203,34 +200,83 @@ void QSplitterGrid::resize( int w, int h )
 }
 void QSplitterGrid::resize2()
 {
-    for ( size_t i = 0; i < row_size.size(); i++ )
-        grid->setRowMinimumHeight( i, row_size[i] );
-    for ( size_t i = 0; i < col_size.size(); i++ )
-        grid->setColumnMinimumWidth( i, col_size[i] );
-    int w2 = sum( col_size ) + hspacing * ( col_size.size() - 1 );
-    int h2 = sum( row_size ) + vspacing * ( row_size.size() - 1 );
-    w2     = std::max( w2, 0 );
-    h2     = std::max( h2, 0 );
+    PROFILE_START( "resize" );
+    // Get the row and column heights
+    PROFILE_START( "resize-row_height" );
+    int h2    = 0;
+    int N_row = 0;
+    for ( size_t i = 0; i < row_size.size(); i++ ) {
+        if ( row_visible[i] ) {
+            grid->setRowMinimumHeight( i, row_size[i] );
+            h2 += row_size[i] + vspacing;
+            N_row++;
+        } else {
+            grid->setRowMinimumHeight( i, 0 );
+        }
+    }
+    PROFILE_STOP( "resize-row_height" );
+    PROFILE_START( "resize-col_height" );
+    int w2    = 0;
+    int N_col = 0;
+    for ( size_t i = 0; i < col_size.size(); i++ ) {
+        if ( row_visible[i] ) {
+            grid->setColumnMinimumWidth( i, col_size[i] );
+            w2 += col_size[i] + hspacing;
+            N_col++;
+        } else {
+            grid->setColumnMinimumWidth( i, 0 );
+        }
+    }
+    PROFILE_STOP( "resize-col_height" );
+    // Set visibility of objects
+    PROFILE_START( "resize-visible" );
+    for ( size_t i = 0; i < row_size.size(); i++ ) {
+        for ( size_t j = 0; j < col_size.size(); j++ ) {
+            auto ptr = widget_map[std::pair<int, int>( i, j )];
+            if ( ptr )
+                ptr->setVisible( row_visible[i] && col_visible[j] );
+        }
+    }
+    PROFILE_STOP( "resize-visible" );
+    // Resize frame
+    PROFILE_START( "resize-frame" );
     frame_widget->setMinimumSize( w2, h2 );
     frame_widget->resize( w2, h2 );
-    int pos = 0;
-    for ( size_t i = 0; i < row_boundaries.size(); i++ ) {
-        pos += row_size[i];
-        row_boundaries[i]->setGeometry( 0, pos, w2, 20 );
+    PROFILE_STOP( "resize-frame" );
+    // Set position of boundaries
+    PROFILE_START( "resize-boundaries" );
+    for ( int i = 0, pos = 0; i < (int) row_boundaries.size(); i++ ) {
+        if ( row_visible[i] ) {
+            pos += row_size[i];
+            row_boundaries[i]->setGeometry( 0, pos, w2, 20 );
+            row_boundaries[i]->setVisible( true );
+        } else {
+            row_boundaries[i]->setVisible( false );
+        }
     }
-    pos = 0;
-    for ( size_t i = 0; i < col_boundaries.size(); i++ ) {
-        pos += col_size[i];
-        col_boundaries[i]->setGeometry( pos, 0, 20, h2 );
+    for ( int i = 0, pos = 0; i < (int) col_boundaries.size(); i++ ) {
+        if ( col_visible[i] ) {
+            pos += col_size[i];
+            col_boundaries[i]->setGeometry( pos, 0, 20, h2 );
+            col_boundaries[i]->setVisible( true );
+        } else {
+            col_boundaries[i]->setVisible( false );
+        }
     }
+    PROFILE_STOP( "resize-boundaries" );
+    // Execute callbacks
     for ( auto fun : resizeCallBack )
         fun();
+    PROFILE_STOP( "resize" );
 }
 QRect QSplitterGrid::getPosition( int row, int col ) const
 {
     QRect pos( 0, 0, 0, 0 );
-    if ( row < (int) row_size.size() && col < (int) col_size.size() )
-        pos = grid->itemAtPosition( row, col )->geometry();
+    if ( row < (int) row_size.size() && col < (int) col_size.size() ) {
+        auto ptr = grid->itemAtPosition( row, col );
+        if ( ptr && row_visible[row] && col_visible[col] )
+            pos = ptr->geometry();
+    }
     return pos;
 }
 const QWidget* QSplitterGrid::getWidget( int row, int column ) const
@@ -252,6 +298,12 @@ void QSplitterGrid::setRowHeight( const std::vector<int>& size )
         row_size[i] = size[i];
     resize2();
 }
+void QSplitterGrid::setRowVisible( const std::vector<bool>& visible )
+{
+    for ( size_t i = 0; i < std::min( row_visible.size(), visible.size() ); i++ )
+        row_visible[i] = visible[i];
+    resize2();
+}
 void QSplitterGrid::setColumnWidth( int size )
 {
     for ( int& i : col_size )
@@ -262,5 +314,11 @@ void QSplitterGrid::setColumnWidth( const std::vector<int>& size )
 {
     for ( size_t i = 0; i < std::min( col_size.size(), size.size() ); i++ )
         col_size[i] = size[i];
+    resize2();
+}
+void QSplitterGrid::setColumnVisible( const std::vector<bool>& visible )
+{
+    for ( size_t i = 0; i < std::min( col_visible.size(), visible.size() ); i++ )
+        col_visible[i] = visible[i];
     resize2();
 }

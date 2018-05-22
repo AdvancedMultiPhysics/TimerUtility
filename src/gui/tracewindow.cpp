@@ -200,15 +200,27 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ )
     timeline->setMinimumSize( 10, 10 );
 
     // Create the timer timelines
-    timerGrid = new QSplitterGrid();
-    timerGrid->tableSize( 0, 2 );
+    int N_rows = parent->d_data.timers.size();
+    timerGrid  = new QSplitterGrid();
+    timerGrid->tableSize( N_rows, 2 );
     timerGrid->setSpacing( 0 );
     timerGrid->setVerticalSpacing( 2 );
     timerGrid->setHorizontalSpacing( 5 );
     timerGrid->setUniformRowHeight( true );
     timerGrid->setUniformColumnWidth( false );
-    timerLabels.resize( 0 );
-    timerPlots.resize( 0 );
+    timerLabels.resize( N_rows, nullptr );
+    timerPlots.resize( N_rows, nullptr );
+    for ( int i = 0; i < N_rows; i++ ) {
+        timerLabels[i] = new QLabel();
+        timerLabels[i]->setMinimumWidth( 30 );
+        timerLabels[i]->setText( "" );
+        timerGrid->addWidget( timerLabels[i], i, 0 );
+        timerPlots[i] = new QLabelMouse( this );
+        timerPlots[i]->setScaledContents( true );
+        timerPlots[i]->setMinimumSize( 200, 20 );
+        timerGrid->addWidget( timerPlots[i], i, 1 );
+    }
+    timerGrid->setRowHeight( 35 );
 
     // Create the memory plot
     memory = new MemoryPlot( this, parent->d_data.memory );
@@ -449,35 +461,18 @@ void TraceWindow::updateTimers()
     PROFILE_START( "updateTimers" );
     // Get the data
     auto data = TraceWindow::getTraceData( t_current );
-    // Clear the existing data from the table
-    int rowHeight = 30;
-    if ( !timerGrid->getRowHeight().empty() )
-        rowHeight = timerGrid->getRowHeight()[0];
-    auto columnWidth = timerGrid->getColumnWidth();
-    timerGrid->reset();
-    timerLabels.clear();
-    timerPlots.clear();
-    timerPixelMap.clear();
-    // Add the labels and plots
-    const uint64_t rgb0 = jet( -1 );
-    timerPixelMap.resize( data.size() );
-    int Np = selected_rank == -1 ? N_procs : 1;
-    int Nt = selected_thread == -1 ? N_threads : 1;
-    timerGrid->tableSize( data.size(), 2 );
-    timerLabels.resize( data.size() );
-    timerPlots.resize( data.size() );
-    timerPixelMap.resize( data.size() );
+    std::vector<bool> rowVisible( timerGrid->numberRows(), false );
+    auto rgb0 = jet( -1 );
+    int Np    = selected_rank == -1 ? N_procs : 1;
+    int Nt    = selected_thread == -1 ? N_threads : 1;
     for ( size_t i = 0; i < data.size(); i++ ) {
-        PROFILE_START( "updateTimers-labels" );
-        timerLabels[i] = new QLabel();
-        timerLabels[i]->setMinimumWidth( 30 );
-        std::string label = R"(<font size="3" color="black">)" + data[i]->message +
-                            R"(</font><br><font size="2" color="gray">)" + data[i]->file +
-                            "</font>";
-        timerLabels[i]->setText( label.c_str() );
-        timerGrid->addWidget( timerLabels[i], i, 0 );
-        PROFILE_STOP( "updateTimers-labels" );
-        PROFILE_START( "updateTimers-pixelMap" );
+        rowVisible[i] = true;
+        char label[1000];
+        sprintf( label,
+            "<font size=\"3\" color=\"black\">%s</font><br>"
+            "<font size=\"2\" color=\"gray\">%s</font>",
+            data[i]->message.c_str(), data[i]->file.c_str() );
+        timerLabels[i]->setText( label );
         QImage image( resolution, Np * Nt, QImage::Format_RGB32 );
         uint64_t rgb       = idRgbMap[data[i]->id];
         const auto &active = data[i]->active;
@@ -487,21 +482,12 @@ void TraceWindow::updateTimers()
                 image.setPixel( j, k, value );
             }
         }
-
-        timerPixelMap[i].reset( new QPixmap( QPixmap::fromImage( image ) ) );
-        PROFILE_STOP( "updateTimers-pixelMap" );
-        PROFILE_START( "updateTimers-plot" );
-        timerPlots[i] = new QLabelMouse( this );
-        timerPlots[i]->setScaledContents( true );
-        timerPlots[i]->setMinimumSize( 200, 20 );
-        timerPlots[i]->setPixmap( *timerPixelMap[i] );
-        timerGrid->addWidget( timerPlots[i], i, 1 );
-        PROFILE_STOP( "updateTimers-plot" );
+        timerPlots[i]->setPixmap( QPixmap::fromImage( image ) );
     }
-    timerGrid->setRowHeight( rowHeight );
-    timerGrid->setColumnWidth( columnWidth );
+    timerGrid->setRowVisible( rowVisible );
     PROFILE_STOP( "updateTimers" );
 }
+
 
 /***********************************************************************
  * Update the memory plot                                               *
@@ -535,19 +521,13 @@ void TraceWindow::resizeDone()
     timelineBoundaries[0]->setTime( t_current[0] );
     timelineBoundaries[1]->setTime( t_current[1] );
     // Scale the timers
-    for ( size_t i = 0; i < timerPixelMap.size(); i++ ) {
-        int w2 = timerPlots[i]->width();
-        int h2 = timerPlots[i]->height();
-        timerPlots[i]->setPixmap(
-            timerPixelMap[i]->scaled( w2, h2, Qt::IgnoreAspectRatio, Qt::FastTransformation ) );
-    }
     if ( zoomBoundaries[0].get() != nullptr ) {
         zoomBoundaries[0]->redraw();
         zoomBoundaries[1]->redraw();
     }
     // Resize the grid (will call resize on the memory plot automatically)
-    std::vector<int> cw = timerGrid->getColumnWidth();
-    int w2 = timerGrid->geometry().width() - 2 * timerGrid->getHorizontalSpacing() - 20;
+    auto cw = timerGrid->getColumnWidth();
+    int w2  = timerGrid->geometry().width() - 2 * timerGrid->getHorizontalSpacing() - 20;
     timerGrid->setColumnWidth(
         { ( cw[0] * w2 ) / ( cw[0] + cw[1] ), ( cw[1] * w2 ) / ( cw[0] + cw[1] ) } );
     PROFILE_STOP( "resizeDone" );
@@ -626,8 +606,8 @@ void TraceWindow::resolutionChanged()
  ***********************************************************************/
 void TraceWindow::moveTimelineWindow( int index, double t )
 {
-    std::array<double, 2> t_new = t_current;
-    t_new[index]                = t;
+    auto t_new   = t_current;
+    t_new[index] = t;
     if ( std::max<double>( t_new[1] - t_new[0], 0 ) < 0.1 * ( t_current[1] - t_current[0] ) ) {
         if ( index == 0 )
             t_new[0] = t_current[1] - 0.1 * ( t_current[1] - t_current[0] );

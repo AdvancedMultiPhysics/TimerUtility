@@ -64,8 +64,6 @@ private:
     QMenu *threadButtonMenu;
     std::vector<QLabel *> timerLabels;
     std::vector<QLabelMouse *> timerPlots;
-    std::vector<std::shared_ptr<QPixmap>> timerPixelMap;
-
     std::shared_ptr<CurrentTimeLineClass> timelineBoundaries[2];
 
 private:
