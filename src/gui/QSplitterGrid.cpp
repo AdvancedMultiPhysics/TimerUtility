@@ -40,6 +40,7 @@ QSplitterGrid::~QSplitterGrid()
 }
 void QSplitterGrid::reset()
 {
+    old_size = { 0, 0 };
     for ( auto ptr : row_boundaries ) {
         delete ptr;
     }
@@ -113,8 +114,7 @@ void QSplitterGrid::tableSize( int N_rows, int N_columns )
 void QSplitterGrid::addWidget( QWidget* widget, int row, int col )
 {
     grid->addWidget( widget, row, col );
-    pos_map[widget] = std::pair<int, int>( row, col );
-    // widget->setMinimumSize(0,0);
+    pos_map[widget]   = std::pair<int, int>( row, col );
     min_row_size[row] = std::max<int>( min_row_size[row], widget->minimumSize().height() );
     min_col_size[col] = std::max<int>( min_col_size[col], widget->minimumSize().width() );
     widget_map[std::pair<int, int>( row, col )] = widget;
@@ -202,32 +202,29 @@ void QSplitterGrid::resize2()
 {
     PROFILE_START( "resize" );
     // Get the row and column heights
-    PROFILE_START( "resize-row_height" );
-    int h2    = 0;
-    int N_row = 0;
-    for ( size_t i = 0; i < row_size.size(); i++ ) {
-        if ( row_visible[i] ) {
-            grid->setRowMinimumHeight( i, row_size[i] );
-            h2 += row_size[i] + vspacing;
-            N_row++;
-        } else {
-            grid->setRowMinimumHeight( i, 0 );
-        }
-    }
-    PROFILE_STOP( "resize-row_height" );
-    PROFILE_START( "resize-col_height" );
-    int w2    = 0;
-    int N_col = 0;
+    PROFILE_START( "resize-row_col" );
+    std::array<int, 2> size = { 0, 0 };
+    int N_col               = 0;
     for ( size_t i = 0; i < col_size.size(); i++ ) {
         if ( row_visible[i] ) {
             grid->setColumnMinimumWidth( i, col_size[i] );
-            w2 += col_size[i] + hspacing;
+            size[0] += col_size[i] + hspacing;
             N_col++;
         } else {
             grid->setColumnMinimumWidth( i, 0 );
         }
     }
-    PROFILE_STOP( "resize-col_height" );
+    int N_row = 0;
+    for ( size_t i = 0; i < row_size.size(); i++ ) {
+        if ( row_visible[i] ) {
+            grid->setRowMinimumHeight( i, row_size[i] );
+            size[1] += row_size[i] + vspacing;
+            N_row++;
+        } else {
+            grid->setRowMinimumHeight( i, 0 );
+        }
+    }
+    PROFILE_STOP( "resize-row_col" );
     // Set visibility of objects
     PROFILE_START( "resize-visible" );
     for ( size_t i = 0; i < row_size.size(); i++ ) {
@@ -240,15 +237,18 @@ void QSplitterGrid::resize2()
     PROFILE_STOP( "resize-visible" );
     // Resize frame
     PROFILE_START( "resize-frame" );
-    frame_widget->setMinimumSize( w2, h2 );
-    frame_widget->resize( w2, h2 );
+    if ( old_size != size ) {
+        frame_widget->setMinimumSize( size[0], size[1] );
+        frame_widget->resize( size[0], size[1] );
+    }
+    old_size = size;
     PROFILE_STOP( "resize-frame" );
     // Set position of boundaries
     PROFILE_START( "resize-boundaries" );
     for ( int i = 0, pos = 0; i < (int) row_boundaries.size(); i++ ) {
         if ( row_visible[i] ) {
             pos += row_size[i];
-            row_boundaries[i]->setGeometry( 0, pos, w2, 20 );
+            row_boundaries[i]->setGeometry( 0, pos, size[0], 20 );
             row_boundaries[i]->setVisible( true );
         } else {
             row_boundaries[i]->setVisible( false );
@@ -257,7 +257,7 @@ void QSplitterGrid::resize2()
     for ( int i = 0, pos = 0; i < (int) col_boundaries.size(); i++ ) {
         if ( col_visible[i] ) {
             pos += col_size[i];
-            col_boundaries[i]->setGeometry( pos, 0, 20, h2 );
+            col_boundaries[i]->setGeometry( pos, 0, 20, size[1] );
             col_boundaries[i]->setVisible( true );
         } else {
             col_boundaries[i]->setVisible( false );

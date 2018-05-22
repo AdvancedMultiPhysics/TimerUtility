@@ -8,6 +8,7 @@
 #include <QSignalMapper>
 #include <QSplitter>
 
+#include <array>
 #include <functional>
 #include <map>
 
@@ -108,6 +109,7 @@ public:
 private:
     QGridLayout* grid;
     int hspacing, vspacing;
+    std::array<int, 2> old_size;
     bool row_uniform, col_uniform;
     QSignalMapper* signalMapper;
     QWidget* frame_widget;

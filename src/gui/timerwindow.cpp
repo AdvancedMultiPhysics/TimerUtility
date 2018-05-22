@@ -141,15 +141,12 @@ double mean( const std::vector<TYPE>& x )
     } while ( 0 )
 
 
-inline void ERROR_MSG( const std::string& msg ) { throw std::logic_error( msg ); }
-
-
 #define ASSERT( EXP )                                                                     \
     do {                                                                                  \
         if ( !( EXP ) ) {                                                                 \
             std::stringstream stream;                                                     \
             stream << "Failed assertion: " << #EXP << " " << __FILE__ << " " << __LINE__; \
-            ERROR_MSG( stream.str() );                                                    \
+            throw std::logic_error( stream.str() );                                       \
         }                                                                                 \
     } while ( 0 )
 
@@ -523,7 +520,7 @@ inline TYPE getTableData( const std::vector<TYPE>& x, int rank )
 void TimerWindow::updateDisplay()
 {
     PROFILE_START( "updateDisplay" );
-    std::vector<std::shared_ptr<TimerSummary>> current_timers = getTimers();
+    auto current_timers = getTimers();
     if ( d_data.timers.empty() ) {
         timerTable->hide();
         callLineText->hide();
@@ -556,10 +553,10 @@ void TimerWindow::updateDisplay()
     // Set the call line
     std::string call_stack;
     if ( !callList.empty() ) {
-        const TimerResults& timer = findTimer( d_data.timers, callList[0] );
-        call_stack                = timer.message;
+        const auto& timer = findTimer( d_data.timers, callList[0] );
+        call_stack        = timer.message;
         for ( size_t i = 1; i < callList.size(); i++ ) {
-            const TimerResults& timer = findTimer( d_data.timers, callList[i] );
+            const auto& timer = findTimer( d_data.timers, callList[i] );
             call_stack += " -> " + timer.message;
         }
         callLineText->setText( call_stack.c_str() );
@@ -685,7 +682,7 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
     timers.reserve( d_data.timers.size() );
     // Get the timers of interest
     for ( const auto& i : d_dataTimer ) {
-        std::shared_ptr<TimerSummary> timer( new TimerSummary() );
+        auto timer     = std::make_shared<TimerSummary>();
         timer->id      = i.id;
         timer->message = i.message;
         timer->file    = i.file;
@@ -749,15 +746,13 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
         timers.resize( k );
     }
     // Compute the timer statistics
-    for ( auto& i : timers ) {
-        TimerSummary* timer = i.get();
+    for ( auto& timer : timers ) {
         timer->N.resize( N_procs, 0 );
         timer->min.resize( N_procs, 1e100 );
         timer->max.resize( N_procs, 0.0 );
         timer->tot.resize( N_procs, 0.0 );
         std::set<int> threads;
-        for ( size_t j = 0; j < timer->trace.size(); j++ ) {
-            const TraceSummary* trace = timer->trace[j];
+        for ( const auto& trace : timer->trace ) {
             threads.insert( trace->threads.begin(), trace->threads.end() );
             for ( int k = 0; k < N_procs; k++ ) {
                 timer->N[k] += trace->N[k];
@@ -778,15 +773,15 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
         }
         for ( size_t i1 = 0; i1 < timers.size(); i1++ ) {
             for ( size_t j1 = 0; j1 < timers[i1]->trace.size(); j1++ ) {
-                std::vector<id_struct> a1 = timers[i1]->trace[j1]->active;
+                auto a1 = timers[i1]->trace[j1]->active;
                 a1.push_back( timers[i1]->id );
                 std::sort( a1.begin(), a1.end() );
                 for ( size_t i2 = 0; i2 < tmp.size(); i2++ ) {
                     for ( size_t j2 = 0; j2 < tmp[i2].size(); j2++ ) {
                         if ( tmp[i2][j2] == (int) a1.size() ) {
-                            const std::vector<id_struct>& a2 = timers[i2]->trace[j2]->active;
+                            const auto& a2 = timers[i2]->trace[j2]->active;
                             if ( a1 == a2 ) {
-                                const std::vector<float>& tot = timers[i2]->trace[j2]->tot;
+                                const auto& tot = timers[i2]->trace[j2]->tot;
                                 for ( int k = 0; k < N_procs; k++ )
                                     timers[i1]->tot[k] -= tot[k];
                             }
