@@ -427,12 +427,9 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     }
 
     // Compare the memory results
-    if ( memory1.time.size() != memory2.time.size() ) {
-        std::cout << "Memory trace does not match\n";
-        N_errors++;
-    } else {
-        bool error = false;
-        for ( size_t i = 0; i < memory1.time.size(); i++ ) {
+    if ( enable_memory ) {
+        bool error = memory2.time.empty() || memory1.time.size() < memory2.time.size();
+        for ( size_t i = 0; i < memory2.time.size(); i++ ) {
             if ( memory1.time[i] != memory2.time[i] || memory1.bytes[i] != memory2.bytes[i] )
                 error = true;
         }
@@ -513,6 +510,7 @@ int main( int argc, char *argv[] )
     }
 
     // Print the memory stats
+    std::cout << std::endl;
     MemoryApp::print( std::cout );
 
     // Finalize MPI

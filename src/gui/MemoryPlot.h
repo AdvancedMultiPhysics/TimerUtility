@@ -35,6 +35,8 @@ private:
     std::vector<std::vector<double>> d_size;
 
     std::array<double, 2> d_t;
+    double d_offset;
+    double d_scale;
     int d_last_rank;
 
 private:

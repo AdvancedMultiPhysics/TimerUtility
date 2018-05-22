@@ -298,6 +298,8 @@ inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLev
     volatile TimerUtility::atomic::int64_atomic* bytes_profiler )
 {
     static_assert( MAX_ENTRIES <= 0xFFFFFFFF, "MAX_ENTRIES must be < 2^32" );
+    if ( d_size == MAX_ENTRIES )
+        return;
     // Get the current memory usage
     uint64_t bytes = 0;
 #ifndef TIMER_DISABLE_NEW_OVERLOAD
@@ -308,9 +310,6 @@ inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLev
         bytes = MemoryApp::getTotalMemoryUsage();
     bytes -= *bytes_profiler;
     // Check if we need to allocate more memory
-    if ( d_size == MAX_ENTRIES )
-        return;
-    lock();
     if ( d_size == d_capacity ) {
         auto old_t = d_time;
         auto old_b = d_bytes;
@@ -327,59 +326,39 @@ inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLev
         TimerUtility::atomic::atomic_add( bytes_profiler, ( d_capacity - old_c ) * 16 );
     }
     // Store the entry
-    size_t i   = d_size++;
-    d_time[i]  = time;
-    d_bytes[i] = bytes;
-    // Release the lock
-    unlock();
+    size_t i = d_size;
+    if ( i < 2 ) {
+        d_time[i]  = time;
+        d_bytes[i] = bytes;
+        d_size++;
+    } else if ( bytes == d_bytes[i-1] && bytes == d_bytes[i-2] ) {
+        d_time[i-1] = time;
+        d_bytes[i] = bytes;
+    } else {
+        d_time[i]  = time;
+        d_bytes[i] = bytes;
+        d_size++;
+    }
 }
 void ProfilerApp::StoreMemory::reset()
 {
-    lock();
     d_size     = 0;
     d_capacity = 0;
     delete[] d_time;
     delete[] d_bytes;
     d_time  = nullptr;
     d_bytes = nullptr;
-    unlock();
 }
-MemoryResults ProfilerApp::StoreMemory::get() const
+void ProfilerApp::StoreMemory::get(std::vector<uint64_t> &time, std::vector<uint64_t> &bytes ) const
 {
-    if ( d_size == 0 )
-        return MemoryResults();
-    // Copy the data (requires blocking)
-    lock();
-    size_t N   = d_size;
-    auto time  = new uint64_t[N];
-    auto bytes = new uint64_t[N];
-    memcpy( time, d_time, d_size * sizeof( uint64_t ) );
-    memcpy( bytes, d_bytes, d_size * sizeof( uint64_t ) );
-    unlock();
-    // Compress the results by removing values that have not changed
-    // Note: we will always keep the first and last values
-    size_t i = 1;
-    for ( size_t j = 1; j < N - 1; j++ ) {
-        if ( bytes[j] == bytes[i - 1] && bytes[j] == bytes[j + 1] )
-            continue;
-        time[i]  = time[j];
-        bytes[i] = bytes[j];
-        i++;
+    if ( d_size == 0 ) {
+        time.clear();
+        bytes.clear();
     }
-    time[i]  = time[N - 1];
-    bytes[i] = bytes[N - 1];
-    N        = i + 1;
-    // Create the memory results
-    MemoryResults data;
-    data.time.resize( N );
-    data.bytes.resize( N );
-    for ( size_t i = 0; i < N; i++ ) {
-        data.time[i]  = 1e-9 * static_cast<double>( time[i] );
-        data.bytes[i] = bytes[i];
-    }
-    delete[] time;
-    delete[] bytes;
-    return data;
+    time.resize( d_size );
+    bytes.resize( d_size );
+    memcpy( time.data(), d_time, d_size * sizeof( uint64_t ) );
+    memcpy( bytes.data(), d_bytes, d_size * sizeof( uint64_t ) );
 }
 
 
@@ -819,7 +798,7 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
     // Record the memory usage
     if ( d_store_memory_data != MemoryLevel::None ) {
         int64_t ns = diff_ns( timer->start_time, d_construct_time );
-        d_memory.add( ns, d_store_memory_data, &d_bytes );
+        thread->memory.add( ns, d_store_memory_data, &d_bytes );
     }
 }
 
@@ -892,7 +871,7 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     // Get the memory usage
     if ( d_store_memory_data != MemoryLevel::None ) {
         int64_t ns = diff_ns( end_time, d_construct_time );
-        d_memory.add( ns, d_store_memory_data, &d_bytes );
+        thread->memory.add( ns, d_store_memory_data, &d_bytes );
     }
 }
 
@@ -927,7 +906,6 @@ void ProfilerApp::disable()
     N_timers = 0;
     d_bytes  = 0;
     d_lock.unlock();
-    d_memory.reset();
 }
 
 
@@ -1073,9 +1051,9 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
     // Get the thread data
     // This can safely be done lock-free
     std::vector<const thread_info*> thread_list;
-    for ( auto i : thread_table ) {
-        if ( i != nullptr )
-            thread_list.push_back( i );
+    for ( auto thread : thread_table ) {
+        if ( thread != nullptr )
+            thread_list.push_back( thread );
     }
     // Get a list of all timer ids
     std::vector<size_t> ids;
@@ -1106,9 +1084,9 @@ TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
     // Get the thread data
     // This can safely be done lock-free
     std::vector<const thread_info*> thread_list;
-    for ( auto i : thread_table ) {
-        if ( i != nullptr )
-            thread_list.push_back( i );
+    for ( auto thread : thread_table ) {
+        if ( thread != nullptr )
+            thread_list.push_back( thread );
     }
     // Get the timer
     TimerResults results;
@@ -1116,6 +1094,84 @@ TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
     // Release the mutex
     d_lock.unlock();
     return results;
+}
+
+
+/***********************************************************************
+ * Load the memory data                                                 *
+ ***********************************************************************/
+MemoryResults ProfilerApp::getMemoryResults() const
+{
+    // Get the current memory usage
+    if ( d_store_memory_data != MemoryLevel::None ) {
+        auto thread = const_cast<ProfilerApp*>( this )->getThreadData();
+        int64_t ns = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
+        thread->memory.add( ns, d_store_memory_data, &d_bytes );
+    }
+    // Get the memory info for each thread
+    size_t N = 0;
+    std::vector<std::vector<uint64_t>> time_list, bytes_list;
+    for ( auto thread : thread_table ) {
+        if ( thread != nullptr ) {
+            std::vector<uint64_t> time, bytes;
+            thread->memory.get( time, bytes );
+            if ( !time.empty() ) {
+                N += time.size();
+                time_list.emplace_back( std::move( time ) );
+                bytes_list.emplace_back( std::move( bytes ) );
+            }
+        }
+    }
+    // Merge the data
+    std::vector<uint64_t> time, bytes;
+    if ( time_list.empty() ) {
+        return MemoryResults();
+    } else if ( time_list.size() == 1 ) {
+        std::swap( time, time_list[0] );
+        std::swap( bytes, bytes_list[0] );
+    } else {
+        time.reserve(N);
+        bytes.reserve(N);
+        int N2 = time_list.size();
+        size_t index[MAX_THREADS] = { 0 };
+        for (size_t i=0; i<N; i++) {
+            int k = 0;
+            uint64_t val = std::numeric_limits<uint64_t>::max();
+            for (int j=0; j<N2; j++) {
+                if ( index[j] == time_list[j].size() )
+                    continue;
+                if ( time_list[j][index[j]] < val ) {
+                    k = j;
+                    val = time_list[j][index[j]];
+                }
+            }
+            time.push_back( time_list[k][index[k]] );
+            bytes.push_back( bytes_list[k][index[k]] );
+            index[k]++;
+        }
+    }
+    // Compress the results by removing values that have not changed
+    // Note: we will always keep the first and last values
+    size_t i = 1;
+    for ( size_t j = 1; j < N - 1; j++ ) {
+        if ( bytes[j] == bytes[i - 1] && bytes[j] == bytes[j + 1] )
+            continue;
+        time[i]  = time[j];
+        bytes[i] = bytes[j];
+        i++;
+    }
+    time[i]  = time[N - 1];
+    bytes[i] = bytes[N - 1];
+    N        = i + 1;
+    // Create the memory results
+    MemoryResults data;
+    data.time.resize( N );
+    data.bytes.resize( N );
+    for ( size_t i = 0; i < N; i++ ) {
+        data.time[i]  = 1e-9 * static_cast<double>( time[i] );
+        data.bytes[i] = bytes[i];
+    }
+    return data;
 }
 
 

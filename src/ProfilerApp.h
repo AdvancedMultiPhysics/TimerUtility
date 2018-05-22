@@ -198,11 +198,10 @@ struct TimerMemoryResults {
  * for the timers.  All timers with a number greater than the current level in the profiler will be
  * ignored. The macros PROFILE_START and PROFILE_STOP automatically check the level for performance
  * and calling an unused timer adds 2-5ns per call. <BR>
- * For repeated calls the timer adds ~100ns per call with without trace info, and ~1us per call
- * with full trace info. Most of this overhead is not in the time returned by the timer.
- * The resolution is ~ 1us for a single timer call. <BR>
+ * For repeated calls the timer adds 100-200 ns per call.
+ * The resolution is ~ 50 ns for a single timer call. <BR>
  * Note: PROFILE_START and PROFILE_STOP require compile time string constants for the
- * message. Calling start/stop directly eliminates this requirement, but add ~200ns to the cost. <BR>
+ * message. Calling start/stop directly eliminates this requirement, but adds ~50 ns to the cost. <BR>
  * Note: When a timer is created the initial cost may be significantly higher, but this only
  * occurs once pertimer. <BR>
  * Note: The scoped timer (PROFILE_SCOPED) has very similar performance to START/STOP. <BR>
@@ -443,7 +442,7 @@ public:
      * \details  This function will return a vector containing the
      *   memory usage as a function of time
      */
-    inline MemoryResults getMemoryResults() const { return d_memory.get(); }
+    MemoryResults getMemoryResults() const;
 
     /*!
      * \brief  Get the memory used by the profiler
@@ -582,7 +581,7 @@ private: // Member classes
     {
     public:
         StoreMemory()
-            : d_capacity( 0 ), d_size( 0 ), d_time( nullptr ), d_bytes( nullptr ), d_lock( 0 )
+            : d_capacity( 0 ), d_size( 0 ), d_time( nullptr ), d_bytes( nullptr )
         {
         }
         ~StoreMemory()
@@ -596,17 +595,7 @@ private: // Member classes
             volatile TimerUtility::atomic::int64_atomic* bytes_profiler );
         void reset();
         void swap( StoreMemory& rhs );
-        MemoryResults get() const;
-
-    private:
-        inline void lock() const
-        {
-            int tmp = 1;
-            do {
-                tmp = TimerUtility::atomic::atomic_fetch_and_and( &d_lock, 1 );
-            } while ( tmp == 1 );
-        }
-        inline void unlock() const { TimerUtility::atomic::atomic_fetch_and_or( &d_lock, 0 ); }
+        void get( std::vector<uint64_t> &time, std::vector<uint64_t> &bytes ) const;
 
     private:
         // The maximum number of memory traces allowed
@@ -616,7 +605,6 @@ private: // Member classes
         size_t d_size;
         uint64_t* d_time;  // The times at which we know the memory usage (ns from start)
         uint64_t* d_bytes; // The memory usage at each time
-        mutable volatile TimerUtility::atomic::int32_atomic d_lock; // Internal lock
     };
 
     // Structure to store the info for a trace log
@@ -715,6 +703,7 @@ private: // Member classes
         unsigned int N_timers;              // The number of timers seen by the current thread
         StoreActive active;                 // Store the active trace
         store_timer* head[TIMER_HASH_SIZE]; // Store the timers in a hash table
+        StoreMemory memory;                 // Memory usage information
         // Constructor used to initialize key values
         explicit thread_info( int id_ ) : id( id_ ), N_timers( 0 )
         {
@@ -757,7 +746,6 @@ private: // Member data
     time_point d_construct_time;           // Constructor time
     int64_t d_shift;                       // Offset to synchronize the trace data
     mutable volatile int64_atomic d_bytes; // The current memory used by the profiler
-    StoreMemory d_memory;                  // Memory usage information
 
 private: // Private member functions
     // Function to return a pointer to the thread info (or create it if necessary)

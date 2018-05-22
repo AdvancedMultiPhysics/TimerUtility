@@ -57,6 +57,8 @@ inline size_t findfirst( const std::vector<double>& X, double Y )
 MemoryPlot::MemoryPlot( QWidget* parent, const std::vector<MemoryResults>& memory_ )
     : QwtPlot( parent ),
       d_t( std::array<double, 2>{ { 0, 0 } } ),
+      d_offset( 0 ),
+      d_scale( 0 ),
       d_last_rank( -10 ),
       d_memory( &memory_ ),
       d_N_procs( memory_.size() )
@@ -111,6 +113,13 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
     d_t         = t_in;
     d_last_rank = rank;
 
+    // Get the offset
+    d_offset = 0.0;
+    if ( fabs( d_t[1] - d_t[0] ) < 10e-3 ) {
+        d_offset = 1e-3 * floor( d_t[0] * 1e3 );
+        d_scale = 1e3;
+    }
+
     // Get the memory usage for each rank
     for ( int i = 0; i < d_N_procs; i++ ) {
         d_curvePlot[i]->attach( nullptr );
@@ -144,11 +153,9 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
         yscale = 1.0 / ( 1024.0 * 1024.0 * 1024.0 );
         ylabel = "Memory (GB)";
     }
-    double xoffset = 0.0;
-    if ( fabs( d_t[1] - d_t[0] ) < 10e-3 ) {
-        xoffset = 1e-3 * floor( d_t[0] * 1e3 );
+    if ( d_offset != 0.0 ) {
         std::string offset_label =
-            " (offset = " + std::to_string( static_cast<uint64_t>( 1e3 * xoffset ) ) + " ms)";
+            " (offset = " + std::to_string( static_cast<uint64_t>( 1e3 * d_offset ) ) + " ms)";
         if ( fabs( d_t[1] - d_t[0] ) < 50e-6 ) {
             xscale = 1e6;
             xlabel = "Time (us)" + offset_label;
@@ -175,7 +182,7 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
     // Set the axis
     int xaxis = QwtPlot::xBottom;
     int yaxis = QwtPlot::yLeft;
-    setAxisScale( xaxis, xscale * ( d_t[0] - xoffset ), xscale * ( d_t[1] - xoffset ) );
+    setAxisScale( xaxis, xscale * ( d_t[0] - d_offset ), xscale * ( d_t[1] - d_offset ) );
     setAxisTitle( xaxis, qwtText( xlabel.c_str(), QFont( "Times", 10, QFont::Bold ) ) );
     if ( range[1] > 0 ) {
         setAxisScale( yaxis, 0.95 * range[0], 1.05 * range[1] );
@@ -191,29 +198,33 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
 
 std::array<size_t, 2> MemoryPlot::updateRankData( int rank )
 {
-    const auto& time = d_memory->operator[]( rank ).time;
-    const auto& size = d_memory->operator[]( rank ).bytes;
-    size_t i1        = findfirst( time, d_t[0] );
-    size_t i2        = findfirst( time, d_t[1] );
-    i1               = i1 == 0 ? 0 : i1 - 1;
-    i2               = std::min<size_t>( i2, time.size() - 1 );
-    size_t N         = ( i2 - i1 ) / 10000; // Limit the plot to ~10000 points
-    N                = std::max<size_t>( N, 1 );
+    auto& time = d_memory->operator[]( rank ).time;
+    auto& size = d_memory->operator[]( rank ).bytes;
+    size_t i1  = findfirst( time, d_t[0] );
+    size_t i2  = findfirst( time, d_t[1] );
+    i2         = std::min( i2, time.size() - 1 );
+    size_t N2  = ( ( i2 - i1 + 1 ) / 5000 ) + 1; // Limit plot to ~5000 points
+    size_t N   = ( i2 - i1 + 1 ) / N2;
+    size_t i0  = std::max<uint64_t>( i1, 1 ) - 1;
     d_time[rank].clear();
     d_size[rank].clear();
-    d_time[rank].reserve( 2 * ( i2 - i1 ) / N + 3 );
-    d_size[rank].reserve( 2 * ( i2 - i1 ) / N + 3 );
-    std::array<size_t, 2> range = { { size[i2], size[i2] } };
-    for ( size_t i = i1; i < i2; i += N ) {
+    d_time[rank].reserve( 2*N + 2 );
+    d_size[rank].reserve( 2*N + 2 );
+    d_time[rank].push_back( d_t[0] );
+    d_size[rank].push_back( size[i0] );
+    std::array<size_t, 2> range = { { size[i0], size[i0] } };
+    for ( size_t i = i1; i < i2; i += N2 ) {
         d_time[rank].push_back( time[i] );
-        d_time[rank].push_back( time[i + 1] );
         d_size[rank].push_back( size[i] );
-        d_size[rank].push_back( size[i] );
-        range[0] = std::min<size_t>( range[0], size[i] );
-        range[1] = std::max<size_t>( range[1], size[i] );
+        range[0] = std::min<uint64_t>( range[0], size[i] );
+        range[1] = std::max<uint64_t>( range[1], size[i] );
     }
-    d_time[rank].push_back( time[i2] );
-    d_size[rank].push_back( size[i2] );
+    d_time[rank].push_back( d_t[1] );
+    d_size[rank].push_back( d_size[rank].back() );
+    if ( d_offset != 0.0 ) {
+        for ( auto &t : d_time[rank] )
+            t = d_scale*( t - d_offset );
+    }
     return range;
 }
 void MemoryPlot::plotRank( int rank, double scale )
