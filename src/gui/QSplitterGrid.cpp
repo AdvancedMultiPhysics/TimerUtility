@@ -187,12 +187,12 @@ void QSplitterGrid::moveBoundary( int index0, int pos, bool final )
 void QSplitterGrid::resize( int w, int h )
 {
     if ( w > 0 ) {
-        int s = sum( row_size );
+        int s = std::max( sum( row_size ), 1 );
         for ( int& i : row_size )
             i = std::max( ( h * i - vspacing ) / s, 2 );
     }
     if ( h > 0 ) {
-        int s = sum( col_size );
+        int s = std::max( sum( col_size ), 1 );
         for ( int& i : col_size )
             i = std::max( ( w * i - hspacing ) / s, 2 );
     }
@@ -204,22 +204,18 @@ void QSplitterGrid::resize2()
     // Get the row and column heights
     PROFILE_START( "resize-row_col" );
     std::array<int, 2> size = { 0, 0 };
-    int N_col               = 0;
     for ( size_t i = 0; i < col_size.size(); i++ ) {
         if ( row_visible[i] ) {
             grid->setColumnMinimumWidth( i, col_size[i] );
             size[0] += col_size[i] + hspacing;
-            N_col++;
         } else {
             grid->setColumnMinimumWidth( i, 0 );
         }
     }
-    int N_row = 0;
     for ( size_t i = 0; i < row_size.size(); i++ ) {
         if ( row_visible[i] ) {
             grid->setRowMinimumHeight( i, row_size[i] );
             size[1] += row_size[i] + vspacing;
-            N_row++;
         } else {
             grid->setRowMinimumHeight( i, 0 );
         }
@@ -235,14 +231,6 @@ void QSplitterGrid::resize2()
         }
     }
     PROFILE_STOP( "resize-visible" );
-    // Resize frame
-    PROFILE_START( "resize-frame" );
-    if ( old_size != size ) {
-        frame_widget->setMinimumSize( size[0], size[1] );
-        frame_widget->resize( size[0], size[1] );
-    }
-    old_size = size;
-    PROFILE_STOP( "resize-frame" );
     // Set position of boundaries
     PROFILE_START( "resize-boundaries" );
     for ( int i = 0, pos = 0; i < (int) row_boundaries.size(); i++ ) {
@@ -264,6 +252,12 @@ void QSplitterGrid::resize2()
         }
     }
     PROFILE_STOP( "resize-boundaries" );
+    // Resize frame
+    PROFILE_START( "resize-frame" );
+    if ( old_size != size )
+        frame_widget->resize( size[0], size[1] );
+    old_size = size;
+    PROFILE_STOP( "resize-frame" );
     // Execute callbacks
     for ( auto fun : resizeCallBack )
         fun();

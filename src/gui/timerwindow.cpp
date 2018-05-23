@@ -398,8 +398,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.tot.resize( N_procs, 0 );
             timer.trace.clear();
             for ( auto& j : d_data.timers[i].trace ) {
-                int index                     = -1;
-                std::vector<id_struct> active = getActive( j );
+                int index   = -1;
+                auto active = getActive( j );
                 for ( size_t k = 0; k < timer.trace.size(); k++ ) {
                     if ( timer.trace[k]->active == active ) {
                         index = static_cast<int>( k );
