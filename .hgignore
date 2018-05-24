@@ -53,4 +53,5 @@ build/*/QWT/*
 build/*/cppclean
 build/*/compile_commands.json
 build/*/gmon.out
+build/*/configure*
 

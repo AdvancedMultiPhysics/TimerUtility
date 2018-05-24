@@ -29,6 +29,9 @@ class TraceWindow : public ThreadedSlotsClass
 
 public:
     explicit TraceWindow( const TimerWindow *parent );
+    TraceWindow() = delete;
+    TraceWindow( const TraceWindow& ) = delete;
+    TraceWindow& operator=( const TraceWindow& ) = delete;
     virtual ~TraceWindow();
 
 protected:

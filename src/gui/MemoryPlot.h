@@ -18,6 +18,7 @@ class MemoryPlot : public QwtPlot
 
 public:
     MemoryPlot( QWidget *parent, const std::vector<MemoryResults> &memory );
+    MemoryPlot() = delete;
     virtual ~MemoryPlot();
     void plot( std::array<double, 2> t, int rank );
     void align( int left = -1, int right = -1 );
@@ -40,7 +41,6 @@ private:
     int d_last_rank;
 
 private:
-    MemoryPlot() : d_memory( nullptr ), d_N_procs( 0 ) {}
     const std::vector<MemoryResults> *d_memory;
     const int d_N_procs;
 };

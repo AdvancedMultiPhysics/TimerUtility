@@ -1,16 +1,11 @@
 // Supression file for cppcheck
 
-// Suppress unmatched suppressions
-unmatchedSuppression
-
 // Suppress missing include message (we are not checking dependencies)
 missingInclude
+unmatchedSuppression
 
 // Suppress unusedFunction messages (functions may be used by subsequent packages)
 unusedFunction
-
-// Supress same expression messages
-duplicateExpression:*/src/test/test_ProfilerApp.cpp
 
 // Supress known expression messages
 knownConditionTrueFalse:*/src/test/test_Callgrind.cpp
