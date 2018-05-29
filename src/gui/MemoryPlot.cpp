@@ -33,7 +33,8 @@ inline QwtText qwtText( const QString& string, const QFont& font )
 
 // Subroutine to find the first element in X which is greater than Y using a simple hashing
 // technique
-inline size_t findfirst( const std::vector<double>& X, double Y )
+template<class TYPE>
+inline size_t findfirst( const std::vector<TYPE>& X, TYPE Y )
 {
     if ( X.empty() )
         return 0;
@@ -200,8 +201,8 @@ std::array<size_t, 2> MemoryPlot::updateRankData( int rank )
 {
     auto& time = d_memory->operator[]( rank ).time;
     auto& size = d_memory->operator[]( rank ).bytes;
-    size_t i1  = findfirst( time, d_t[0] );
-    size_t i2  = findfirst( time, d_t[1] );
+    size_t i1  = findfirst<uint64_t>( time, 1e9 * d_t[0] );
+    size_t i2  = findfirst<uint64_t>( time, 1e9 * d_t[1] );
     i2         = std::min( i2, time.size() - 1 );
     size_t N2  = ( ( i2 - i1 + 1 ) / 5000 ) + 1; // Limit plot to ~5000 points
     size_t N   = ( i2 - i1 + 1 ) / N2;
@@ -214,7 +215,7 @@ std::array<size_t, 2> MemoryPlot::updateRankData( int rank )
     d_size[rank].push_back( size[i0] );
     std::array<size_t, 2> range = { { size[i0], size[i0] } };
     for ( size_t i = i1; i < i2; i += N2 ) {
-        d_time[rank].push_back( time[i] );
+        d_time[rank].push_back( 1e-9 * time[i] );
         d_size[rank].push_back( size[i] );
         range[0] = std::min<uint64_t>( range[0], size[i] );
         range[1] = std::max<uint64_t>( range[1], size[i] );

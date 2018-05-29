@@ -10,6 +10,7 @@ unusedFunction
 // Supress known expression messages
 knownConditionTrueFalse:*/src/test/test_Callgrind.cpp
 knownConditionTrueFalse:*/src/test/test_Load.cpp
+knownConditionTrueFalse:*/src/test/test_ProfilerApp.cpp
 knownConditionTrueFalse:*/src/ProfilerApp.cpp
 
 // Suppress mismatchAllocDealloc (This is an intentional test)

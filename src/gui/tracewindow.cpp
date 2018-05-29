@@ -328,7 +328,6 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
 {
     PROFILE_START( "getTraceData" );
     // Get the active timers/traces
-    // std::vector<std::shared_ptr<TimerSummary>> timers = parent->getTimers();
     const auto &timers = parent->d_data.timers;
     // Create a timeline for the time of interest
     std::vector<std::shared_ptr<TimerTimeline>> data( timers.size() );
@@ -358,19 +357,15 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
             if ( selected_rank != -1 && rank != selected_rank )
                 continue;
             for ( int k = 0; k < N_trace; k++ ) {
-                if ( stop[k] <= t0 || start[k] >= t1 )
+                double s1 = 1e-9 * start[k];
+                double s2 = 1e-9 * stop[k];
+                if ( s2 <= t0 || s1 >= t1 )
                     continue;
-                auto m1 = static_cast<int64_t>( ceil( ( start[k] - t0 ) / dt ) );
-                auto m2 = static_cast<int64_t>( floor( ( stop[k] - t0 ) / dt ) );
-                if ( start[k] <= t0 ) {
-                    m1 = 0;
-                }
-                if ( stop[k] >= t[1] ) {
-                    m2 = resolution - 1;
-                }
+                int m1 = std::max<int>( ( s1 - t0 ) / dt, 0 );
+                int m2 = std::min<int>( ( s2 - t0 ) / dt, resolution - 1 );
                 for ( int k2 = m1; k2 <= m2; k2++ )
                     array.set( k2, it, ip );
-                data[i]->tot += std::min( stop[k], t1 ) - std::max( start[k], t0 );
+                data[i]->tot += std::min( s2, t1 ) - std::max( s1, t0 );
             }
         }
     }
@@ -394,7 +389,7 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
 void TraceWindow::updateTimeline()
 {
     PROFILE_START( "updateTimeline" );
-    const uint64_t rgb0 = jet( -1 );
+    const auto rgb0 = jet( -1 );
     // Get the data for the entire window
     auto data = TraceWindow::getTraceData( t_global );
     // Create the global id map
@@ -409,11 +404,11 @@ void TraceWindow::updateTimeline()
     if ( Np * Nt * data.size() <= 256 ) {
         image = new QImage( resolution, Np * Nt * data.size(), QImage::Format_RGB32 );
         for ( size_t i = 0; i < data.size(); i++ ) {
-            uint64_t rgb            = idRgbMap[data[i]->id];
-            const BoolArray &active = data[i]->active;
+            auto rgb     = idRgbMap[data[i]->id];
+            auto &active = data[i]->active;
             for ( int k = 0; k < Np * Nt; k++ ) {
                 for ( int j = 0; j < resolution; j++ ) {
-                    uint64_t value = active( j, k ) ? rgb : rgb0;
+                    uint32_t value = active( j, k ) ? rgb : rgb0;
                     image->setPixel( j, k + i * Np * Nt, value );
                 }
             }
@@ -421,14 +416,14 @@ void TraceWindow::updateTimeline()
     } else if ( Np * data.size() <= 256 ) {
         image = new QImage( resolution, N_procs * data.size(), QImage::Format_RGB32 );
         for ( size_t i = 0; i < data.size(); i++ ) {
-            uint64_t rgb            = idRgbMap[data[i]->id];
-            const BoolArray &active = data[i]->active;
+            auto rgb     = idRgbMap[data[i]->id];
+            auto &active = data[i]->active;
             for ( int k = 0; k < Np; k++ ) {
                 for ( int j = 0; j < resolution; j++ ) {
                     bool set = false;
                     for ( int k2 = 0; k2 < Nt; k2++ )
                         set = set || active( j, k2, k );
-                    uint64_t value = set ? rgb : rgb0;
+                    uint32_t value = set ? rgb : rgb0;
                     image->setPixel( j, k + i * N_procs, value );
                 }
             }
@@ -436,16 +431,33 @@ void TraceWindow::updateTimeline()
     } else {
         image = new QImage( resolution, data.size(), QImage::Format_RGB32 );
         for ( size_t i = 0; i < data.size(); i++ ) {
-            uint64_t rgb            = idRgbMap[data[i]->id];
-            const BoolArray &active = data[i]->active;
+            auto rgb     = idRgbMap[data[i]->id];
+            auto &active = data[i]->active;
             for ( int j = 0; j < resolution; j++ ) {
                 bool set = false;
                 for ( int k = 0; k < Np * Nt; k++ )
                     set = set || active( j, k );
-                uint64_t value = set ? rgb : rgb0;
+                uint32_t value = set ? rgb : rgb0;
                 image->setPixel( j, i, value );
             }
         }
+    }
+    if ( data.size() >= 512 ) {
+        int Ns      = data.size() / 256;
+        int N       = data.size() / Ns;
+        int N0      = data.size();
+        auto image0 = image;
+        image       = new QImage( resolution, N, QImage::Format_RGB32 );
+        for ( int j = 0; j < resolution; j++ ) {
+            for ( int i = 0; i < N; i++ ) {
+                auto val = rgb0;
+                int n    = 0;
+                for ( int k = 0; k < Ns && i * Ns + k < N0 && val == rgb0; k++, n++ )
+                    val = image0->pixel( j, i * Ns + k );
+                image->setPixel( j, i, val );
+            }
+        }
+        delete image0;
     }
     timelinePixelMap.reset( new QPixmap( QPixmap::fromImage( *image ) ) );
     delete image;
@@ -474,11 +486,11 @@ void TraceWindow::updateTimers()
             data[i]->message.c_str(), data[i]->file.c_str() );
         timerLabels[i]->setText( label );
         QImage image( resolution, Np * Nt, QImage::Format_RGB32 );
-        uint64_t rgb       = idRgbMap[data[i]->id];
-        const auto &active = data[i]->active;
+        auto rgb     = idRgbMap[data[i]->id];
+        auto &active = data[i]->active;
         for ( int j = 0; j < resolution; j++ ) {
             for ( int k = 0; k < Np * Nt; k++ ) {
-                uint64_t value = active( j, k ) ? rgb : rgb0;
+                uint32_t value = active( j, k ) ? rgb : rgb0;
                 image.setPixel( j, k, value );
             }
         }
@@ -527,7 +539,7 @@ void TraceWindow::resizeDone()
     }
     // Resize the grid (will call resize on the memory plot automatically)
     auto cw = timerGrid->getColumnWidth();
-    int w2  = timerGrid->geometry().width() - 2 * timerGrid->getHorizontalSpacing() - 20;
+    int w2  = timerGrid->geometry().width() - 2 * timerGrid->getHorizontalSpacing() - 30;
     timerGrid->setColumnWidth(
         { ( cw[0] * w2 ) / ( cw[0] + cw[1] ), ( cw[1] * w2 ) / ( cw[0] + cw[1] ) } );
     PROFILE_STOP( "resizeDone" );
@@ -695,8 +707,8 @@ std::array<double, 2> TraceWindow::getGlobalTime( const std::vector<TimerResults
             if ( N_trace > 0 ) {
                 auto start  = trace.start();
                 auto stop   = trace.stop();
-                t_global[0] = std::min( t_global[0], start[0] );
-                t_global[1] = std::max( t_global[1], stop[N_trace - 1] );
+                t_global[0] = std::min( t_global[0], 1e-9 * start[0] );
+                t_global[1] = std::max( t_global[1], 1e-9 * stop[N_trace - 1] );
             }
         }
     }

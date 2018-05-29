@@ -46,26 +46,26 @@ public:
     }
     bool operator()( int i = 0, int j = 0, int k = 0 ) const
     {
-        int ijk = i + j * N[0] + k * N[0] * N[1];
+        uint64_t ijk = i + j * N[0] + k * N[0] * N[1];
         return ( data[ijk >> 6] >> ( ijk & 0x3F ) ) & 0x1;
     }
     void set( int i, int j = 0, int k = 0 )
     {
-        int ijk       = i + j * N[0] + k * N[0] * N[1];
+        uint64_t ijk  = i + j * N[0] + k * N[0] * N[1];
         uint64_t mask = ( (uint64_t) 0x1 ) << ( ijk & 0x3F );
         data[ijk >> 6] |= mask;
     }
     void clear( int i, int j = 0, int k = 0 )
     {
-        int ijk       = i + j * N[0] + k * N[0] * N[1];
+        uint64_t ijk  = i + j * N[0] + k * N[0] * N[1];
         uint64_t mask = ( (uint64_t) 0x1 ) << ( ijk & 0x3F );
         data[ijk >> 6] &= mask;
     }
     int size( int d ) { return N[d]; }
 
 protected:
-    int N[3];
-    size_t Ni;
+    uint64_t N[3];
+    uint64_t Ni;
     uint64_t* data;
 };
 

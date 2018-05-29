@@ -5,40 +5,40 @@
 #include <string>
 #include <vector>
 
+
 #ifdef USE_MPI
 #include <mpi.h>
-#endif
-
-
 inline int getRank()
 {
     int rank = 0;
-#ifdef USE_MPI
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-#endif
     return rank;
 }
 inline int getSize()
 {
     int size = 0;
-#ifdef USE_MPI
     MPI_Comm_size( MPI_COMM_WORLD, &size );
-#endif
     return size;
 }
+inline void barrier() { MPI_Barrier( MPI_COMM_WORLD ); }
+#else
+inline int getRank() { return 0; }
+inline int getSize() { return 1; }
+inline void barrier() {}
+inline void MPI_Init( int, char *[] ) {}
+inline void MPI_Finalize() {}
+#endif
 
 
 inline void printOverhead( const std::string &timer, int N_calls )
 {
-    if ( getRank() == 0 ) {
-        size_t id    = global_profiler.getTimerId( timer.c_str(), __FILE__ );
-        auto results = global_profiler.getTimerResults( id );
-        if ( results.trace.size() == 1 ) {
-            float time = results.trace[0].tot;
-            printf( "   %s: %i ns\n", timer.c_str(), int( time * 1e9 / N_calls ) );
-        } else {
-            printf( "   %s: N/A\n", timer.c_str() );
-        }
+    size_t id    = global_profiler.getTimerId( timer.c_str(), __FILE__ );
+    auto results = global_profiler.getTimerResults( id );
+    if ( results.trace.size() == 1 ) {
+        uint64_t time = results.trace[0].tot;
+        printf( "   %s: %i ns\n", timer.c_str(), int( time / N_calls ) );
+    } else {
+        printf( "   %s: N/A\n", timer.c_str() );
     }
 }
 
@@ -309,20 +309,22 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         delete[] tmp;
         PROFILE_STOP( "allocate1" );
     }
-    printf( "\nProfiler overhead (%i,%i):\n", enable_trace ? 1 : 0, enable_memory ? 1 : 0 );
-    printOverhead( "single", N_it * N_timers );
-    printOverhead( "static", N_it * N_timers );
-    printOverhead( "dynamic", N_it * N_timers );
-    printOverhead( "scoped-static", N_it * N_timers );
-    printOverhead( "scoped-dynamic", N_it * N_timers );
-    printOverhead( "level 0", N_it * N_timers );
-    printOverhead( "level 1 (1)", N_it * N_timers );
-    printOverhead( "level 1 (2)", N_it * N_timers );
-    printOverhead( "level 1 (3)", N_it * N_timers );
-    printOverhead( "level 1 (scoped)", N_it * N_timers );
-    printOverhead( "active 1", N_it * N_timers );
-    printOverhead( "active 2", N_it * N_timers );
-    printf( "\n" );
+    if ( getRank() == 0 ) {
+        printf( "\nProfiler overhead (%i,%i):\n", enable_trace ? 1 : 0, enable_memory ? 1 : 0 );
+        printOverhead( "single", N_it * N_timers );
+        printOverhead( "static", N_it * N_timers );
+        printOverhead( "dynamic", N_it * N_timers );
+        printOverhead( "scoped-static", N_it * N_timers );
+        printOverhead( "scoped-dynamic", N_it * N_timers );
+        printOverhead( "level 0", N_it * N_timers );
+        printOverhead( "level 1 (1)", N_it * N_timers );
+        printOverhead( "level 1 (2)", N_it * N_timers );
+        printOverhead( "level 1 (3)", N_it * N_timers );
+        printOverhead( "level 1 (scoped)", N_it * N_timers );
+        printOverhead( "active 1", N_it * N_timers );
+        printOverhead( "active 2", N_it * N_timers );
+        printf( "\n" );
+    }
 
     // Profile the save
     PROFILE_START( "SAVE" );
@@ -381,11 +383,11 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         N_errors++;
     }
     if ( enable_trace && trace != nullptr ) {
-        int N               = trace->N_trace;
-        const double *start = trace->start();
-        const double *stop  = trace->stop();
-        bool pass           = start != nullptr && stop != nullptr && N == 1;
-        if ( *start < -0.01 || *start > 100.0 || *start > *stop )
+        const int N           = trace->N_trace;
+        const uint64_t *start = trace->start();
+        const uint64_t *stop  = trace->stop();
+        bool pass             = start != nullptr && stop != nullptr && N == 1;
+        if ( *start > 100e9 || *start > *stop )
             pass = false;
         if ( !pass ) {
             std::cout << "Error with trace results of MAIN\n";
@@ -395,11 +397,12 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
 
     // Find and check sleep
     trace = nullptr;
-    for ( auto &i : data1 ) {
-        if ( i.message == "sleep" ) {
-            trace = &i.trace[0];
-            if ( fabs( i.trace[0].tot - 1.0 ) > 0.1 ) {
-                std::cout << "Error profiling sleep: " << i.trace[0].tot << std::endl;
+    for ( auto &timer : data1 ) {
+        if ( timer.message == "sleep" ) {
+            trace      = &timer.trace[0];
+            double tot = 1e-9 * trace->tot;
+            if ( fabs( tot - 1.0 ) > 0.1 ) {
+                std::cout << "Error profiling sleep: " << tot << std::endl;
                 N_errors++;
             }
         }
@@ -469,36 +472,32 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
 
 int main( int argc, char *argv[] )
 {
-// Initialize MPI
-#ifdef USE_MPI
+    // Initialize MPI
     MPI_Init( &argc, &argv );
-#else
-    NULL_USE( argc );
-    NULL_USE( argv );
-#endif
 
+    // Print basic info
     int N_errors = 0;
-    { // Limit scope
-
+    if ( getRank() == 0 ) {
+        // Print clock resolution
         printf( "\nClock resolution:\n" );
         printf( "  system_clock: %i\n", get_clock_resolution<std::chrono::system_clock>() );
         printf( "  steady_clock: %i\n", get_clock_resolution<std::chrono::steady_clock>() );
         printf( "  high_resolution_clock: %i\n",
             get_clock_resolution<std::chrono::high_resolution_clock>() );
         printf( "\n" );
-
         // Test how long it takes to get the time
         printf( "Clock performance:\n" );
         printf( "  system_clock: %i\n", test_clock<std::chrono::system_clock>() );
         printf( "  steady_clock: %i\n", test_clock<std::chrono::steady_clock>() );
         printf( "  high_resolution_clock: %i\n", test_clock<std::chrono::high_resolution_clock>() );
         printf( "\n" );
-
         // Test how long it takes to get memory usage
         printf( "getMemoryUsage: %i\n", test_getMemoryUsage() );
         printf( "getTotalMemoryUsage: %i\n\n", test_getTotalMemoryUsage() );
+    }
 
-        // Run the tests
+    // Run the tests
+    {
         std::vector<std::tuple<bool, bool, std::string>> tests;
         tests.emplace_back( false, false, "test_ProfilerApp" );
         tests.emplace_back( true, false, "test_ProfilerApp-trace" );
@@ -518,9 +517,7 @@ int main( int argc, char *argv[] )
         std::cout << "All tests passed" << std::endl;
     else
         std::cout << "Some tests failed" << std::endl;
-#ifdef USE_MPI
     MPI_Barrier( MPI_COMM_WORLD );
     MPI_Finalize();
-#endif
     return N_errors;
 }

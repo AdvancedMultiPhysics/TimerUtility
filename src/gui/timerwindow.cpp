@@ -397,9 +397,9 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.max.resize( N_procs, 0 );
             timer.tot.resize( N_procs, 0 );
             timer.trace.clear();
-            for ( auto& j : d_data.timers[i].trace ) {
+            for ( auto& t0 : d_data.timers[i].trace ) {
                 int index   = -1;
-                auto active = getActive( j );
+                auto active = getActive( t0 );
                 for ( size_t k = 0; k < timer.trace.size(); k++ ) {
                     if ( timer.trace[k]->active == active ) {
                         index = static_cast<int>( k );
@@ -410,7 +410,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                     index    = static_cast<int>( timer.trace.size() );
                     size_t k = d_dataTrace.size();
                     d_dataTrace.push_back( std::make_shared<TraceSummary>() );
-                    d_dataTrace[k]->id     = j.id;
+                    d_dataTrace[k]->id     = t0.id;
                     d_dataTrace[k]->active = active;
                     d_dataTrace[k]->N.resize( N_procs, 0 );
                     d_dataTrace[k]->min.resize( N_procs, 1e30 );
@@ -419,12 +419,12 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                     timer.trace.push_back( d_dataTrace[k].get() );
                 }
                 auto* trace = const_cast<TraceSummary*>( timer.trace[index] );
-                int rank    = j.rank;
-                trace->threads.insert( j.thread );
-                trace->N[rank] += j.N;
-                trace->min[rank] = std::min( trace->min[rank], j.min );
-                trace->max[rank] = std::max( trace->max[rank], j.max );
-                trace->tot[rank] += j.tot;
+                int rank    = t0.rank;
+                trace->threads.insert( t0.thread );
+                trace->N[rank] += t0.N;
+                trace->min[rank] = std::min( trace->min[rank], 1e-9f * t0.min );
+                trace->max[rank] = std::max( trace->max[rank], 1e-9f * t0.max );
+                trace->tot[rank] += 1e-9f * t0.tot;
             }
             std::set<int> ids;
             for ( size_t j = 0; j < timer.trace.size(); j++ ) {

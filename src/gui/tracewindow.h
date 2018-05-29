@@ -29,9 +29,9 @@ class TraceWindow : public ThreadedSlotsClass
 
 public:
     explicit TraceWindow( const TimerWindow *parent );
-    TraceWindow() = delete;
-    TraceWindow( const TraceWindow& ) = delete;
-    TraceWindow& operator=( const TraceWindow& ) = delete;
+    TraceWindow()                      = delete;
+    TraceWindow( const TraceWindow & ) = delete;
+    TraceWindow &operator=( const TraceWindow & ) = delete;
     virtual ~TraceWindow();
 
 protected:
@@ -80,7 +80,7 @@ private:
     int resolution;
     int selected_rank;
     int selected_thread;
-    std::map<id_struct, uint64_t> idRgbMap;
+    std::map<id_struct, uint32_t> idRgbMap;
     std::shared_ptr<QPixmap> timelinePixelMap;
 
     bool traceZoomActive;

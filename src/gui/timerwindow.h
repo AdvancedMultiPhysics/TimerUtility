@@ -29,8 +29,8 @@ class TimerWindow : public ThreadedSlotsClass
 
 public:
     TimerWindow();
-    TimerWindow( const TimerWindow& ) = delete;
-    TimerWindow& operator=( const TimerWindow& ) = delete;
+    TimerWindow( const TimerWindow & ) = delete;
+    TimerWindow &operator=( const TimerWindow & ) = delete;
     virtual ~TimerWindow();
 
 protected:

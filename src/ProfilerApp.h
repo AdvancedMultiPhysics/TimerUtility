@@ -27,12 +27,8 @@ class ScopedTimer;
  */
 struct id_struct {
     id_struct() { data.u64 = 0; }
-    id_struct( const id_struct& rhs ) { data.u64 = rhs.data.u64; }
-    id_struct& operator=( const id_struct& rhs )
-    {
-        this->data.u64 = rhs.data.u64;
-        return *this;
-    }
+    id_struct( const id_struct& rhs ) = default;
+    id_struct& operator=( const id_struct& rhs ) = default;
     explicit id_struct( const std::string& rhs )
     {
         data.u64 = 0;
@@ -74,29 +70,29 @@ struct TraceResults {
     uint16_t thread;                                //!<  Active thread
     uint32_t rank;                                  //!<  Rank
     uint32_t N_trace;                               //!<  Number of calls that we trace
-    float min;                                      //!<  Minimum call time
-    float max;                                      //!<  Maximum call time
-    float tot;                                      //!<  Total call time
+    uint64_t min;                                   //!<  Minimum call time (ns)
+    uint64_t max;                                   //!<  Maximum call time (ns)
+    uint64_t tot;                                   //!<  Total call time (ns)
     uint64_t N;                                     //!<  Total number of calls
     id_struct* active();                            //!<  List of active timers
     const id_struct* active() const;                //!<  List of active timers
-    double* start();                                //!<  Start times for each call
-    const double* start() const;                    //!<  Start times for each call
-    double* stop();                                 //!<  Stop times for each call
-    const double* stop() const;                     //!<  Stop times for each call
+    uint64_t* start();                              //!<  Start times for each call (ns)
+    uint64_t* stop();                               //!<  Stop times for each call (ns)
+    const uint64_t* start() const;                  //!<  Start times for each call (ns)
+    const uint64_t* stop() const;                   //!<  Stop times for each call (ns)
     TraceResults();                                 //!<  Empty constructor
     ~TraceResults();                                //!<  Destructor
     TraceResults( const TraceResults& );            //!<  Copy constructor
     TraceResults& operator=( const TraceResults& ); //! Assignment operator
     void allocate();                                //!<  Allocate the data
-    size_t size( bool store_trace = true ) const; //!< The number of bytes needed to pack the trace
+    size_t size( bool store_trace = true ) const;   //!< The number of bytes needed to pack the data
     size_t pack( char* data, bool store_trace = true ) const; //!<  Pack the data to a buffer
     size_t unpack( const char* data );                        //!<  Unpack the data from a buffer
     bool operator==( const TraceResults& rhs ) const;         //! Comparison operator
     inline bool operator!=( const TraceResults& rhs ) const { return !( this->operator==( rhs ) ); }
 
 private:
-    double* mem; // Internal memory
+    uint64_t* mem; // Internal memory
 };
 
 
@@ -126,7 +122,7 @@ struct TimerResults {
  */
 struct MemoryResults {
     int rank;                          //!<  Rank
-    std::vector<double> time;          //!<  Time
+    std::vector<uint64_t> time;        //!<  Time (ns)
     std::vector<uint64_t> bytes;       //!<  Memory in use
     size_t size() const;               //!<  The number of bytes needed to pack the trace
     size_t pack( char* data ) const;   //!<  Pack the data to a buffer
@@ -609,9 +605,9 @@ private: // Member classes
         size_t N_calls;       // Number of calls to this block
         StoreActive trace;    // Store the trace
         store_trace* next;    // Pointer to the next entry in the list
-        int64_t min_time;     // Store the minimum time spent in the given block (nano-seconds)
-        int64_t max_time;     // Store the maximum time spent in the given block (nano-seconds)
-        int64_t total_time;   // Store the total time spent in the given block (nano-seconds)
+        uint64_t min_time;    // Store the minimum time spent in the given block (nano-seconds)
+        uint64_t max_time;    // Store the maximum time spent in the given block (nano-seconds)
+        uint64_t total_time;  // Store the total time spent in the given block (nano-seconds)
         size_t N_trace_alloc; // The size of the arrays for start_time and stop_time
         StoreTimes times;     // Store when start/stop was called (nano-seconds from constructor)
         // Constructor
@@ -662,9 +658,9 @@ private: // Member classes
         int N_calls;                       // Number of calls to this block
         uint64_t id;                       // A unique id for each timer
         StoreActive trace;                 // Store the active trace
-        int64_t min_time;                  // Store the minimum time spent in the given block (ns)
-        int64_t max_time;                  // Store the maximum time spent in the given block (ns)
-        int64_t total_time;                // Store the total time spent in the given block (ns)
+        uint64_t min_time;                 // Store the minimum time spent in the given block (ns)
+        uint64_t max_time;                 // Store the maximum time spent in the given block (ns)
+        uint64_t total_time;               // Store the total time spent in the given block (ns)
         store_trace* trace_head;           // Head of the trace-log list
         store_timer* next;                 // Pointer to the next entry in the list
         store_timer_data_info* timer_data; // Pointer to the timer data
@@ -741,7 +737,7 @@ private: // Member data
     bool d_disable_timer_error;            // Disable the timer errors for start/stop?
     int8_t d_level;                        // Timer level (default is 0, -1 is disabled)
     time_point d_construct_time;           // Constructor time
-    int64_t d_shift;                       // Offset to synchronize the trace data
+    uint64_t d_shift;                      // Offset to synchronize the trace data
     mutable volatile int64_atomic d_bytes; // The current memory used by the profiler
 
 private: // Private member functions
