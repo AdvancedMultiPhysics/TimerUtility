@@ -16,8 +16,16 @@ FOREACH (HFILE ${HFILES})
 ENDFOREACH ()
 
 
+# Copy matlab classes to the mex folder
+ADD_CUSTOM_COMMAND(TARGET ${COPY_TARGET} 
+    PRE_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/TraceClass.m" "${${PROJ}_INSTALL_DIR}/mex/TraceClass.m"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/TraceClass.m"
+)
+
+
 # Create a matlab file to create class arrays
-SET( CreateClassArray "${TIMER_INSTALL_DIR}/gui/mxCreateClassArrayHelper.m" )
+SET( CreateClassArray "${TIMER_INSTALL_DIR}/mex/mxCreateClassArrayHelper.m" )
 file(WRITE  ${CreateClassArray} "function x = mxCreateClassArrayHelper(cmd)\n" )
 file(APPEND ${CreateClassArray} "% Helper file for mxCreateClassArray\n" )
 file(APPEND ${CreateClassArray} "% cmd - Command to run, should be in format:\n" )

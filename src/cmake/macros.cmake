@@ -440,7 +440,7 @@ MACRO( SET_WARNINGS )
     # Note: adding -Wlogical-op causes a wierd linking error on Titan using the nvcc wrapper:
     #    /usr/bin/ld: cannot find gical-op: No such file or directory
     SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra") 
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Woverloaded-virtual -Wsign-compare -pedantic")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Woverloaded-virtual -Wsign-compare -Wformat-security")
   ELSEIF ( USING_MSVC )
     # Add Microsoft specifc compiler options
     SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267" )
@@ -684,7 +684,7 @@ MACRO( TARGET_LINK_EXTERNAL_LIBRARIES TARGET_NAME )
     FOREACH ( MPI_LIBRARIES )
         TARGET_LINK_LIBRARIES( ${EXE} ${ARGN} ${tmp} )
     ENDFOREACH()
-    FOREACH ( tmp ${CMAKE_C_IMPLICIT_LINK_LIBRARIES}
+    FOREACH ( tmp ${CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES} ${CMAKE_C_IMPLICIT_LINK_LIBRARIES}
         ${CMAKE_CXX_IMPLICIT_LINK_LIBRARIES} ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES} )
         TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${ARGN} ${tmp} )
     ENDFOREACH()
@@ -1077,9 +1077,11 @@ ENDMACRO()
 
 # Create a script to start matlab preloading libraries
 FUNCTION( CREATE_MATLAB_WRAPPER )
+    SET( MATLABPATH ${MATLABPATH} "${${PROJ}_INSTALL_DIR}/mex" )
     SET( tmp_libs ${MEX_LIBCXX} ${MEX_FILES} )
-    STRING(REGEX REPLACE ";" ":" tmp_libs "${tmp_libs}")
-    STRING(REGEX REPLACE ";" ":" tmp_path "${MATLABPATH}")
+    LIST( REMOVE_DUPLICATES MATLABPATH )
+    STRING( REGEX REPLACE ";" ":" tmp_libs "${tmp_libs}" )
+    STRING( REGEX REPLACE ";" ":" tmp_path "${MATLABPATH}" )
     IF ( USING_MSVC )
         # Create a matlab wrapper for windows
         SET( MATLAB_GUI "${CMAKE_CURRENT_BINARY_DIR}/tmp/matlab-gui.bat" )

@@ -12,6 +12,7 @@
 namespace TimerUtility {
 namespace atomic {
 
+
 #ifdef USE_PTHREAD_ATOMIC_LOCK
 pthread_mutex_t atomic_pthread_lock;
 static pthread_mutexattr_t threadpool_global_attr;
@@ -25,5 +26,7 @@ static int create_atomic_pthread_lock()
 }
 int atomic_pthread_lock_initialized = create_atomic_pthread_lock();
 #endif
+
+
 } // namespace atomic
 } // namespace TimerUtility

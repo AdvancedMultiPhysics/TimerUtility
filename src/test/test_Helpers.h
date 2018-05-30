@@ -50,6 +50,8 @@
 template<class type_a, class type_b>
 static inline void quicksort( int n, type_a *arr, type_b *brr )
 {
+    if ( n <= 1 )
+        return;
     bool test;
     int i, ir, j, jstack, k, l, istack[100];
     type_a a, tmp_a;
@@ -152,6 +154,12 @@ static inline void quicksort( int n, type_a *arr, type_b *brr )
             }
         }
     }
+}
+template<class type_a, class type_b>
+static inline void quicksort( std::vector<type_a> &arr, std::vector<type_b> &brr )
+{
+    ASSERT( arr.size() == brr.size() );
+    quicksort( arr.size(), arr.data(), brr.data() );
 }
 
 

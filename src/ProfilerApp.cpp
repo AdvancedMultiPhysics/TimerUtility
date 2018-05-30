@@ -363,40 +363,84 @@ void ProfilerApp::StoreMemory::get(
 
 
 /***********************************************************************
- * Inline function to convert the timer id to a string                  *
- * The probability of a collision is ~N^2/2^N_bits                      *
- *   (N is the number of timers)                                        *
+ * Functions to convert between character sets and hash keys            *
+ * Note: we use the 64 character set { 0-9 a-z A-Z & $ }                *
  ***********************************************************************/
-static inline id_struct convert_timer_id( uint64_t key )
+static constexpr inline char to_char( uint8_t x )
 {
-    constexpr int N_bits = 24;
-    // Get a new key that is representable by N bits
-    uint64_t id2 = ( key * 0x9E3779B97F4A7C15 ) >> ( 64 - N_bits );
-    // Convert the new key to a string
-    char id[20] = { 0 };
-    // We will store the id use the 64 character set { 0-9 a-z A-Z & $ }
-    constexpr int N = std::max<int>( 4, ( N_bits + 5 ) / 6 ); // Number of digits needed
-    uint64_t tmp1   = id2;
-    for ( int i = N - 1; i >= 0; i-- ) {
-        uint64_t tmp2 = tmp1 & 0x3F;
-        tmp1 >>= 6;
-        if ( tmp2 < 10 )
-            id[i] = tmp2 + 48;
-        else if ( tmp2 < 36 )
-            id[i] = tmp2 + ( 97 - 10 );
-        else if ( tmp2 < 62 )
-            id[i] = tmp2 + ( 65 - 36 );
-        else if ( tmp2 < 63 )
-            id[i] = '&';
-        else if ( tmp2 < 64 )
-            id[i] = '$';
-        else
-            id[i] = 0; // We should never use this character
-    }
-    id[N] = 0;
-    return id_struct( id );
+    char y = 0;
+    if ( x < 10 )
+        y = x + 48; // 0-9 (0-9)
+    else if ( x < 36 )
+        y = x + 87; // a-z (10-35)
+    else if ( x < 62 )
+        y = x + 29; // A-Z (36-61)
+    else if ( x < 63 )
+        y = '&'; // & (62)
+    else if ( x < 64 )
+        y = '$'; // $ (63)
+    return y;
 }
-id_struct id_struct::create_id( uint64_t id ) { return convert_timer_id( id ); }
+static constexpr inline uint8_t to_int( char x )
+{
+    char y = 0;
+    if ( x >= 48 && x < 58 )
+        y = x - 48; // 0-9 (0-9)
+    else if ( x >= 97 && x < 123 )
+        y = x - 87; // a-z (10-35)
+    else if ( x >= 65 && x < 91 )
+        y = x - 29; // A-Z (36-61)
+    else if ( x == '&' )
+        y = 62; // & (62)
+    else if ( x == '$' )
+        y = 63; // $ (63)
+    return y;
+}
+static inline uint32_t str_to_hash( const char* str )
+{
+    uint32_t key = 0;
+    int N        = 0;
+    for ( int i = 0; i < 5 && str[i] != 0; i++ )
+        N++;
+    for ( int i = 0; i < N; i++ )
+        key = ( key << 6 ) + to_int( str[N - i - 1] );
+    return key;
+}
+static inline std::array<char, 5> hash_to_str( uint32_t key )
+{
+    // We will store the id use the 64 character set { 0-9 a-z A-Z & $ }
+    // We can represent 2^30 values with 5 characters
+    ASSERT( key < 0x40000000 );
+    // Convert the key to a string
+    std::array<char, 5> id = { 0, 0, 0, 0, 0 };
+    for ( int i = 0; key > 0; i++ ) {
+        id[i] = to_char( key & 0x3F );
+        key >>= 6;
+    }
+    return id;
+}
+static constexpr bool check_char_conversion()
+{
+    bool pass = true;
+    for ( int i = 0; i < 64; i++ )
+        pass = pass && to_int( to_char( i ) ) == i;
+    return pass;
+}
+
+
+/***********************************************************************
+ * id_struct                                                            *
+ * Class to convert the timer id to a string                            *
+ * The probability of a collision is ~N^2/2^N_bits                      *
+ *   (N is the number of timers, we have 30 bits)                       *
+ ***********************************************************************/
+static_assert( sizeof( id_struct ) == 4, "Unexpected size for id_struct" );
+static_assert( check_char_conversion(), "Internal error" );
+// static_assert( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
+id_struct::id_struct( uint64_t id ) { data = ( id * 0x9E3779B97F4A7C15 ) >> 34; }
+id_struct::id_struct( const std::string& rhs ) { data = str_to_hash( rhs.c_str() ); }
+id_struct::id_struct( const char* rhs ) { data = str_to_hash( rhs ); }
+std::array<char, 5> id_struct::str() const { return hash_to_str( data ); }
 
 
 /***********************************************************************
@@ -413,7 +457,8 @@ TraceResults::TraceResults()
       N( 0 ),
       mem( nullptr )
 {
-    static_assert( sizeof( id_struct ) == sizeof( uint64_t ), "Unexpected size for id_struct" );
+    static_assert( sizeof( id_struct ) <= sizeof( uint64_t ), "Unexpected size for id_struct" );
+    ASSERT( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
 }
 TraceResults::~TraceResults()
 {
@@ -724,7 +769,6 @@ bool TimerMemoryResults::operator==( const TimerMemoryResults& rhs ) const
  ***********************************************************************/
 ProfilerApp::ProfilerApp() : d_N_threads( 0 ), d_construct_time( std::chrono::steady_clock::now() )
 {
-    static_assert( sizeof( id_struct ) == 8, "id_struct is an unexpected size" );
     for ( auto& i : thread_table )
         i = nullptr;
     for ( auto& i : timer_table )
@@ -797,7 +841,7 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
     timer->start_time = std::chrono::steady_clock::now();
     // Record the memory usage
     if ( d_store_memory_data != MemoryLevel::None ) {
-        int64_t ns = diff_ns( timer->start_time, d_construct_time );
+        int64_t ns = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
         thread->memory.add( ns, d_store_memory_data, &d_bytes );
     }
 }
@@ -879,6 +923,20 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
 /***********************************************************************
  * Function to enable/disable the timers                                *
  ***********************************************************************/
+void ProfilerApp::memory()
+{
+    if ( d_store_memory_data != MemoryLevel::None ) {
+        int64_t ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - d_construct_time )
+                         .count();
+        getThreadData()->memory.add( ns, d_store_memory_data, &d_bytes );
+    }
+}
+
+
+/***********************************************************************
+ * Function to enable/disable the timers                                *
+ ***********************************************************************/
 void ProfilerApp::enable( int level )
 {
     // This is a blocking function so it cannot be called at the same time as disable
@@ -917,7 +975,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
     TimerResults& results ) const
 {
     const size_t key = GET_TIMER_HASH( id );
-    results.id       = convert_timer_id( id );
+    results.id       = id_struct( id );
     // Search for the global timer info
     auto* timer_global = const_cast<store_timer_data_info*>( timer_table[key] );
     while ( timer_global != nullptr ) {
@@ -988,8 +1046,8 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
                 results.trace[k].active()[j] = list[j];
             // Determine if we need to add the running trace
             if ( trace_id == trace->trace.id() ) {
-                results.trace[k].min = std::min( results.trace[k].min, time );
-                results.trace[k].max = std::max( results.trace[k].max, time );
+                results.trace[k].min = std::min<float>( results.trace[k].min, time );
+                results.trace[k].max = std::max<float>( results.trace[k].max, time );
                 results.trace[k].tot += time;
                 trace_id     = 0;
                 create_trace = false;
@@ -1283,8 +1341,9 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             const char e = 0x0E; // Escape character for printing strings
             fprintf( timerFile,
                 "<timer:id=%s,message=%c%s%c,file=%c%s%c,path=%c%s%c,start=%i,stop=%i>\n",
-                results[i].id.c_str(), e, results[i].message.c_str(), e, e, results[i].file.c_str(),
-                e, e, results[i].path.c_str(), e, results[i].start, results[i].stop );
+                results[i].id.str().data(), e, results[i].message.c_str(), e, e,
+                results[i].file.c_str(), e, e, results[i].path.c_str(), e, results[i].start,
+                results[i].stop );
             // Store the trace data
             for ( const auto& trace : results[i].trace ) {
                 std::string active;
@@ -1292,14 +1351,14 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                     active += trace.active()[k].string() + " ";
                 fprintf( timerFile,
                     "<trace:id=%s,thread=%u,rank=%u,N=%lu,min=%e,max=%e,tot=%e,active=[ %s]>\n",
-                    trace.id.c_str(), trace.thread, trace.rank,
+                    trace.id.str().data(), trace.thread, trace.rank,
                     static_cast<unsigned long>( trace.N ), 1e-9 * trace.min, 1e-9 * trace.max,
                     1e-9 * trace.tot, active.c_str() );
                 // Save the detailed trace results (this is a binary file)
                 if ( trace.N_trace > 0 ) {
                     unsigned long Nt = trace.N_trace;
                     fprintf( traceFile, "<id=%s,thread=%u,rank=%u,active=[ %s],N=%lu>\n",
-                        trace.id.c_str(), trace.thread, trace.rank, active.c_str(), Nt );
+                        trace.id.str().data(), trace.thread, trace.rank, active.c_str(), Nt );
                     std::vector<double> start( Nt ), stop( Nt );
                     const uint64_t* start0 = trace.start();
                     const uint64_t* stop0  = trace.stop();
@@ -1872,7 +1931,7 @@ std::vector<id_struct> ProfilerApp::getActiveList(
         }
         if ( timer_tmp == nullptr )
             throw std::logic_error( "Internal Error" );
-        active_list.push_back( convert_timer_id( timer_tmp->id ) );
+        active_list.push_back( id_struct( timer_tmp->id ) );
     }
     return active_list;
 }

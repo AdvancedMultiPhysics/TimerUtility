@@ -25,7 +25,7 @@ inline void barrier() { MPI_Barrier( MPI_COMM_WORLD ); }
 inline int getRank() { return 0; }
 inline int getSize() { return 1; }
 inline void barrier() {}
-inline void MPI_Init( int, char *[] ) {}
+inline void MPI_Init( int *, char **[] ) {}
 inline void MPI_Finalize() {}
 #endif
 
@@ -231,6 +231,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     // Check the performance
     for ( int i = 0; i < N_it; i++ ) {
         // Test how long it takes to start/stop the timers
+        barrier();
         PROFILE_START( "single" );
         for ( int j = 0; j < N_timers; j++ ) {
             PROFILE_START( "static_name" );
@@ -335,8 +336,10 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     PROFILE_SAVE( save_name );
 
     // Get the timers (sorting based on the timer ids)
-    auto data1   = global_profiler.getTimerResults();
     auto memory1 = global_profiler.getMemoryResults();
+    PROFILE_MEMORY();
+    auto data1 = global_profiler.getTimerResults();
+    PROFILE_MEMORY();
     if ( !check( memory1 ) ) {
         std::cout << "Memory results do not make sense\n";
         N_errors++;
@@ -348,7 +351,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         bytes1[1] += data1[i].size( true );
         id1[i] = data1[i].id;
     }
-    quicksort( id1.size(), &id1[0], &data1[0] );
+    quicksort( id1, data1 );
 
     // Load the data from the file (sorting based on the timer ids)
     PROFILE_START( "LOAD" );
@@ -359,13 +362,13 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         memory2 = load_results.memory[0];
     PROFILE_STOP( "LOAD" );
     size_t bytes2[2] = { 0, 0 };
-    std::vector<id_struct> id2( data1.size() );
+    std::vector<id_struct> id2( data2.size() );
     for ( size_t i = 0; i < data2.size(); i++ ) {
         bytes2[0] += data2[i].size( false );
         bytes2[1] += data2[i].size( true );
         id2[i] = data2[i].id;
     }
-    quicksort( id2.size(), &id2[0], &data2[0] );
+    quicksort( id2, data2 );
 
     // Find and check MAIN
     const TraceResults *trace = nullptr;
@@ -517,7 +520,7 @@ int main( int argc, char *argv[] )
         std::cout << "All tests passed" << std::endl;
     else
         std::cout << "Some tests failed" << std::endl;
-    MPI_Barrier( MPI_COMM_WORLD );
+    barrier();
     MPI_Finalize();
     return N_errors;
 }

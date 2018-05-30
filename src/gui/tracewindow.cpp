@@ -477,6 +477,7 @@ void TraceWindow::updateTimers()
     auto rgb0 = jet( -1 );
     int Np    = selected_rank == -1 ? N_procs : 1;
     int Nt    = selected_thread == -1 ? N_threads : 1;
+    int Nh    = 512 / ( Np * Nt * data.size() ) + 1;
     for ( size_t i = 0; i < data.size(); i++ ) {
         rowVisible[i] = true;
         char label[1000];
@@ -485,13 +486,14 @@ void TraceWindow::updateTimers()
             "<font size=\"2\" color=\"gray\">%s</font>",
             data[i]->message.c_str(), data[i]->file.c_str() );
         timerLabels[i]->setText( label );
-        QImage image( resolution, Np * Nt, QImage::Format_RGB32 );
+        QImage image( resolution, Np * Nt * Nh, QImage::Format_RGB32 );
         auto rgb     = idRgbMap[data[i]->id];
         auto &active = data[i]->active;
         for ( int j = 0; j < resolution; j++ ) {
             for ( int k = 0; k < Np * Nt; k++ ) {
                 uint32_t value = active( j, k ) ? rgb : rgb0;
-                image.setPixel( j, k, value );
+                for ( int m = 0; m < Nh; m++ )
+                    image.setPixel( j, k * Nh + m, value );
             }
         }
         timerPlots[i]->setPixmap( QPixmap::fromImage( image ) );

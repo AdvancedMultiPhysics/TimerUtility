@@ -93,6 +93,15 @@
 #define PROFILE_SCOPED( ... ) PROFILE_SCOPED_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0 )
 
 
+/*! \def PROFILE_MEMORY()
+ *  \brief Add the current memory usage to the trace
+ *  \details dd the current memory usage to the trace
+ *      See  \ref ProfilerApp "ProfilerApp" and
+ *     \ref ProfilerApp "ProfilerApp" for more info.
+ */
+#define PROFILE_MEMORY() global_profiler.memory()
+
+
 /*! \def PROFILE_SYNCHRONIZE()
  *  \brief Synchronize the time across multiple processors
  *  \details This will synchronize time zero across all processors.

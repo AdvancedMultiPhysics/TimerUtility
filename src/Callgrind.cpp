@@ -68,8 +68,8 @@ id_struct getID( int ob, int fl, int fn, std::map<std::tuple<int, int, int>, id_
 {
     std::tuple<int, int, int> id = std::make_tuple( ob, fl, fn );
     if ( map.find( id ) == map.end() )
-        map.insert( std::pair<std::tuple<int, int, int>, id_struct>(
-            id, id_struct::create_id( map.size() + 1 ) ) );
+        map.insert(
+            std::pair<std::tuple<int, int, int>, id_struct>( id, id_struct( map.size() + 1 ) ) );
     return map[id];
 }
 

@@ -114,11 +114,16 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
     d_t         = t_in;
     d_last_rank = rank;
 
-    // Get the offset
+    // Compute the offset and scale
     d_offset = 0.0;
+    d_scale  = 1.0;
     if ( fabs( d_t[1] - d_t[0] ) < 10e-3 ) {
         d_offset = 1e-3 * floor( d_t[0] * 1e3 );
-        d_scale  = 1e3;
+        if ( fabs( d_t[1] - d_t[0] ) < 50e-6 ) {
+            d_scale = 1e6;
+        } else {
+            d_scale = 1e3;
+        }
     }
 
     // Get the memory usage for each rank
@@ -142,7 +147,7 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
     }
 
     // Scale and plot the data for each rank
-    double xscale = 1.0, yscale = 1.0;
+    double xscale = d_scale, yscale = 1.0;
     std::string xlabel, ylabel;
     if ( range[1] < 1e6 ) {
         yscale = 1.0 / 1024.0;
@@ -154,19 +159,16 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
         yscale = 1.0 / ( 1024.0 * 1024.0 * 1024.0 );
         ylabel = "Memory (GB)";
     }
-    if ( d_offset != 0.0 ) {
-        std::string offset_label =
-            " (offset = " + std::to_string( static_cast<uint64_t>( 1e3 * d_offset ) ) + " ms)";
-        if ( fabs( d_t[1] - d_t[0] ) < 50e-6 ) {
-            xscale = 1e6;
-            xlabel = "Time (us)" + offset_label;
-        } else {
-            xscale = 1e3;
-            xlabel = "Time (ms)" + offset_label;
-        }
-    } else {
-        xscale = 1.0;
+    if ( d_scale == 1.0 ) {
         xlabel = "Time (s)";
+    } else if ( d_scale == 1e3 ) {
+        xlabel = "Time (ms)";
+    } else if ( d_scale == 1e6 ) {
+        xlabel = "Time (us)";
+    }
+    if ( d_offset != 0.0 ) {
+        int offset_ms = 1e3 * d_offset;
+        xlabel += " (offset = " + std::to_string( offset_ms ) + " ms)";
     }
     range[0] *= yscale;
     range[1] *= yscale;

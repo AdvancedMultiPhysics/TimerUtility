@@ -25,36 +25,28 @@ class ScopedTimer;
  *
  * Structure to store id string
  */
-struct id_struct {
-    id_struct() { data.u64 = 0; }
-    id_struct( const id_struct& rhs ) = default;
-    id_struct& operator=( const id_struct& rhs ) = default;
-    explicit id_struct( const std::string& rhs )
+class id_struct
+{
+public:
+    id_struct() : data( 0 ) {}
+    explicit id_struct( uint64_t id );
+    explicit id_struct( const std::string& rhs );
+    explicit id_struct( const char* rhs );
+    inline bool operator==( const id_struct& rhs ) const { return data == rhs.data; }
+    inline bool operator!=( const id_struct& rhs ) const { return data != rhs.data; }
+    inline bool operator>=( const id_struct& rhs ) const { return data >= rhs.data; }
+    inline bool operator>( const id_struct& rhs ) const { return data > rhs.data; }
+    inline bool operator<( const id_struct& rhs ) const { return data < rhs.data; }
+    inline bool operator<=( const id_struct& rhs ) const { return data <= rhs.data; }
+    std::array<char, 5> str() const;
+    inline std::string string() const
     {
-        data.u64 = 0;
-        rhs.copy( data.str, 8 );
+        auto id = str();
+        return std::string( id.data(), id.size() );
     }
-    explicit id_struct( const char* rhs )
-    {
-        data.u64 = 0;
-        for ( int i = 0; i < 8 && rhs[i] > 0; i++ )
-            data.str[i] = rhs[i];
-    }
-    inline const char* c_str() const { return data.str; }
-    inline const std::string string() const { return std::string( data.str, 0, 8 ); }
-    inline bool operator==( const id_struct& rhs ) const { return data.u64 == rhs.data.u64; }
-    inline bool operator!=( const id_struct& rhs ) const { return data.u64 != rhs.data.u64; }
-    inline bool operator>=( const id_struct& rhs ) const { return data.u64 >= rhs.data.u64; }
-    inline bool operator>( const id_struct& rhs ) const { return data.u64 > rhs.data.u64; }
-    inline bool operator<( const id_struct& rhs ) const { return data.u64 < rhs.data.u64; }
-    inline bool operator<=( const id_struct& rhs ) const { return data.u64 <= rhs.data.u64; }
-    static id_struct create_id( uint64_t id );
 
 private:
-    union {
-        uint64_t u64;
-        char str[8];
-    } data;
+    uint32_t data;
 };
 
 
@@ -64,15 +56,17 @@ private:
  * Note: field types and sizes are set to minimize the storage requirements
  *    of this structure (currently 48 bytes without active timers or traces).
  */
-struct TraceResults {
+class TraceResults
+{
+public:
     id_struct id;                                   //!<  ID of parent timer
     uint16_t N_active;                              //!<  Number of active timers
     uint16_t thread;                                //!<  Active thread
     uint32_t rank;                                  //!<  Rank
     uint32_t N_trace;                               //!<  Number of calls that we trace
-    uint64_t min;                                   //!<  Minimum call time (ns)
-    uint64_t max;                                   //!<  Maximum call time (ns)
-    uint64_t tot;                                   //!<  Total call time (ns)
+    float min;                                      //!<  Minimum call time (ns)
+    float max;                                      //!<  Maximum call time (ns)
+    float tot;                                      //!<  Total call time (ns)
     uint64_t N;                                     //!<  Total number of calls
     id_struct* active();                            //!<  List of active timers
     const id_struct* active() const;                //!<  List of active timers
@@ -100,7 +94,9 @@ private:
  *
  * Structure to store results of a single timer from the profiler application.
  */
-struct TimerResults {
+class TimerResults
+{
+public:
     id_struct id;                                 //!<  Timer ID
     std::string message;                          //!<  Timer message
     std::string file;                             //!<  Timer file
@@ -296,6 +292,13 @@ public:
             stop( id, message.c_str(), filename, line, level );
         }
     }
+
+    /*!
+     * \brief  Function to add the current memory to the trace
+     * \details  This function will get the current memory usage and add it to the profile
+     *    assuming memory trace is enabled.
+     */
+    void memory();
 
     /*!
      * \brief  Function to check if a timer is active

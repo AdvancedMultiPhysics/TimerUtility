@@ -11,15 +11,6 @@
 #include <vector>
 
 
-inline mxArray* mxCreateDoubleScalar( double val )
-{
-    mxArray* arr = mxCreateDoubleMatrix( 1, 1, mxREAL );
-    double* tmp  = mxGetPr( arr );
-    tmp[0]       = val;
-    return arr;
-}
-
-
 #define ASSERT( EXP )                                                                     \
     do {                                                                                  \
         if ( !( EXP ) ) {                                                                 \
@@ -44,15 +35,51 @@ inline std::vector<int> getActive(
 }
 
 
-// Save a single array
-template<class TYPE>
-inline mxArray* saveSingleMatrix( size_t N, size_t M, const TYPE* x )
+// Load variables
+std::string loadString( const mxArray* ptr )
 {
-    mxArray* ptr = mxCreateNumericMatrix( N, M, mxSINGLE_CLASS, mxREAL );
-    float* y     = (float*) mxGetData( ptr );
-    for ( size_t i = 0; i < N * M; i++ )
-        y[i] = static_cast<float>( x[i] );
-    return ptr;
+    if ( !ptr )
+        mexErrMsgTxt( "input is a NULL pointer" );
+    if ( !mxIsChar( ptr ) )
+        mexErrMsgTxt( "input is not a char array" );
+    char* tmp = mxArrayToString( ptr );
+    std::string str( tmp );
+    mxFree( tmp );
+    return str;
+}
+
+
+// Save variables
+inline mxArray* save( const std::string& str ) { return mxCreateString( str.c_str() ); }
+inline mxArray* save( uint64_t x )
+{
+    auto mx = mxCreateNumericMatrix( 1, 1, mxUINT64_CLASS, mxREAL );
+    auto* y = (uint64_t*) mxGetPr( mx );
+    *y      = x;
+    return mx;
+}
+inline mxArray* save( const std::vector<uint64_t>& x )
+{
+    auto mx = mxCreateNumericMatrix( 1, x.size(), mxUINT64_CLASS, mxREAL );
+    auto* y = (uint64_t*) mxGetPr( mx );
+    for ( size_t i = 0; i < x.size(); i++ )
+        y[i] = x[i];
+    return mx;
+}
+inline mxArray* save( const std::vector<float>& x )
+{
+    auto mx = mxCreateNumericMatrix( 1, x.size(), mxSINGLE_CLASS, mxREAL );
+    auto* y = (float*) mxGetPr( mx );
+    for ( size_t i = 0; i < x.size(); i++ )
+        y[i] = x[i];
+    return mx;
+}
+inline mxArray* save( const std::vector<std::vector<uint64_t>>& x )
+{
+    auto mx = mxCreateCellMatrix( 1, x.size() );
+    for ( size_t i = 0; i < x.size(); i++ )
+        mxSetCell( mx, i, save( x[i] ) );
+    return mx;
 }
 
 
@@ -70,17 +97,13 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
                       "   [N_procs,timers,memory] = load_timer_file(file,global);\n" );
 
     // Load file
-    if ( mxGetM( prhs[0] ) != 1 )
-        mexErrMsgTxt( "Input must be a 1xn string" );
-    char* input_buf = mxArrayToString( prhs[0] );
-    std::string filename( input_buf );
-    mxFree( input_buf );
+    auto filename = loadString( prhs[0] );
 
     // Load global
     bool global = mxGetScalar( prhs[1] ) != 0;
 
     // Load the data from the timer files
-    TimerMemoryResults data = ProfilerApp::load( filename, -1, global );
+    auto data = ProfilerApp::load( filename, -1, global );
     if ( data.timers.empty() )
         mexErrMsgTxt( "No timers in file" );
 
@@ -99,19 +122,19 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
     }
 
     // Save N_procs
-    plhs[0] = mxCreateDoubleScalar( data.N_procs );
+    plhs[0] = save( data.N_procs );
 
     // Save the timer data
-    const char* timer_names[] = { "id", "message", "file", "path", "start", "stop", "trace" };
-    plhs[1]                   = mxCreateStructMatrix( data.timers.size(), 1, 7, timer_names );
+    const char* fields[] = { "id", "message", "file", "path", "start", "stop", "trace" };
+    plhs[1]              = mxCreateStructMatrix( data.timers.size(), 1, 7, fields );
     for ( size_t i = 0; i < data.timers.size(); i++ ) {
         const TimerResults& timer = data.timers[i];
-        mxSetFieldByNumber( plhs[1], i, 0, mxCreateDoubleScalar( id_map[timer.id] + 1 ) );
-        mxSetFieldByNumber( plhs[1], i, 1, mxCreateString( timer.message.c_str() ) );
-        mxSetFieldByNumber( plhs[1], i, 2, mxCreateString( timer.file.c_str() ) );
-        mxSetFieldByNumber( plhs[1], i, 3, mxCreateString( timer.path.c_str() ) );
-        mxSetFieldByNumber( plhs[1], i, 4, mxCreateDoubleScalar( timer.start ) );
-        mxSetFieldByNumber( plhs[1], i, 5, mxCreateDoubleScalar( timer.stop ) );
+        mxSetFieldByNumber( plhs[1], i, 0, save( id_map[timer.id] + 1 ) );
+        mxSetFieldByNumber( plhs[1], i, 1, save( timer.message ) );
+        mxSetFieldByNumber( plhs[1], i, 2, save( timer.file ) );
+        mxSetFieldByNumber( plhs[1], i, 3, save( timer.path ) );
+        mxSetFieldByNumber( plhs[1], i, 4, save( timer.start ) );
+        mxSetFieldByNumber( plhs[1], i, 5, save( timer.stop ) );
         if ( timer.trace.empty() ) {
             mxSetFieldByNumber( plhs[1], i, 6, mxCreateStructMatrix( 0, 1, 0, nullptr ) );
             continue;
@@ -120,72 +143,70 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
         std::map<std::vector<int>, int> active_map;
         for ( size_t j = 0; j < timer.trace.size(); j++ ) {
             ASSERT( timer.trace[j].id == timer.id );
-            std::vector<int> active = getActive( id_map, timer.trace[j] );
+            auto active = getActive( id_map, timer.trace[j] );
             active_map.insert( std::pair<std::vector<int>, int>( active, active_map.size() ) );
         }
-        std::map<std::vector<int>, int>::iterator it = active_map.begin();
+        auto it = active_map.begin();
         for ( size_t j = 0; j < active_map.size(); ++j, ++it )
             it->second = j;
         // Allocate N, min, max, tot, start, stop
-        std::vector<mxArray*> N( active_map.size() ), min( active_map.size() ),
-            max( active_map.size() ), tot( active_map.size() ), start( active_map.size() ),
-            stop( active_map.size() );
-        for ( size_t j = 0; j < active_map.size(); ++j ) {
-            N[j]     = mxCreateDoubleMatrix( N_threads, data.N_procs, mxREAL );
-            min[j]   = mxCreateDoubleMatrix( N_threads, data.N_procs, mxREAL );
-            max[j]   = mxCreateDoubleMatrix( N_threads, data.N_procs, mxREAL );
-            tot[j]   = mxCreateDoubleMatrix( N_threads, data.N_procs, mxREAL );
-            start[j] = mxCreateCellMatrix( N_threads, data.N_procs );
-            stop[j]  = mxCreateCellMatrix( N_threads, data.N_procs );
+        size_t Nt = active_map.size();
+        std::vector<std::vector<uint64_t>> N( Nt );
+        std::vector<std::vector<float>> min( Nt ), max( Nt ), tot( Nt );
+        std::vector<std::vector<std::vector<uint64_t>>> start( Nt ), stop( Nt );
+        for ( size_t i = 0; i < Nt; i++ ) {
+            N[i].resize( data.N_procs * N_threads, 0 );
+            min[i].resize( data.N_procs * N_threads, 0 );
+            max[i].resize( data.N_procs * N_threads, 0 );
+            tot[i].resize( data.N_procs * N_threads, 0 );
+            start[i].resize( data.N_procs * N_threads );
+            stop[i].resize( data.N_procs * N_threads );
         }
         // Fill N, min, max, tot, start, stop
-        for ( size_t j = 0; j < timer.trace.size(); j++ ) {
-            const TraceResults& trace = timer.trace[j];
-            std::vector<int> active   = getActive( id_map, timer.trace[j] );
-            int k                     = active_map[active];
-            int index                 = trace.thread + trace.rank * N_threads;
-            mxGetPr( N[k] )[index]    = trace.N;
-            mxGetPr( min[k] )[index]  = trace.min;
-            mxGetPr( max[k] )[index]  = trace.max;
-            mxGetPr( tot[k] )[index]  = trace.tot;
+        for ( const auto& trace : timer.trace ) {
+            auto active   = getActive( id_map, trace );
+            int k         = active_map[active];
+            int index     = trace.thread + trace.rank * N_threads;
+            N[k][index]   = trace.N;
+            min[k][index] = trace.min;
+            max[k][index] = trace.max;
+            tot[k][index] = trace.tot;
             if ( trace.N_trace > 0 ) {
-                mxSetCell( start[k], index, saveSingleMatrix( 1, trace.N_trace, trace.start() ) );
-                mxSetCell( stop[k], index, saveSingleMatrix( 1, trace.N_trace, trace.stop() ) );
+                start[k][index].resize( trace.N_trace );
+                stop[k][index].resize( trace.N_trace );
+                for ( size_t i = 0; i < trace.N_trace; i++ ) {
+                    start[k][index][i] = trace.start()[i];
+                    stop[k][index][i]  = trace.stop()[i];
+                }
             }
         }
         // Create the TraceClass
-        mxArray* trace_ptr = mxCreateClassMatrix( active_map.size(), 1, "TraceClass" );
+        auto trace_ptr = mxCreateClassMatrix( active_map.size(), 1, "TraceClass" );
         mxSetFieldByNumber( plhs[1], i, 6, trace_ptr );
         it = active_map.begin();
         for ( size_t j = 0; j < active_map.size(); ++j, ++it ) {
-            mxSetProperty( trace_ptr, j, "id", mxCreateDoubleScalar( id_map[timer.id] + 1 ) );
-            mxSetProperty( trace_ptr, j, "N", N[j] );
-            mxSetProperty( trace_ptr, j, "min", min[j] );
-            mxSetProperty( trace_ptr, j, "max", max[j] );
-            mxSetProperty( trace_ptr, j, "tot", tot[j] );
-            mxSetProperty( trace_ptr, j, "start", start[j] );
-            mxSetProperty( trace_ptr, j, "stop", stop[j] );
-            const std::vector<int>& active = it->first;
-            mxArray* active_ptr            = mxCreateDoubleMatrix( 1, active.size(), mxREAL );
-            double* active2                = mxGetPr( active_ptr );
+            mxSetProperty( trace_ptr, j, "id", save( id_map[timer.id] + 1 ) );
+            mxSetProperty( trace_ptr, j, "N", save( N[j] ) );
+            mxSetProperty( trace_ptr, j, "min", save( min[j] ) );
+            mxSetProperty( trace_ptr, j, "max", save( max[j] ) );
+            mxSetProperty( trace_ptr, j, "tot", save( tot[j] ) );
+            mxSetProperty( trace_ptr, j, "start", save( start[j] ) );
+            mxSetProperty( trace_ptr, j, "stop", save( stop[j] ) );
+            const auto active   = it->first;
+            mxArray* active_ptr = mxCreateDoubleMatrix( 1, active.size(), mxREAL );
+            double* active2     = mxGetPr( active_ptr );
             for ( size_t k = 0; k < active.size(); k++ )
                 active2[k] = active[k] + 1;
             mxSetProperty( trace_ptr, j, "active", active_ptr );
         }
     }
-
     // Save the memory data
-    const char* memory_names[] = { "rank", "time", "bytes" };
-    plhs[2]                    = mxCreateStructMatrix( data.memory.size(), 1, 3, memory_names );
+    const char* fields2[] = { "rank", "time", "bytes" };
+    plhs[2]               = mxCreateStructMatrix( data.memory.size(), 1, 3, fields2 );
     for ( size_t i = 0; i < data.memory.size(); i++ ) {
         ASSERT( data.memory[i].time.size() == data.memory[i].bytes.size() );
-        size_t N = data.memory[i].time.size();
-        mxSetFieldByNumber( plhs[2], i, 0, mxCreateDoubleScalar( data.memory[i].rank ) );
-        mxSetFieldByNumber( plhs[2], i, 1, saveSingleMatrix( 1, N, data.memory[i].time.data() ) );
-        mxSetFieldByNumber( plhs[2], i, 2, saveSingleMatrix( 1, N, data.memory[i].bytes.data() ) );
+        mxSetFieldByNumber( plhs[2], i, 0, save( data.memory[i].rank ) );
+        mxSetFieldByNumber( plhs[2], i, 1, save( data.memory[i].time ) );
+        mxSetFieldByNumber( plhs[2], i, 2, save( data.memory[i].bytes ) );
     }
-
-    // Clear data
-    data.timers.clear();
-    data.memory.clear();
 }
