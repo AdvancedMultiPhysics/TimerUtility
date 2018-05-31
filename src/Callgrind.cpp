@@ -138,7 +138,7 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
     int fun_index = -1;
     std::string name;
     callgrind_results results;
-    std::vector<callgrind_function_struct>& functions = results.functions;
+    auto& functions = results.functions;
     std::map<std::tuple<int, int, int>, id_struct> id_struct_map;
     long int global_cost = 0;
     while ( true ) {
@@ -268,6 +268,11 @@ callgrind_results loadCallgrind( const std::string& filename, double tol )
 /***********************************************************************
  * Convert callgrind results into timer results                         *
  ***********************************************************************/
+static inline void copy( const std::string& src, char* dst, int N )
+{
+    memset( dst, 0, N );
+    strncpy( dst, src.c_str(), N - 1 );
+}
 std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
 {
     std::map<id_struct, int> index_map;
@@ -276,11 +281,14 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
     for ( size_t i = 0; i < callgrind.functions.size(); i++ ) {
         std::string function = callgrind.name_map.find( callgrind.functions[i].fun )->second;
         std::string filename = callgrind.name_map.find( callgrind.functions[i].file )->second;
-        timers[i].id         = callgrind.functions[i].id;
-        timers[i].message    = function;
-        std::tie( timers[i].path, timers[i].file ) = splitFilename( filename );
-        timers[i].start                            = -1;
-        timers[i].stop                             = -1;
+        std::string file, path;
+        std::tie( path, file ) = splitFilename( filename );
+        timers[i].id           = callgrind.functions[i].id;
+        copy( function, timers[i].message, sizeof( timers[i].message ) );
+        copy( file, timers[i].file, sizeof( timers[i].file ) );
+        copy( path, timers[i].path, sizeof( timers[i].path ) );
+        timers[i].start = -1;
+        timers[i].stop  = -1;
         index_map.insert( std::pair<id_struct, int>( timers[i].id, static_cast<int>( i ) ) );
     }
     if ( timers.size() != index_map.size() )

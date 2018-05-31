@@ -74,18 +74,20 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock( thread_info* thread_data
         global_stop  = global_info->stop_line;
         // Check for multiple start lines
         if ( start != -1 && global_start != start ) {
-            std::string msg;
-            msg = "Multiple start calls with the same message are not allowed (" +
-                  global_info->message + " in " + global_info->filename + " at lines " +
-                  to_string( start ) + ", " + to_string( global_info->start_line ) + ")\n";
+            char msg[2048];
+            sprintf( msg,
+                "Multiple start calls with the same message are not allowed (%s in %s at lines %i, "
+                "%i)\n",
+                message, filename, start, global_info->start_line );
             throw std::logic_error( msg );
         }
         // Check for multiple stop lines
         if ( stop != -1 && global_stop != stop ) {
-            std::string msg;
-            msg = "Multiple start calls with the same message are not allowed (" +
-                  global_info->message + " in " + global_info->filename + " at lines " +
-                  to_string( stop ) + ", " + to_string( global_info->stop_line ) + ")\n";
+            char msg[2048];
+            sprintf( msg,
+                "Multiple stop calls with the same message are not allowed (%s in %s at lines %i, "
+                "%i)\n",
+                message, filename, stop, global_info->stop_line );
             throw std::logic_error( msg );
         }
     }

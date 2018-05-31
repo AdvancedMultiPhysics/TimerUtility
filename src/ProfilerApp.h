@@ -2,6 +2,7 @@
 #define included_ProfilerApp
 
 
+#include <array>
 #include <chrono>
 #include <cstring>
 #include <iostream>
@@ -28,22 +29,22 @@ class ScopedTimer;
 class id_struct
 {
 public:
+    // Constructors
     id_struct() : data( 0 ) {}
     explicit id_struct( uint64_t id );
     explicit id_struct( const std::string& rhs );
     explicit id_struct( const char* rhs );
+    // Comparison operators
     inline bool operator==( const id_struct& rhs ) const { return data == rhs.data; }
     inline bool operator!=( const id_struct& rhs ) const { return data != rhs.data; }
     inline bool operator>=( const id_struct& rhs ) const { return data >= rhs.data; }
     inline bool operator>( const id_struct& rhs ) const { return data > rhs.data; }
     inline bool operator<( const id_struct& rhs ) const { return data < rhs.data; }
     inline bool operator<=( const id_struct& rhs ) const { return data <= rhs.data; }
-    std::array<char, 5> str() const;
-    inline std::string string() const
-    {
-        auto id = str();
-        return std::string( id.data(), id.size() );
-    }
+    // Return null terminated string stored in a std::array
+    std::array<char, 6> str() const;
+    // Return a std::string
+    inline std::string string() const { return std::string( str().data() ); }
 
 private:
     uint32_t data;
@@ -54,7 +55,7 @@ private:
  *
  * Structure to store results of a single trace from the profiler application.
  * Note: field types and sizes are set to minimize the storage requirements
- *    of this structure (currently 48 bytes without active timers or traces).
+ *    of this structure (currently 48 bytes without active timers or trace profiling).
  */
 class TraceResults
 {
@@ -93,21 +94,23 @@ private:
 /** \class TimerResults
  *
  * Structure to store results of a single timer from the profiler application.
+ * Note: The size of this class is currently 232 bytes (without any trace data).
  */
 class TimerResults
 {
 public:
-    id_struct id;                                 //!<  Timer ID
-    std::string message;                          //!<  Timer message
-    std::string file;                             //!<  Timer file
-    std::string path;                             //!<  Timer file path
-    int start;                                    //!<  Timer start line (-1: never defined)
-    int stop;                                     //!<  Timer stop line (-1: never defined)
-    std::vector<TraceResults> trace;              //!< Trace data
-    size_t size( bool store_trace = true ) const; //!< The number of bytes needed to pack the trace
+    id_struct id;                    //!<  Timer ID
+    int start;                       //!<  Timer start line (-1: never defined)
+    int stop;                        //!<  Timer stop line (-1: never defined)
+    char message[64];                //!<  Timer message (null terminated string)
+    char file[64];                   //!<  Timer file (null terminated string)
+    char path[64];                   //!<  Timer file path (null terminated string)
+    std::vector<TraceResults> trace; //!<  Trace data
+    TimerResults();
+    size_t size( bool store_trace = true ) const; //!<  The number of bytes needed to pack the trace
     size_t pack( char* data, bool store_trace = true ) const; //!<  Pack the data to a buffer
     size_t unpack( const char* data );                        //!<  Unpack the data from a buffer
-    bool operator==( const TimerResults& rhs ) const;         //! Comparison operator
+    bool operator==( const TimerResults& rhs ) const;         //!<  Comparison operator
     inline bool operator!=( const TimerResults& rhs ) const { return !( this->operator==( rhs ) ); }
 };
 
@@ -638,12 +641,19 @@ private: // Member classes
         int start_line;                       // The starting line for the timer
         int stop_line;                        // The ending line for the timer
         uint64_t id;                          // A unique id for each timer
-        std::string message;                  // The message to identify the block of code
-        std::string filename;                 // The file containing the block of code to be timed
-        std::string path;                     // The path to the file (if availible)
+        char message[64];                     // The message to identify the block of code
+        char filename[64];                    // The file containing the block of code to be timed
+        char path[64];                        // The path to the file (if availible)
         volatile store_timer_data_info* next; // Pointer to the next entry in the list
         // Constructor used to initialize key values
-        store_timer_data_info() : start_line( -1 ), stop_line( -1 ), id( 0 ), next( nullptr ) {}
+        store_timer_data_info()
+        {
+            memset( this, 0, sizeof( store_timer_data_info ) );
+            start_line = -1;
+            stop_line  = -1;
+        }
+        store_timer_data_info(
+            const char* msg, const char* filepath, uint64_t id, int start, int stop );
         // Destructor
         ~store_timer_data_info()
         {
@@ -657,13 +667,9 @@ private: // Member classes
     // Structure to store the timing information for a single block of code
     struct store_timer {
         bool is_active;                    // Are we currently running a timer
-        unsigned int trace_index;          // The index of the current timer in the trace
-        int N_calls;                       // Number of calls to this block
+        uint32_t trace_index;              // The index of the current timer in the trace
         uint64_t id;                       // A unique id for each timer
         StoreActive trace;                 // Store the active trace
-        uint64_t min_time;                 // Store the minimum time spent in the given block (ns)
-        uint64_t max_time;                 // Store the maximum time spent in the given block (ns)
-        uint64_t total_time;               // Store the total time spent in the given block (ns)
         store_trace* trace_head;           // Head of the trace-log list
         store_timer* next;                 // Pointer to the next entry in the list
         store_timer_data_info* timer_data; // Pointer to the timer data
@@ -672,15 +678,10 @@ private: // Member classes
         store_timer()
             : is_active( false ),
               trace_index( 0 ),
-              N_calls( 0 ),
               id( 0 ),
-              min_time( std::numeric_limits<int64_t>::max() ),
-              max_time( 0 ),
-              total_time( 0 ),
               trace_head( nullptr ),
               next( nullptr ),
-              timer_data( nullptr ),
-              start_time( time_point() )
+              timer_data( nullptr )
         {
         }
         // Destructor

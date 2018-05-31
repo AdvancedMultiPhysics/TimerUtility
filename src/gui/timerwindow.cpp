@@ -557,7 +557,7 @@ void TimerWindow::updateDisplay()
         call_stack        = timer.message;
         for ( size_t i = 1; i < callList.size(); i++ ) {
             const auto& timer = findTimer( d_data.timers, callList[i] );
-            call_stack += " -> " + timer.message;
+            call_stack += " -> " + std::string( timer.message );
         }
         callLineText->setText( call_stack.c_str() );
         callLineText->show();

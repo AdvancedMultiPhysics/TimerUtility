@@ -1,7 +1,9 @@
 #include "MemoryApp.h"
 #include "ProfilerApp.h"
 #include "test_Helpers.h"
+
 #include <cmath>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -20,10 +22,17 @@ inline int getSize()
     MPI_Comm_size( MPI_COMM_WORLD, &size );
     return size;
 }
+inline int sumReduce( int x )
+{
+    int y = 0;
+    MPI_Allreduce( &x, &y, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    return y;
+}
 inline void barrier() { MPI_Barrier( MPI_COMM_WORLD ); }
 #else
 inline int getRank() { return 0; }
 inline int getSize() { return 1; }
+inline int sumReduce( int x ) { return x; }
 inline void barrier() {}
 inline void MPI_Init( int *, char **[] ) {}
 inline void MPI_Finalize() {}
@@ -40,6 +49,19 @@ inline void printOverhead( const std::string &timer, int N_calls )
     } else {
         printf( "   %s: N/A\n", timer.c_str() );
     }
+}
+
+
+std::string random_string( int N )
+{
+    std::string str;
+    static auto &chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    static std::mt19937 gen{ std::random_device{}() };
+    static std::uniform_int_distribution<int> dist( 0, sizeof( chars ) - 2 );
+    str.reserve( N );
+    for ( int i = 0; i < N; i++ )
+        str += chars[dist( gen )];
+    return str;
 }
 
 
@@ -327,6 +349,14 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         printf( "\n" );
     }
 
+    // Create a timer with long names to ensure we truncate correctly
+    std::string long_msg      = "Long message - " + random_string( 128 );
+    std::string long_file     = "Long filename - " + random_string( 128 );
+    std::string long_path     = "Long pathname - " + random_string( 128 );
+    std::string long_filename = long_path + "/" + long_file;
+    global_profiler.start( long_msg, long_filename.c_str(), __LINE__ );
+    global_profiler.stop( long_msg, long_filename.c_str(), __LINE__ );
+
     // Profile the save
     PROFILE_START( "SAVE" );
     PROFILE_SAVE( save_name );
@@ -373,7 +403,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     // Find and check MAIN
     const TraceResults *trace = nullptr;
     for ( auto &timer : data1 ) {
-        if ( timer.message == "MAIN" )
+        if ( strcmp( timer.message, "MAIN" ) == 0 )
             trace = timer.trace.data();
     }
     if ( trace != nullptr ) {
@@ -401,7 +431,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     // Find and check sleep
     trace = nullptr;
     for ( auto &timer : data1 ) {
-        if ( timer.message == "sleep" ) {
+        if ( strcmp( timer.message, "sleep" ) == 0 ) {
             trace      = &timer.trace[0];
             double tot = 1e-9 * trace->tot;
             if ( fabs( tot - 1.0 ) > 0.1 ) {
@@ -477,10 +507,11 @@ int main( int argc, char *argv[] )
 {
     // Initialize MPI
     MPI_Init( &argc, &argv );
+    int rank = getRank();
 
     // Print basic info
     int N_errors = 0;
-    if ( getRank() == 0 ) {
+    if ( rank == 0 ) {
         // Print clock resolution
         printf( "\nClock resolution:\n" );
         printf( "  system_clock: %i\n", get_clock_resolution<std::chrono::system_clock>() );
@@ -496,7 +527,12 @@ int main( int argc, char *argv[] )
         printf( "\n" );
         // Test how long it takes to get memory usage
         printf( "getMemoryUsage: %i\n", test_getMemoryUsage() );
-        printf( "getTotalMemoryUsage: %i\n\n", test_getTotalMemoryUsage() );
+        printf( "getTotalMemoryUsage: %i\n", test_getTotalMemoryUsage() );
+        printf( "\n" );
+        // Print the size of some structures
+        printf( "sizeof(TimerResults): %i\n", (int) sizeof( TimerResults ) );
+        printf( "sizeof(TraceResults): %i\n", (int) sizeof( TraceResults ) );
+        printf( "\n" );
     }
 
     // Run the tests
@@ -509,17 +545,22 @@ int main( int argc, char *argv[] )
             N_errors += run_tests( std::get<0>( test ), std::get<1>( test ), std::get<2>( test ) );
             PROFILE_DISABLE();
         }
+        N_errors = sumReduce( N_errors );
     }
 
     // Print the memory stats
-    std::cout << std::endl;
-    MemoryApp::print( std::cout );
+    if ( rank == 0 ) {
+        std::cout << std::endl;
+        MemoryApp::print( std::cout );
+    }
 
     // Finalize MPI
-    if ( N_errors == 0 )
-        std::cout << "All tests passed" << std::endl;
-    else
-        std::cout << "Some tests failed" << std::endl;
+    if ( rank == 0 ) {
+        if ( N_errors == 0 )
+            std::cout << "All tests passed" << std::endl;
+        else
+            std::cout << "Some tests failed" << std::endl;
+    }
     barrier();
     MPI_Finalize();
     return N_errors;
