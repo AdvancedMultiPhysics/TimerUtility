@@ -2151,7 +2151,7 @@ void ProfilerApp::addTimers(
                 std::swap( trace, timer.trace[k] );
                 timers[j].trace.emplace_back( std::move( trace ) );
             }
-            timers[j].trace.clear();
+            timer.trace.clear();
         }
     }
     add.clear();
