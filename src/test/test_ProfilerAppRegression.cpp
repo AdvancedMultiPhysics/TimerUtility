@@ -6,8 +6,8 @@
 int load_test( const std::string& name, size_t size, bool includes_trace, bool includes_memory )
 {
 
-    TimerMemoryResults load_results   = ProfilerApp::load( name );
-    std::vector<TimerResults>& timers = load_results.timers;
+    auto load_results = ProfilerApp::load( name );
+    auto& timers      = load_results.timers;
 
     // Check the timers
     if ( timers.empty() ) {
@@ -39,7 +39,7 @@ int load_test( const std::string& name, size_t size, bool includes_trace, bool i
         error = false;
         for ( auto& timer : timers ) {
             for ( const auto& trace : timer.trace ) {
-                if ( trace.N == 0 || trace.N_trace == 0 || trace.N < trace.N_trace )
+                if ( trace.N == 0 || trace.N_trace == 0 )
                     error = true;
             }
         }

@@ -27,7 +27,7 @@ inline std::vector<int> getActive(
 {
     std::vector<int> active( trace.N_active );
     for ( size_t i = 0; i < active.size(); i++ ) {
-        std::map<id_struct, int>::const_iterator it = id_map.find( trace.active()[i] );
+        auto it = id_map.find( trace.active[i] );
         ASSERT( it != id_map.end() );
         active[i] = it->second;
     }
@@ -172,11 +172,17 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
             max[k][index] = trace.max;
             tot[k][index] = trace.tot;
             if ( trace.N_trace > 0 ) {
-                start[k][index].resize( trace.N_trace );
-                stop[k][index].resize( trace.N_trace );
+                start[k][index].reserve( trace.N_trace );
+                stop[k][index].reserve( trace.N_trace );
+                uint64_t last = 0;
                 for ( size_t i = 0; i < trace.N_trace; i++ ) {
-                    start[k][index][i] = trace.start()[i];
-                    stop[k][index][i]  = trace.stop()[i];
+                    uint64_t t1 = last + trace.times[2*i+0];
+                    uint64_t t2 = t1 + trace.times[2*i+1];
+                    last = t2;
+                    if ( t1 == t2 )
+                        continue;
+                    start[k][index].push_back( t1 );
+                    stop[k][index].push_back( t2 );
                 }
             }
         }

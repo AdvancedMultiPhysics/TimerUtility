@@ -90,21 +90,17 @@ private:
 class TraceResults
 {
 public:
-    id_struct id;                                   //!<  ID of parent timer
-    uint16_t N_active;                              //!<  Number of active timers
-    uint16_t thread;                                //!<  Active thread
-    uint32_t rank;                                  //!<  Rank
-    uint32_t N_trace;                               //!<  Number of calls that we trace
-    float min;                                      //!<  Minimum call time (ns)
-    float max;                                      //!<  Maximum call time (ns)
-    float tot;                                      //!<  Total call time (ns)
-    uint64_t N;                                     //!<  Total number of calls
-    id_struct* active();                            //!<  List of active timers
-    const id_struct* active() const;                //!<  List of active timers
-    uint64_t* start();                              //!<  Start times for each call (ns)
-    uint64_t* stop();                               //!<  Stop times for each call (ns)
-    const uint64_t* start() const;                  //!<  Start times for each call (ns)
-    const uint64_t* stop() const;                   //!<  Stop times for each call (ns)
+    id_struct id;      //!<  ID of parent timer
+    uint16_t N_active; //!<  Number of active timers
+    uint16_t thread;   //!<  Active thread
+    uint32_t rank;     //!<  Rank
+    uint32_t N_trace;  //!<  Number of calls that we trace
+    float min;         //!<  Minimum call time (ns)
+    float max;         //!<  Maximum call time (ns)
+    float tot;         //!<  Total call time (ns)
+    uint64_t N;        //!<  Total number of calls
+    id_struct* active; //!<  List of active timers (N_active)
+    uint16f* times;    //!<  Start/stop times for each call (N_trace)
 public:
     // Constructors/destructor
     TraceResults();
@@ -112,17 +108,13 @@ public:
     TraceResults( const TraceResults& ) = delete;
     TraceResults( TraceResults&& );
     TraceResults& operator=( const TraceResults& ) = delete;
-    TraceResults& operator=( TraceResults&& );
+    TraceResults& operator                         =( TraceResults&& );
     // Helper functions
-    void allocate();                                //!<  Allocate the data
-    size_t size( bool store_trace = true ) const;   //!< The number of bytes needed to pack the data
+    size_t size( bool store_trace = true ) const; //!< The number of bytes needed to pack the data
     size_t pack( char* data, bool store_trace = true ) const; //!<  Pack the data to a buffer
     size_t unpack( const char* data );                        //!<  Unpack the data from a buffer
     bool operator==( const TraceResults& rhs ) const;         //! Comparison operator
     inline bool operator!=( const TraceResults& rhs ) const { return !( this->operator==( rhs ) ); }
-
-private:
-    uint64_t* mem; // Internal memory
 };
 
 
@@ -144,7 +136,7 @@ public:
     // Constructors/destructor
     TimerResults();
     TimerResults( const TimerResults& ) = delete;
-    TimerResults( TimerResults&& ) = default;
+    TimerResults( TimerResults&& )      = default;
     TimerResults& operator=( const TimerResults& ) = delete;
     TimerResults& operator=( TimerResults&& ) = default;
     // Helper functions
@@ -595,17 +587,22 @@ private: // Member classes
     class StoreTimes
     {
     public:
-        StoreTimes() : d_capacity( 0 ), d_size( 0 ), d_offset( 0 ), d_data( nullptr ) {}
+        StoreTimes();
         ~StoreTimes() { delete[] d_data; }
-        inline StoreTimes( const StoreTimes& rhs ) = delete;
-        inline StoreTimes& operator=( const StoreTimes& rhs ) = delete;
+        StoreTimes( const StoreTimes& rhs ) = delete;
+        StoreTimes( StoreTimes&& rhs );
+        StoreTimes& operator=( const StoreTimes& rhs ) = delete;
+        StoreTimes& operator                           =( StoreTimes&& rhs );
+        explicit StoreTimes( const StoreTimes& rhs, uint64_t shift );
+        inline void reserve( size_t N );
         inline size_t size() const { return d_size; }
         inline void add( uint64_t start, uint64_t stop );
         inline const uint16f* begin() const { return d_data; }
         inline const uint16f* end() const { return &d_data[2 * d_size]; }
+        inline uint16f* take();
 
     private:
-        // The maximum number of entries to store
+        // The maximum number of entries to store (we need 4 bytes/entry)
         constexpr static size_t MAX_TRACE = 1e6;
         // Internal data
         size_t d_capacity;
@@ -826,8 +823,7 @@ private: // Private member functions
 
     // Functions to send all timers/memory to rank 0
     static void gatherTimers( std::vector<TimerResults>& timers );
-    static void addTimers(
-        std::vector<TimerResults>& timers, std::vector<TimerResults>&& add );
+    static void addTimers( std::vector<TimerResults>& timers, std::vector<TimerResults>&& add );
     static void gatherMemory( std::vector<MemoryResults>& memory );
 
 

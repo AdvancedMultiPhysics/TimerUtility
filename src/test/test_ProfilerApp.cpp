@@ -417,11 +417,8 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         N_errors++;
     }
     if ( enable_trace && trace != nullptr ) {
-        const int N           = trace->N_trace;
-        const uint64_t *start = trace->start();
-        const uint64_t *stop  = trace->stop();
-        bool pass             = start != nullptr && stop != nullptr && N == 1;
-        if ( *start > 100e9 || *start > *stop )
+        uint64_t start = trace->times[0];
+        if ( start > 100e9 )
             pass = false;
         if ( !pass ) {
             std::cout << "Error with trace results of MAIN\n";

@@ -345,21 +345,23 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
         array.resize( resolution, Nt, Np );
         data[i]->tot = 0;
         for ( size_t j = 0; j < timers[i].trace.size(); j++ ) {
-            const int rank    = timers[i].trace[j].rank;
-            const int thread  = timers[i].trace[j].thread;
-            const int N_trace = timers[i].trace[j].N_trace;
-            const auto start  = timers[i].trace[j].start();
-            const auto stop   = timers[i].trace[j].stop();
-            int it            = Nt == 1 ? 0 : thread;
-            int ip            = Np == 1 ? 0 : rank;
+            const int rank   = timers[i].trace[j].rank;
+            const int thread = timers[i].trace[j].thread;
+            uint32_t N_trace = timers[i].trace[j].N_trace;
             if ( selected_thread != -1 && thread != selected_thread )
                 continue;
             if ( selected_rank != -1 && rank != selected_rank )
                 continue;
-            for ( int k = 0; k < N_trace; k++ ) {
-                double s1 = 1e-9 * start[k];
-                double s2 = 1e-9 * stop[k];
-                if ( s2 <= t0 || s1 >= t1 || start[k] == stop[k] )
+            const int it  = Nt == 1 ? 0 : thread;
+            const int ip  = Np == 1 ? 0 : rank;
+            uint64_t last = 0;
+            for ( size_t k = 0; k < N_trace; k++ ) {
+                uint64_t start = last + timers[i].trace[j].times[2 * k + 0];
+                uint64_t stop  = start + timers[i].trace[j].times[2 * k + 1];
+                last           = stop;
+                double s1      = 1e-9 * start;
+                double s2      = 1e-9 * stop;
+                if ( s2 <= t0 || s1 >= t1 || start == stop )
                     continue;
                 int m1 = std::max<int>( ( s1 - t0 ) / dt, 0 );
                 int m2 = std::min<int>( ( s2 - t0 ) / dt, resolution - 1 );
@@ -706,11 +708,13 @@ std::array<double, 2> TraceWindow::getGlobalTime( const std::vector<TimerResults
     for ( const auto &timer : timers ) {
         for ( const auto &trace : timer.trace ) {
             const int N_trace = trace.N_trace;
-            if ( N_trace > 0 ) {
-                auto start  = trace.start();
-                auto stop   = trace.stop();
-                t_global[0] = std::min( t_global[0], 1e-9 * start[0] );
-                t_global[1] = std::max( t_global[1], 1e-9 * stop[N_trace - 1] );
+            uint64_t last     = 0;
+            for ( int k = 0; k < N_trace; k++ ) {
+                uint64_t start = last + trace.times[2 * k + 0];
+                uint64_t stop  = start + trace.times[2 * k + 1];
+                last           = stop;
+                t_global[0]    = std::min( t_global[0], 1e-9 * start );
+                t_global[1]    = std::max( t_global[1], 1e-9 * stop );
             }
         }
     }

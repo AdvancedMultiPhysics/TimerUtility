@@ -60,7 +60,7 @@ inline std::vector<id_struct> getActive( const TraceResults& trace )
 {
     std::vector<id_struct> active( trace.N_active );
     for ( size_t i = 0; i < active.size(); i++ )
-        active[i] = trace.active()[i];
+        active[i] = trace.active[i];
     return active;
 }
 
