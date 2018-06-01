@@ -359,7 +359,7 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
             for ( int k = 0; k < N_trace; k++ ) {
                 double s1 = 1e-9 * start[k];
                 double s2 = 1e-9 * stop[k];
-                if ( s2 <= t0 || s1 >= t1 )
+                if ( s2 <= t0 || s1 >= t1 || start[k] == stop[k] )
                     continue;
                 int m1 = std::max<int>( ( s1 - t0 ) / dt, 0 );
                 int m2 = std::min<int>( ( s2 - t0 ) / dt, resolution - 1 );

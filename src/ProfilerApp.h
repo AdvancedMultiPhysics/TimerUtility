@@ -22,6 +22,36 @@
 class ScopedTimer;
 
 
+/** \class uint16f
+ *
+ * Class to store an unsigned integer as a half precision floating type.
+ */
+class uint16f
+{
+public:
+    // Constructors
+    constexpr uint16f() : data( 0 ) {}
+    constexpr uint16f( const uint16f& x ) = default;
+    constexpr uint16f& operator=( const uint16f& x ) = default;
+    constexpr uint16f( uint16f&& x )                 = default;
+    constexpr uint16f& operator=( uint16f&& x ) = default;
+    explicit inline constexpr uint16f( uint64_t x ) : data( getData( x ) ) {}
+    // Comparison operators
+    inline constexpr bool operator==( const uint16f& rhs ) const { return data == rhs.data; }
+    inline constexpr bool operator!=( const uint16f& rhs ) const { return data != rhs.data; }
+    inline constexpr bool operator>=( const uint16f& rhs ) const { return data >= rhs.data; }
+    inline constexpr bool operator>( const uint16f& rhs ) const { return data > rhs.data; }
+    inline constexpr bool operator<( const uint16f& rhs ) const { return data < rhs.data; }
+    inline constexpr bool operator<=( const uint16f& rhs ) const { return data <= rhs.data; }
+    // Overload typecast
+    inline constexpr operator uint64_t() const;
+
+private:
+    uint16_t data;
+    static inline constexpr uint16_t getData( uint64_t x );
+};
+
+
 /** \class id_struct
  *
  * Structure to store id string
@@ -514,12 +544,6 @@ public: // Fast interface to start/stop
 
 
 public: // Constants to determine parameters that affect performance/memory
-    // The maximum number of stored start and stop times per trace
-    // Note: this is only used if store_trace is set, and should be a power of 2
-    // Note: the maximum ammount of memory used per trace is 16*MAX_TRACE_TRACE bytes (plus the
-    // trace itself)
-    constexpr static size_t MAX_TRACE_TRACE = 1e6;
-
     // The maximum number of threads supported
     constexpr static size_t MAX_THREADS = 1024;
 
@@ -560,22 +584,23 @@ private: // Member classes
     class StoreTimes
     {
     public:
-        StoreTimes() : d_capacity( 0 ), d_size( 0 ), d_data( nullptr ) {}
+        StoreTimes() : d_capacity( 0 ), d_size( 0 ), d_offset( 0 ), d_data( nullptr ) {}
         ~StoreTimes() { delete[] d_data; }
         inline StoreTimes( const StoreTimes& rhs ) = delete;
         inline StoreTimes& operator=( const StoreTimes& rhs ) = delete;
-        inline void push_back( uint64_t time );
-        inline const uint64_t* begin() const { return d_data; }
-        inline const uint64_t* end() const { return &d_data[d_size]; }
+        inline size_t size() const { return d_size; }
+        inline void add( uint64_t start, uint64_t stop );
+        inline const uint16f* begin() const { return d_data; }
+        inline const uint16f* end() const { return &d_data[2 * d_size]; }
 
     private:
-        // The minimum resolution to store (log2(ns))
-        // Minimum timer resolution is 64 ns
-        // constexpr static uint8_t RESOLUTION = 6;
+        // The maximum number of entries to store
+        constexpr static size_t MAX_TRACE = 1e6;
         // Internal data
         size_t d_capacity;
         size_t d_size;
-        uint64_t* d_data;
+        uint64_t d_offset;
+        uint16f* d_data;
     };
 
     // Structure to store memory usage
@@ -608,22 +633,20 @@ private: // Member classes
 
     // Structure to store the info for a trace log
     struct store_trace {
-        size_t N_calls;       // Number of calls to this block
-        StoreActive trace;    // Store the trace
-        store_trace* next;    // Pointer to the next entry in the list
-        uint64_t min_time;    // Store the minimum time spent in the given block (nano-seconds)
-        uint64_t max_time;    // Store the maximum time spent in the given block (nano-seconds)
-        uint64_t total_time;  // Store the total time spent in the given block (nano-seconds)
-        size_t N_trace_alloc; // The size of the arrays for start_time and stop_time
-        StoreTimes times;     // Store when start/stop was called (nano-seconds from constructor)
+        size_t N_calls;      // Number of calls to this block
+        StoreActive trace;   // Store the trace
+        store_trace* next;   // Pointer to the next entry in the list
+        uint64_t min_time;   // Store the minimum time spent in the given block (nano-seconds)
+        uint64_t max_time;   // Store the maximum time spent in the given block (nano-seconds)
+        uint64_t total_time; // Store the total time spent in the given block (nano-seconds)
+        StoreTimes times;    // Store when start/stop was called (nano-seconds from constructor)
         // Constructor
         store_trace()
             : N_calls( 0 ),
               next( nullptr ),
               min_time( std::numeric_limits<int64_t>::max() ),
               max_time( 0 ),
-              total_time( 0 ),
-              N_trace_alloc( 0 )
+              total_time( 0 )
         {
         }
         // Destructor

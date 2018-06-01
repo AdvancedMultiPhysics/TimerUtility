@@ -3,6 +3,7 @@
 #include "test_Helpers.h"
 
 #include <cmath>
+#include <limits>
 #include <random>
 #include <string>
 #include <vector>
@@ -535,7 +536,7 @@ int main( int argc, char *argv[] )
         printf( "\n" );
     }
 
-    // Run the tests
+    // Run the profiler tests
     {
         std::vector<std::tuple<bool, bool, std::string>> tests;
         tests.emplace_back( false, false, "test_ProfilerApp" );
@@ -545,7 +546,6 @@ int main( int argc, char *argv[] )
             N_errors += run_tests( std::get<0>( test ), std::get<1>( test ), std::get<2>( test ) );
             PROFILE_DISABLE();
         }
-        N_errors = sumReduce( N_errors );
     }
 
     // Print the memory stats
@@ -561,7 +561,7 @@ int main( int argc, char *argv[] )
         else
             std::cout << "Some tests failed" << std::endl;
     }
-    barrier();
+    N_errors = sumReduce( N_errors );
     MPI_Finalize();
     return N_errors;
 }

@@ -36,7 +36,8 @@
  ******************************************************************/
 ProfilerApp global_profiler;
 constexpr size_t ProfilerApp::StoreActive::TRACE_SIZE;
-constexpr size_t ProfilerApp::MAX_TRACE_TRACE;
+constexpr size_t ProfilerApp::StoreTimes::MAX_TRACE;
+constexpr size_t ProfilerApp::StoreMemory::MAX_ENTRIES;
 constexpr size_t ProfilerApp::MAX_THREADS;
 constexpr size_t ProfilerApp::TIMER_HASH_SIZE;
 
@@ -277,23 +278,51 @@ std::vector<uint32_t> ProfilerApp::StoreActive::getSet() const
 /***********************************************************************
  * StoreTimes                                                           *
  ***********************************************************************/
-inline void ProfilerApp::StoreTimes::push_back( uint64_t time )
+inline void ProfilerApp::StoreTimes::add( uint64_t start, uint64_t stop )
 {
-    if ( d_size == d_capacity ) {
+    // Allocate more memory if needed
+    if ( d_size + 2 > d_capacity ) {
+        if ( d_size >= MAX_TRACE )
+            return;
         auto old   = d_data;
-        d_capacity = std::max<size_t>( d_capacity * 2, 1024 );
-        d_data     = new uint64_t[d_capacity];
-        memcpy( d_data, old, d_size * sizeof( int64_t ) );
+        d_capacity = std::max<size_t>( 2 * d_capacity, 1024 );
+        d_capacity = std::min<size_t>( d_capacity, MAX_TRACE );
+        d_data     = new uint16f[2 * d_capacity];
+        memcpy( d_data, old, 2 * d_size * sizeof( uint16f ) );
         delete[] old;
     }
-    d_data[d_size++] = time;
+    constexpr uint64_t max_diff = std::numeric_limits<uint16f>::max();
+    if ( stop - start > max_diff ) {
+        // We are trying to store an interval that is too large, break it up
+        add( start, start + max_diff );
+        add( start + max_diff, stop );
+    } else if ( start - d_offset > max_diff ) {
+        // The interval to start is too large, break it up
+        add( max_diff, max_diff );
+        add( start, stop );
+    } else if ( ( start - d_offset ) > 20000 * ( stop - start + 1 ) ) {
+        // We are loosing resolution
+        d_data[2 * d_size + 0] = uint16f( start - d_offset );
+        d_data[2 * d_size + 1] = uint16f( 0 );
+        d_offset += d_data[2 * d_size + 0];
+        d_size++;
+        add( start, stop );
+    } else {
+        // Store the data
+        uint64_t diff          = start - d_offset;
+        d_data[2 * d_size + 0] = uint16f( diff );
+        d_offset += d_data[2 * d_size + 0];
+        diff                   = stop - d_offset;
+        d_data[2 * d_size + 1] = uint16f( diff );
+        d_offset += d_data[2 * d_size + 1];
+        d_size++;
+    }
 }
 
 
 /***********************************************************************
  * StoreMemory                                                          *
  ***********************************************************************/
-constexpr size_t ProfilerApp::StoreMemory::MAX_ENTRIES;
 inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLevel level,
     volatile TimerUtility::atomic::int64_atomic* bytes_profiler )
 {
@@ -901,11 +930,10 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     // Calculate the time elapsed since start was called
     uint64_t ns = diff_ns( end_time, timer->start_time );
     // Save the starting and ending time if we are storing the detailed traces
-    if ( d_store_trace_data && trace->N_calls < MAX_TRACE_TRACE ) {
+    if ( d_store_trace_data ) {
         uint64_t start = diff_ns( timer->start_time, d_construct_time );
         uint64_t stop  = diff_ns( end_time, d_construct_time );
-        trace->times.push_back( start );
-        trace->times.push_back( stop );
+        trace->times.add( start, stop );
     }
     // Save the new time info to the trace
     trace->max_time = std::max( trace->max_time, ns );
@@ -1023,15 +1051,12 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             // Get the active list
             auto list = getActiveList( trace->trace, timer->trace_index, thread_data );
             // Get the running times of the trace
-            size_t N_trace = 0;
-            if ( d_store_trace_data )
-                N_trace = std::min<size_t>( trace->N_calls, MAX_TRACE_TRACE );
             results.trace[k].id       = results.id;
             results.trace[k].thread   = thread_id;
             results.trace[k].rank     = rank;
             results.trace[k].N        = trace->N_calls;
             results.trace[k].N_active = list.size();
-            results.trace[k].N_trace  = N_trace;
+            results.trace[k].N_trace  = trace->times.size();
             results.trace[k].min      = trace->min_time;
             results.trace[k].max      = trace->max_time;
             results.trace[k].tot      = trace->total_time;
@@ -1049,12 +1074,17 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             // Save the detailed trace results (this is a binary file)
             uint64_t* start = results.trace[k].start();
             uint64_t* stop  = results.trace[k].stop();
+            uint64_t last   = 0;
             auto it         = trace->times.begin();
-            for ( size_t m = 0; m < N_trace; m++ ) {
-                start[m] = *it + d_shift;
+            for ( size_t m = 0; m < trace->times.size(); m++ ) {
+                int64_t x = *it;
                 ++it;
-                stop[m] = *it + d_shift;
+                int64_t y = *it;
                 ++it;
+                start[m] = d_shift + x + last;
+                last += x;
+                stop[m] = d_shift + y + last;
+                last += y;
             }
             // Advance to the next trace
             trace = trace->next;
@@ -1352,7 +1382,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 // Save the detailed trace results (this is a binary file)
                 if ( trace.N_trace > 0 ) {
                     unsigned long Nt = trace.N_trace;
-                    fprintf( traceFile, "<id=%s,thread=%u,rank=%u,active=[ %s],N=%lu>\n",
+                    fprintf( traceFile, "<id=%s,thread=%u,rank=%u,active=[ %s],N=%lu,format=ul>\n",
                         trace.id.str().data(), trace.thread, trace.rank, active, Nt );
                     std::vector<double> start( Nt ), stop( Nt );
                     const uint64_t* start0 = trace.start();
@@ -1784,6 +1814,23 @@ void ProfilerApp::loadTrace( const std::string& filename, std::vector<TimerResul
         getField( line, MAX_LINE, "N=", field );
         ASSERT( field[0] != 0 );
         unsigned long int N = strtoul( field, nullptr, 10 );
+        getField( line, MAX_LINE, "format=", field );
+        int format = 0;
+        if ( field[0] != 0 ) {
+            if ( strcmp( field, "ul" ) == 0 )
+                format = 0;
+            else
+                throw std::logic_error( "Unknown format" );
+        }
+        // Read the data
+        std::vector<double> tmp1( N ), tmp2( N );
+        if ( format == 0 ) {
+            size_t N1 = fread( tmp1.data(), sizeof( double ), N, fid );
+            size_t N2 = fread( tmp2.data(), sizeof( double ), N, fid );
+            ASSERT( N1 == N && N2 == N );
+            size_t rtn2 = fread( field, 1, 1, fid );
+            ASSERT( rtn2 == 1 );
+        }
         // Find the appropriate trace
         int index = -1;
         for ( size_t i = 0; i < timer.trace.size(); i++ ) {
@@ -1804,13 +1851,6 @@ void ProfilerApp::loadTrace( const std::string& filename, std::vector<TimerResul
         trace.allocate();
         for ( size_t i = 0; i < active.size(); i++ )
             trace.active()[i] = active[i];
-        // Read the data
-        std::vector<double> tmp1( N ), tmp2( N );
-        size_t N1 = fread( tmp1.data(), sizeof( double ), N, fid );
-        size_t N2 = fread( tmp2.data(), sizeof( double ), N, fid );
-        ASSERT( N1 == N && N2 == N );
-        size_t rtn2 = fread( field, 1, 1, fid );
-        ASSERT( rtn2 == 1 );
         // Copy the data to the trace
         uint64_t* start = trace.start();
         uint64_t* stop  = trace.stop();
@@ -2223,6 +2263,24 @@ static inline void quicksort2( int n, type_a* arr, type_b* brr )
         }
     }
 }
+
+
+/***********************************************************************
+ * Test uint16f                                                        *
+ ***********************************************************************/
+static_assert( static_cast<uint64_t>( uint16f( 0u ) ) == 0u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 1u ) ) == 1u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 1023u ) ) == 1023u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 2047u ) ) == 2047u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 2048u ) ) == 2048u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 2049u ) ) == 2049u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 4095u ) ) == 4095u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 4096u ) ) == 4096u, "Error in uint16f" );
+static_assert( static_cast<uint64_t>( uint16f( 4098u ) ) == 4098u, "Error in uint16f" );
+static_assert(
+    static_cast<uint64_t>( std::numeric_limits<uint16f>::min() ) == 0u, "Error in uint16f" );
+static_assert(
+    static_cast<uint64_t>( std::numeric_limits<uint16f>::max() ) > 4e12, "Error in uint16f" );
 
 
 /***********************************************************************
