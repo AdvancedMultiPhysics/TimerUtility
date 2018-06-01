@@ -105,10 +105,15 @@ public:
     uint64_t* stop();                               //!<  Stop times for each call (ns)
     const uint64_t* start() const;                  //!<  Start times for each call (ns)
     const uint64_t* stop() const;                   //!<  Stop times for each call (ns)
-    TraceResults();                                 //!<  Empty constructor
-    ~TraceResults();                                //!<  Destructor
-    TraceResults( const TraceResults& );            //!<  Copy constructor
-    TraceResults& operator=( const TraceResults& ); //! Assignment operator
+public:
+    // Constructors/destructor
+    TraceResults();
+    ~TraceResults();
+    TraceResults( const TraceResults& ) = delete;
+    TraceResults( TraceResults&& );
+    TraceResults& operator=( const TraceResults& ) = delete;
+    TraceResults& operator=( TraceResults&& );
+    // Helper functions
     void allocate();                                //!<  Allocate the data
     size_t size( bool store_trace = true ) const;   //!< The number of bytes needed to pack the data
     size_t pack( char* data, bool store_trace = true ) const; //!<  Pack the data to a buffer
@@ -136,7 +141,13 @@ public:
     char file[64];                   //!<  Timer file (null terminated string)
     char path[64];                   //!<  Timer file path (null terminated string)
     std::vector<TraceResults> trace; //!<  Trace data
+    // Constructors/destructor
     TimerResults();
+    TimerResults( const TimerResults& ) = delete;
+    TimerResults( TimerResults&& ) = default;
+    TimerResults& operator=( const TimerResults& ) = delete;
+    TimerResults& operator=( TimerResults&& ) = default;
+    // Helper functions
     size_t size( bool store_trace = true ) const; //!<  The number of bytes needed to pack the trace
     size_t pack( char* data, bool store_trace = true ) const; //!<  Pack the data to a buffer
     size_t unpack( const char* data );                        //!<  Unpack the data from a buffer
@@ -816,7 +827,7 @@ private: // Private member functions
     // Functions to send all timers/memory to rank 0
     static void gatherTimers( std::vector<TimerResults>& timers );
     static void addTimers(
-        std::vector<TimerResults>& timers, const std::vector<TimerResults>& add );
+        std::vector<TimerResults>& timers, std::vector<TimerResults>&& add );
     static void gatherMemory( std::vector<MemoryResults>& memory );
 
 

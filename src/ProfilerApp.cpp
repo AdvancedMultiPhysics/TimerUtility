@@ -494,7 +494,7 @@ TraceResults::~TraceResults()
     delete[] mem;
     mem = nullptr;
 }
-TraceResults::TraceResults( const TraceResults& rhs )
+TraceResults::TraceResults( TraceResults&& rhs )
     : id( rhs.id ),
       N_active( rhs.N_active ),
       thread( rhs.thread ),
@@ -504,28 +504,25 @@ TraceResults::TraceResults( const TraceResults& rhs )
       max( rhs.max ),
       tot( rhs.tot ),
       N( rhs.N ),
-      mem( nullptr )
+      mem( rhs.mem )
 {
-    allocate();
-    if ( mem != nullptr )
-        memcpy( mem, rhs.mem, ( N_active + 2 * N_trace ) * sizeof( uint64_t ) );
+    rhs.mem = nullptr;
 }
-TraceResults& TraceResults::operator=( const TraceResults& rhs )
+TraceResults& TraceResults::operator=( TraceResults&& rhs )
 {
     if ( this == &rhs )
         return *this;
-    this->id       = rhs.id;
-    this->thread   = rhs.thread;
-    this->rank     = rhs.rank;
-    this->N_active = rhs.N_active;
-    this->N_trace  = rhs.N_trace;
-    this->N        = rhs.N;
-    this->min      = rhs.min;
-    this->max      = rhs.max;
-    this->tot      = rhs.tot;
-    allocate();
-    if ( mem != nullptr )
-        memcpy( this->mem, rhs.mem, ( N_active + 2 * N_trace ) * sizeof( uint64_t ) );
+    id       = rhs.id;
+    thread   = rhs.thread;
+    rank     = rhs.rank;
+    N_active = rhs.N_active;
+    N_trace  = rhs.N_trace;
+    N        = rhs.N;
+    min      = rhs.min;
+    max      = rhs.max;
+    tot      = rhs.tot;
+    mem      = rhs.mem;
+    rhs.mem  = nullptr;
     return *this;
 }
 void TraceResults::allocate()
@@ -1568,7 +1565,7 @@ inline void keepRank( std::vector<TYPE>& data, int rank )
     size_t i2 = 0;
     for ( size_t i1 = 0; i1 < data.size(); i1++ ) {
         if ( (int) data[i1].rank == rank ) {
-            data[i2] = data[i1];
+            std::swap( data[i2], data[i1] );
             i2++;
         }
     }
@@ -2085,11 +2082,11 @@ void ProfilerApp::gatherTimers( std::vector<TimerResults>& timers )
             pos += sizeof( N_timers );
             ASSERT( N_timers < 0x100000 );
             std::vector<TimerResults> add( N_timers );
-            for ( auto& i : add ) {
-                i.unpack( &buffer[pos] );
-                pos += i.size();
+            for ( auto& timer : add ) {
+                timer.unpack( &buffer[pos] );
+                pos += timer.size();
             }
-            addTimers( timers, add );
+            addTimers( timers, std::move( add ) );
             delete[] buffer;
         }
     } else {
@@ -2134,23 +2131,30 @@ void ProfilerApp::gatherMemory( std::vector<MemoryResults>& memory )
     comm_barrier();
 }
 void ProfilerApp::addTimers(
-    std::vector<TimerResults>& timers, const std::vector<TimerResults>& add )
+    std::vector<TimerResults>& timers, std::vector<TimerResults>&& add )
 {
     std::map<id_struct, size_t> id_map;
     for ( size_t i = 0; i < timers.size(); i++ )
         id_map.insert( std::pair<id_struct, size_t>( timers[i].id, i ) );
-    for ( const auto& i : add ) {
-        auto it = id_map.find( i.id );
+    for ( size_t i = 0; i < add.size(); i++ ) {
+        TimerResults timer;
+        std::swap( timer, add[i] );
+        auto it = id_map.find( timer.id );
         if ( it == id_map.end() ) {
             size_t j = timers.size();
-            timers.push_back( i );
+            timers.emplace_back( std::move( timer ) );
             id_map.insert( std::pair<id_struct, size_t>( timers[j].id, j ) );
         } else {
             size_t j = it->second;
-            for ( const auto& k : i.trace )
-                timers[j].trace.push_back( k );
+            for ( size_t k = 0; k < timer.trace.size(); k++ ) {
+                TraceResults trace;
+                std::swap( trace, timer.trace[k] );
+                timers[j].trace.emplace_back( std::move( trace ) );
+            }
+            timers[j].trace.clear();
         }
     }
+    add.clear();
 }
 
 

@@ -354,7 +354,7 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
                     trace.max = 0.0;
                     trace.tot = static_cast<float>( time );
                     trace.N   = 1;
-                    timers[index].trace.push_back( trace );
+                    timers[index].trace.emplace_back( std::move( trace ) );
                 }
                 // For each subfunction, create the appropriate traces (and remove the parent)
                 for ( const auto& subfunction : fun.subfunctions ) {

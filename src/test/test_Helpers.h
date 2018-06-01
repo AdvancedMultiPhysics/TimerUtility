@@ -47,102 +47,87 @@
 /***********************************************************************
  * Subroutine to perform a quicksort                                    *
  ***********************************************************************/
-template<class type_a, class type_b>
-static inline void quicksort( int n, type_a *arr, type_b *brr )
+template<class T1, class T2>
+static inline void quicksort( int64_t n, T1 *arr, T2 *brr )
 {
     if ( n <= 1 )
         return;
-    bool test;
-    int i, ir, j, jstack, k, l, istack[100];
-    type_a a, tmp_a;
-    type_b b, tmp_b;
-    jstack = 0;
-    l      = 0;
-    ir     = n - 1;
+    int64_t jstack = 0;
+    int64_t l      = 0;
+    int64_t ir     = n - 1;
+    int64_t istack[100];
     while ( 1 ) {
-        if ( ir - l < 7 ) { // Insertion sort when subarray small enough.
-            for ( j = l + 1; j <= ir; j++ ) {
-                a    = arr[j];
-                b    = brr[j];
-                test = true;
-                for ( i = j - 1; i >= 0; i-- ) {
+        if ( ir - l < 7 ) { // Insertion sort when subarray small enough
+            T1 a;
+            T2 b;
+            for ( int64_t j = l + 1; j <= ir; j++ ) {
+                std::swap( a, arr[j] );
+                std::swap( b, brr[j] );
+                bool test = true;
+                for ( int64_t i = j - 1; i >= 0; i-- ) {
                     if ( arr[i] < a ) {
-                        arr[i + 1] = a;
-                        brr[i + 1] = b;
-                        test       = false;
+                        std::swap( a, arr[i + 1] );
+                        std::swap( b, brr[i + 1] );
+                        test = false;
                         break;
                     }
-                    arr[i + 1] = arr[i];
-                    brr[i + 1] = brr[i];
+                    std::swap( arr[i], arr[i + 1] );
+                    std::swap( brr[i], brr[i + 1] );
                 }
                 if ( test ) {
-                    i          = l - 1;
-                    arr[i + 1] = a;
-                    brr[i + 1] = b;
+                    int64_t i = l - 1;
+                    std::swap( a, arr[i + 1] );
+                    std::swap( b, brr[i + 1] );
                 }
             }
             if ( jstack == 0 )
                 return;
-            ir = istack[jstack]; // Pop stack and begin a new round of partitioning.
+            ir = istack[jstack]; // Pop stack and begin a new round of partitioning
             l  = istack[jstack - 1];
             jstack -= 2;
         } else {
-            k = ( l + ir ) / 2; // Choose median of left, center and right elements as partitioning
-                                // element a. Also rearrange so that a(l) ? a(l+1) ? a(ir).
-            tmp_a      = arr[k];
-            arr[k]     = arr[l + 1];
-            arr[l + 1] = tmp_a;
-            tmp_b      = brr[k];
-            brr[k]     = brr[l + 1];
-            brr[l + 1] = tmp_b;
+            // Choose median of left, center and right elements as partitioning element a
+            // Also rearrange so that a(l) ? a(l+1) ? a(ir)
+            int64_t k = ( l + ir ) / 2;
+            std::swap( arr[k], arr[l + 1] );
+            std::swap( brr[k], brr[l + 1] );
             if ( arr[l] > arr[ir] ) {
-                tmp_a   = arr[l];
-                arr[l]  = arr[ir];
-                arr[ir] = tmp_a;
-                tmp_b   = brr[l];
-                brr[l]  = brr[ir];
-                brr[ir] = tmp_b;
+                std::swap( arr[l], arr[ir] );
+                std::swap( brr[l], brr[ir] );
             }
             if ( arr[l + 1] > arr[ir] ) {
-                tmp_a      = arr[l + 1];
-                arr[l + 1] = arr[ir];
-                arr[ir]    = tmp_a;
-                tmp_b      = brr[l + 1];
-                brr[l + 1] = brr[ir];
-                brr[ir]    = tmp_b;
+                std::swap( arr[l + 1], arr[ir] );
+                std::swap( brr[l + 1], brr[ir] );
             }
             if ( arr[l] > arr[l + 1] ) {
-                tmp_a      = arr[l];
-                arr[l]     = arr[l + 1];
-                arr[l + 1] = tmp_a;
-                tmp_b      = brr[l];
-                brr[l]     = brr[l + 1];
-                brr[l + 1] = tmp_b;
+                std::swap( arr[l], arr[l + 1] );
+                std::swap( brr[l], brr[l + 1] );
             }
             // Scan up to find element > a
-            j = ir;
-            a = arr[l + 1]; // Partitioning element.
-            b = brr[l + 1];
+            int64_t j = ir;
+            // Partitioning element
+            T1 a;
+            T2 b;
+            std::swap( a, arr[l + 1] );
+            std::swap( b, brr[l + 1] );
+            int64_t i;
             for ( i = l + 2; i <= ir; i++ ) {
                 if ( arr[i] < a )
                     continue;
-                while ( arr[j] > a ) // Scan down to find element < a.
+                while ( arr[j] > a ) // Scan down to find element < a
                     j--;
                 if ( j < i )
-                    break;       // Pointers crossed. Exit with partitioning complete.
-                tmp_a  = arr[i]; // Exchange elements of both arrays.
-                arr[i] = arr[j];
-                arr[j] = tmp_a;
-                tmp_b  = brr[i];
-                brr[i] = brr[j];
-                brr[j] = tmp_b;
+                    break;                   // Pointers crossed. Exit with partitioning complete
+                std::swap( arr[i], arr[j] ); // Exchange elements of both arrays
+                std::swap( brr[i], brr[j] );
             }
-            arr[l + 1] = arr[j]; // Insert partitioning element in both arrays.
-            arr[j]     = a;
-            brr[l + 1] = brr[j];
-            brr[j]     = b;
+            // Insert partitioning element in both arrays
+            std::swap( arr[l + 1], arr[j] );
+            std::swap( brr[l + 1], brr[j] );
+            std::swap( arr[j], a );
+            std::swap( brr[j], b );
             jstack += 2;
-            // Push pointers to larger subarray on stack, process smaller subarray immediately.
+            // Push pointers to larger subarray on stack, process smaller subarray immediately
             if ( ir - i + 1 >= j - l ) {
                 istack[jstack]     = ir;
                 istack[jstack - 1] = i;

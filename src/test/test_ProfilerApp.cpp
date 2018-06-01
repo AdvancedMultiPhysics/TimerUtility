@@ -480,7 +480,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     {
         TimerMemoryResults x, y;
         x.N_procs    = N_proc;
-        x.timers     = data1;
+        x.timers     = std::move( data1 );
         x.memory     = std::vector<MemoryResults>( 1, memory1 );
         size_t bytes = x.size();
         auto *data   = new char[bytes];
