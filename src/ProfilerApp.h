@@ -700,16 +700,18 @@ private: // Member classes
         bool is_active;                    // Are we currently running a timer
         uint32_t trace_index;              // The index of the current timer in the trace
         uint64_t id;                       // A unique id for each timer
+        uint64_t start_time;               // Store when start was called for the given block
         StoreActive trace;                 // Store the active trace
         store_trace* trace_head;           // Head of the trace-log list
         store_timer* next;                 // Pointer to the next entry in the list
         store_timer_data_info* timer_data; // Pointer to the timer data
-        time_point start_time;             // Store when start was called for the given block
+
         // Constructor used to initialize key values
         store_timer()
             : is_active( false ),
               trace_index( 0 ),
               id( 0 ),
+              start_time( 0 ),
               trace_head( nullptr ),
               next( nullptr ),
               timer_data( nullptr )

@@ -886,12 +886,10 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
     timer->trace     = thread->active;
     timer->is_active = true;
     thread->active.set( timer->trace_index );
-    timer->start_time = std::chrono::steady_clock::now();
+    timer->start_time = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
     // Record the memory usage
-    if ( d_store_memory_data != MemoryLevel::None ) {
-        int64_t ns = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
-        thread->memory.add( ns, d_store_memory_data, &d_bytes );
-    }
+    if ( d_store_memory_data != MemoryLevel::None )
+        thread->memory.add( timer->start_time, d_store_memory_data, &d_bytes );
 }
 
 
@@ -943,23 +941,19 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
         }
     }
     // Calculate the time elapsed since start was called
-    uint64_t ns = diff_ns( end_time, timer->start_time );
+    uint64_t stop = diff_ns( end_time, d_construct_time );
+    uint64_t ns   = stop - timer->start_time;
     // Save the starting and ending time if we are storing the detailed traces
-    if ( d_store_trace_data ) {
-        uint64_t start = diff_ns( timer->start_time, d_construct_time );
-        uint64_t stop  = diff_ns( end_time, d_construct_time );
-        trace->times.add( start, stop );
-    }
+    if ( d_store_trace_data )
+        trace->times.add( timer->start_time, stop );
     // Save the new time info to the trace
     trace->max_time = std::max( trace->max_time, ns );
     trace->min_time = std::min( trace->min_time, ns );
     trace->total_time += ns;
     trace->N_calls++;
     // Get the memory usage
-    if ( d_store_memory_data != MemoryLevel::None ) {
-        uint64_t ns = diff_ns( end_time, d_construct_time );
-        thread->memory.add( ns, d_store_memory_data, &d_bytes );
-    }
+    if ( d_store_memory_data != MemoryLevel::None )
+        thread->memory.add( stop, d_store_memory_data, &d_bytes );
 }
 
 
@@ -1051,7 +1045,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
         uint64_t time     = 0;
         uint64_t trace_id = 0;
         if ( timer->is_active ) {
-            time        = diff_ns( end_time, timer->start_time );
+            time        = diff_ns( end_time, d_construct_time ) - timer->start_time;
             auto active = thread_data->active;
             active.unset( timer->trace_index );
             active &= timer->trace;
@@ -1117,7 +1111,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
                 results.trace[k].active[j] = list[j];
             if ( d_store_trace_data ) {
                 StoreTimes times;
-                uint64_t start = d_shift + diff_ns( timer->start_time, d_construct_time );
+                uint64_t start = d_shift + timer->start_time;
                 uint64_t stop  = d_shift + diff_ns( end_time, d_construct_time );
                 times.add( start, stop );
                 results.trace[k].N_trace = times.size();

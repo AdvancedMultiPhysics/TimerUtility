@@ -176,9 +176,9 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
                 stop[k][index].reserve( trace.N_trace );
                 uint64_t last = 0;
                 for ( size_t i = 0; i < trace.N_trace; i++ ) {
-                    uint64_t t1 = last + trace.times[2*i+0];
-                    uint64_t t2 = t1 + trace.times[2*i+1];
-                    last = t2;
+                    uint64_t t1 = last + trace.times[2 * i + 0];
+                    uint64_t t2 = t1 + trace.times[2 * i + 1];
+                    last        = t2;
                     if ( t1 == t2 )
                         continue;
                     start[k][index].push_back( t1 );
