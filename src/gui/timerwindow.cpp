@@ -551,10 +551,9 @@ void TimerWindow::updateDisplay()
         exclusiveButton->setFlat( true );
     }
     // Set the call line
-    std::string call_stack;
     if ( !callList.empty() ) {
-        const auto& timer = findTimer( d_data.timers, callList[0] );
-        call_stack        = timer.message;
+        const auto& timer      = findTimer( d_data.timers, callList[0] );
+        std::string call_stack = timer.message;
         for ( size_t i = 1; i < callList.size(); i++ ) {
             const auto& timer = findTimer( d_data.timers, callList[i] );
             call_stack += " -> " + std::string( timer.message );

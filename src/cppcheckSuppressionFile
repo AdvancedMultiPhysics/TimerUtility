@@ -18,3 +18,7 @@ mismatchAllocDealloc:*/src/test/test_MemoryApp.cpp
 
 // Suppress unreadVariable
 unreadVariable:*/src/test/test_ProfilerApp_C.c
+
+// Suppress variable scope
+variableScope:*/src/matlab/profile_mex.cpp
+
