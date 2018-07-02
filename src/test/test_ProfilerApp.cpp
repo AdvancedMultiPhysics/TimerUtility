@@ -116,7 +116,7 @@ static inline int test_clock()
 {
     auto start = TYPE::now();
     std::chrono::time_point<TYPE> t1, t2;
-    const int N = 1000000;
+    const int N = 100000;
     for ( int j = 0; j < N; j++ ) {
         t1 = TYPE::now();
         t2 = TYPE::now();
@@ -130,11 +130,11 @@ static inline int test_clock()
 template<typename TYPE>
 static inline int get_clock_resolution()
 {
-    int resolution = 1000000;
+    int resolution = std::numeric_limits<int>::max();
     for ( int i = 0; i < 10; i++ ) {
         int ns  = 0;
         auto t0 = TYPE::now();
-        while ( ns == 0 )
+        while ( ns <= 0 )
             ns = std::chrono::duration_cast<std::chrono::nanoseconds>( TYPE::now() - t0 ).count();
         resolution = std::min( resolution, ns );
     }
@@ -143,7 +143,7 @@ static inline int get_clock_resolution()
 static inline int test_getMemoryUsage()
 {
     auto t1 = std::chrono::steady_clock::now();
-    int N   = 1000000;
+    int N   = 100000;
     for ( int j = 0; j < N; j++ ) {
         auto bytes = MemoryApp::getMemoryUsage();
         NULL_USE( bytes );
