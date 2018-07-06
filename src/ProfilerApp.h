@@ -605,10 +605,10 @@ private: // Member classes
         // The maximum number of entries to store (we need 4 bytes/entry)
         constexpr static size_t MAX_TRACE = 1e6;
         // Internal data
-        size_t d_capacity;
-        size_t d_size;
-        uint64_t d_offset;
-        uint16f* d_data;
+        size_t d_capacity; // Capacity of d_data
+        size_t d_size;     // Number of entries stored
+        uint64_t d_offset; // Current offset
+        uint16f* d_data;   // Data to store compressed data
     };
 
     // Structure to store memory usage

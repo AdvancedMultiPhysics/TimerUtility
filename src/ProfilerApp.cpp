@@ -288,13 +288,17 @@ ProfilerApp::StoreTimes::StoreTimes( const StoreTimes& rhs, uint64_t shift )
     constexpr uint64_t max_diff = std::numeric_limits<uint16f>::max();
     uint64_t start2             = rhs.d_data[0] + shift;
     if ( start2 < max_diff && start2 < 20000 * ( rhs.d_data[1] - rhs.d_data[0] + 1 ) ) {
-        reserve( rhs.size() );
-        memcpy( d_data, rhs.d_data, 2 * rhs.size() * sizeof( uint16f ) );
+        reserve( rhs.d_size );
+        memcpy( d_data, rhs.d_data, 2 * rhs.d_size * sizeof( uint16f ) );
         d_data[0] = uint16f( start2 );
         d_size    = rhs.d_size;
-        d_offset  = rhs.d_offset;
+        d_offset  = rhs.d_offset + shift;
     } else {
-        throw std::logic_error( "Not finished" );
+        add( shift, shift );
+        reserve( d_size + rhs.d_size );
+        memcpy( &d_data[2 * d_size], rhs.d_data, 2 * rhs.d_size * sizeof( uint16f ) );
+        d_size   = d_size + rhs.d_size;
+        d_offset = rhs.d_offset + shift;
     }
 }
 inline void ProfilerApp::StoreTimes::reserve( size_t N )
@@ -1874,7 +1878,7 @@ inline size_t getScale( const std::string& units )
     } else if ( units == "GB" ) {
         scale = 1024 * 1024 * 1024;
     } else {
-        throw std::logic_error( "Not finished\n" );
+        throw std::logic_error( "Unknown scale: " + units );
     }
     return scale;
 }
@@ -1934,7 +1938,8 @@ void ProfilerApp::loadMemory( const std::string& filename, std::vector<MemoryRes
             delete[] time;
             delete[] size;
         } else {
-            throw std::logic_error( "Not finished" );
+            auto msg = "Unknown data type: " + type1 + ", " + type2;
+            throw std::logic_error( msg );
         }
     }
     fclose( fid );
