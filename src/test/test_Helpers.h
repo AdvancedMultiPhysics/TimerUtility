@@ -3,28 +3,6 @@
 #include <stdio.h>
 
 
-// Include system dependent headers and define some functions
-#ifdef USE_WINDOWS
-#include "psapi.h"
-#include <stdio.h>
-#include <tchar.h>
-#include <windows.h>
-#elif defined( USE_LINUX )
-#include <dlfcn.h>
-#include <execinfo.h>
-#include <malloc.h>
-#include <signal.h>
-#elif defined( USE_MAC )
-#include <dlfcn.h>
-#include <execinfo.h>
-#include <mach/mach.h>
-#include <signal.h>
-#include <unistd.h>
-#else
-#error Unknown OS
-#endif
-
-
 // Define NULL_USE
 #define NULL_USE( variable )                       \
     do {                                           \
@@ -34,15 +12,6 @@
         }                                          \
     } while ( 0 )
 
-// Define ASSERT
-#define ASSERT( EXP )                                            \
-    do {                                                         \
-        if ( !( EXP ) ) {                                        \
-            std::stringstream tboxos;                            \
-            tboxos << "Failed assertion: " << #EXP << std::ends; \
-            throw std::logic_error( tboxos.str() );              \
-        }                                                        \
-    } while ( 0 )
 
 /***********************************************************************
  * Subroutine to perform a quicksort                                    *
@@ -143,43 +112,9 @@ static inline void quicksort( int64_t n, T1 *arr, T2 *brr )
 template<class type_a, class type_b>
 static inline void quicksort( std::vector<type_a> &arr, std::vector<type_b> &brr )
 {
-    ASSERT( arr.size() == brr.size() );
+    if ( arr.size() != brr.size() )
+        throw std::logic_error( "Vector sizes do not match" );
     quicksort( arr.size(), arr.data(), brr.data() );
-}
-
-
-/***********************************************************************
- * Function to return the current memory usage                          *
- * Note: this function should be thread-safe                            *
- ***********************************************************************/
-#if defined( USE_MAC )
-// Get the page size on mac
-static size_t page_size = static_cast<size_t>( sysconf( _SC_PAGESIZE ) );
-#endif
-inline size_t getMemoryUsage()
-{
-    size_t N_bytes = 0;
-#if defined( USE_LINUX )
-    struct mallinfo meminfo = mallinfo();
-    size_t size_hblkhd      = static_cast<unsigned int>( meminfo.hblkhd );
-    size_t size_uordblks    = static_cast<unsigned int>( meminfo.uordblks );
-    N_bytes                 = size_hblkhd + size_uordblks;
-#elif defined( USE_MAC )
-    struct task_basic_info t_info;
-    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
-    kern_return_t rtn =
-        task_info( mach_task_self(), TASK_BASIC_INFO, (task_info_t) &t_info, &t_info_count );
-    if ( rtn != KERN_SUCCESS ) {
-        return 0;
-    }
-    N_bytes = t_info.virtual_size;
-#elif defined( USE_WINDOWS )
-    PROCESS_MEMORY_COUNTERS memCounter;
-    GetProcessMemoryInfo( GetCurrentProcess(), &memCounter, sizeof( memCounter ) );
-    N_bytes = memCounter.WorkingSetSize;
-#endif
-    ASSERT( N_bytes < 1e12 );
-    return N_bytes;
 }
 
 
