@@ -1,9 +1,7 @@
 #ifndef Array_H
 #define Array_H
 
-#include <set>
 #include <stdint.h>
-#include <vector>
 
 
 // Bool array
@@ -14,19 +12,8 @@ public:
     {
         resize( Nx, Ny, Nz );
     }
-    BoolArray( const BoolArray& rhs ) : Ni( rhs.Ni ), data( nullptr )
-    {
-        resize( N[0], N[1], N[2] );
-        memcpy( data, rhs.data, Ni * sizeof( uint64_t ) );
-    }
-    BoolArray& operator=( const BoolArray& rhs )
-    {
-        if ( this != &rhs ) {
-            resize( N[0], N[1], N[2] );
-            memcpy( data, rhs.data, Ni * sizeof( uint64_t ) );
-        }
-        return *this;
-    }
+    BoolArray( const BoolArray& ) = delete;
+    BoolArray& operator=( const BoolArray& ) = delete;
     ~BoolArray() { delete[] data; }
     void resize( int Nx, int Ny = 1, int Nz = 1 )
     {
@@ -75,12 +62,13 @@ template<class TYPE>
 class Matrix
 {
 public:
-    typedef std::shared_ptr<Matrix<TYPE>> shared_ptr;
     int N;
     int M;
     TYPE* data;
     Matrix() : N( 0 ), M( 0 ), data( nullptr ) {}
     Matrix( int N_, int M_ ) : N( N_ ), M( M_ ), data( new TYPE[N_ * M_] ) { fill( 0 ); }
+    Matrix( const Matrix& ) = delete;
+    Matrix& operator=( const Matrix& ) = delete;
     ~Matrix() { delete[] data; }
     TYPE& operator()( int i, int j ) { return data[i + j * N]; }
     void fill( TYPE x )
@@ -114,10 +102,6 @@ public:
         TYPE x = sum();
         return static_cast<double>( x ) / ( N * M );
     }
-
-protected:
-    Matrix( const Matrix& );            // Private copy constructor
-    Matrix& operator=( const Matrix& ); // Private assignment operator
 };
 
 #endif

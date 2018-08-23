@@ -25,6 +25,9 @@ public:
         : QTableWidgetItem( stringf( format, value ).c_str() ), x( static_cast<double>( value ) )
     {
     }
+    TableValue()                    = delete;
+    TableValue( const TableValue& ) = delete;
+    TableValue& operator=( const TableValue& ) = delete;
     virtual ~TableValue() {}
     virtual bool operator<( const QTableWidgetItem& other ) const
     {
@@ -34,10 +37,6 @@ public:
         return QTableWidgetItem::operator<( other );
     }
 
-private:
-    TableValue();
-    TableValue( const TableValue& );            // Private copy constructor
-    TableValue& operator=( const TableValue& ); // Private assignment operator
 private:
     double x;
 };

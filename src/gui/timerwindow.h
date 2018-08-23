@@ -98,25 +98,25 @@ private:
     QAction *exclusiveAct;
     QAction *subfunctionsAct;
     QTimer resizeTimer;
-    std::shared_ptr<QMenu> processorButtonMenu;
+    std::unique_ptr<QMenu> processorButtonMenu;
 
 private:
     bool hasTraceData() const;
 
 protected:
-    std::vector<std::shared_ptr<TimerSummary>> getTimers() const;
+    std::vector<std::unique_ptr<TimerSummary>> getTimers() const;
 
     std::string lastPath;
     TimerMemoryResults d_data;
     std::vector<TimerSummary> d_dataTimer;
-    std::vector<std::shared_ptr<TraceSummary>> d_dataTrace;
+    std::vector<std::unique_ptr<TraceSummary>> d_dataTrace;
     std::vector<id_struct> callList;
     int N_procs;
     int N_threads;
     int selected_rank;
     bool inclusiveTime;
     bool includeSubfunctions;
-    mutable std::shared_ptr<TraceWindow> traceWindow;
+    mutable std::unique_ptr<TraceWindow> traceWindow;
 
     friend class TraceWindow;
 

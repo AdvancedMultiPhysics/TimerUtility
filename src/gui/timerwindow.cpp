@@ -314,7 +314,6 @@ void TimerWindow::open()
         this, "Select the timer file", lastPath.c_str(), "*.0.timer *.1.timer" );
     loadFile( filename.toStdString() );
 }
-bool compareTrace( const TraceResults& i, const TraceResults& j ) { return ( i.id < j.id ); }
 void TimerWindow::loadFile( std::string filename, bool showFailure )
 {
     PROFILE_START( "loadFile" );
@@ -369,7 +368,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                     trace.resize( trace.size() - 1 );
                 }
             }
-            std::sort( trace.begin(), trace.end(), compareTrace );
+            std::sort( trace.begin(), trace.end(),
+                []( const auto& i, const auto& j ) { return ( i.id < j.id ); } );
         }
         // Get the number of processors/threads
         N_procs       = d_data.N_procs;
@@ -409,7 +409,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                 if ( index == -1 ) {
                     index    = static_cast<int>( timer.trace.size() );
                     size_t k = d_dataTrace.size();
-                    d_dataTrace.push_back( std::make_shared<TraceSummary>() );
+                    d_dataTrace.emplace_back( std::make_unique<TraceSummary>() );
                     d_dataTrace[k]->id     = t0.id;
                     d_dataTrace[k]->active = active;
                     d_dataTrace[k]->N.resize( N_procs, 0 );
@@ -674,14 +674,14 @@ void TimerWindow::updateDisplay()
 /***********************************************************************
  * Get the timers of interest                                           *
  ***********************************************************************/
-std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
+std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
 {
     PROFILE_START( "getTimers" );
-    std::vector<std::shared_ptr<TimerSummary>> timers;
+    std::vector<std::unique_ptr<TimerSummary>> timers;
     timers.reserve( d_data.timers.size() );
     // Get the timers of interest
     for ( const auto& i : d_dataTimer ) {
-        auto timer     = std::make_shared<TimerSummary>();
+        auto timer     = std::make_unique<TimerSummary>();
         timer->id      = i.id;
         timer->message = i.message;
         timer->file    = i.file;
@@ -702,7 +702,7 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
             }
         }
         if ( !timer->trace.empty() )
-            timers.push_back( timer );
+            timers.push_back( std::move( timer ) );
     }
     // Keep only the traces that are directly inherited from the current call hierarchy
     if ( !includeSubfunctions ) {
@@ -738,7 +738,7 @@ std::vector<std::shared_ptr<TimerSummary>> TimerWindow::getTimers() const
         size_t k = 0;
         for ( size_t i = 0; i < ids.size(); i++ ) {
             if ( keep[i] ) {
-                timers[k] = timers[i];
+                std::swap( timers[k], timers[i] );
                 k++;
             }
         }

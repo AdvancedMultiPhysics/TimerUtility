@@ -28,10 +28,7 @@ ENDFOREACH()
 
 
 # Get the final list of suppressions
-SET( SUPPRESSIONS ${CPPCLEAN_SUPPRESSIONS} 
-    "'shared_ptr.h' does not need to be #included"
-    "'ProfilerApp.h' does not need to be #included"
-)
+SET( SUPPRESSIONS ${CPPCLEAN_SUPPRESSIONS} )
 
 
 # Run cppclean

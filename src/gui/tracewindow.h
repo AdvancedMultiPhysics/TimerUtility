@@ -67,10 +67,10 @@ private:
     QMenu *threadButtonMenu;
     std::vector<QLabel *> timerLabels;
     std::vector<QLabelMouse *> timerPlots;
-    std::shared_ptr<CurrentTimeLineClass> timelineBoundaries[2];
+    std::unique_ptr<CurrentTimeLineClass> timelineBoundaries[2];
 
 private:
-    std::vector<std::shared_ptr<TimerTimeline>> getTraceData(
+    std::vector<std::unique_ptr<TimerTimeline>> getTraceData(
         const std::array<double, 2> &t ) const;
     const TimerWindow *parent;
     const int N_procs;
@@ -81,12 +81,12 @@ private:
     int selected_rank;
     int selected_thread;
     std::map<id_struct, uint32_t> idRgbMap;
-    std::shared_ptr<QPixmap> timelinePixelMap;
+    std::unique_ptr<QPixmap> timelinePixelMap;
 
     bool traceZoomActive;
     std::array<double, 2> t_zoom;
     int traceZoomLastPos;
-    std::shared_ptr<DrawVerticalLineClass> zoomBoundaries[2];
+    std::unique_ptr<DrawVerticalLineClass> zoomBoundaries[2];
 
 private:
     static std::array<double, 2> getGlobalTime( const std::vector<TimerResults> &timers );

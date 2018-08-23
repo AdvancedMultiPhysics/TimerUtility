@@ -13,6 +13,7 @@
 #include <QTextEdit>
 #include <QtGui>
 
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <memory>
@@ -323,14 +324,14 @@ void TraceWindow::updateDisplay( UpdateType update )
 /***********************************************************************
  * Get the trace data                                                   *
  ***********************************************************************/
-std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
+std::vector<std::unique_ptr<TimerTimeline>> TraceWindow::getTraceData(
     const std::array<double, 2> &t ) const
 {
     PROFILE_START( "getTraceData" );
     // Get the active timers/traces
     const auto &timers = parent->d_data.timers;
     // Create a timeline for the time of interest
-    std::vector<std::shared_ptr<TimerTimeline>> data( timers.size() );
+    std::vector<std::unique_ptr<TimerTimeline>> data( timers.size() );
     int Np          = selected_rank == -1 ? N_procs : 1;
     int Nt          = selected_thread == -1 ? N_threads : 1;
     const double t0 = t[0];
@@ -372,14 +373,8 @@ std::vector<std::shared_ptr<TimerTimeline>> TraceWindow::getTraceData(
         }
     }
     // Sort the data by the total time spent in each routine
-    std::multimap<double, std::shared_ptr<TimerTimeline>> tmp;
-    for ( size_t i = 0; i < timers.size(); i++ )
-        tmp.insert( std::pair<double, std::shared_ptr<TimerTimeline>>( data[i]->tot, data[i] ) );
-    data.clear();
-    for ( auto it : tmp ) {
-        if ( it.second->tot > 0 )
-            data.push_back( it.second );
-    }
+    std::sort(
+        data.begin(), data.end(), []( const auto &a, const auto &b ) { return a->tot < b->tot; } );
     PROFILE_STOP( "getTraceData" );
     return data;
 }
