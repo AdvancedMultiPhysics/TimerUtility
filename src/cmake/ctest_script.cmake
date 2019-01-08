@@ -39,6 +39,7 @@ SET( SKIP_TESTS         $ENV{SKIP_TESTS}        )
 SET( BUILDNAME_POSTFIX "$ENV{BUILDNAME_POSTFIX}" )
 SET( QWT_URL           "$ENV{QWT_URL}"          )
 SET( QWT_SRC_DIR       "$ENV{QWT_SRC_DIR}"      )
+SET( CTEST_SITE        "$ENV{CTEST_SITE}"       )
 
 
 # Add the C++ version to the project name
@@ -296,7 +297,7 @@ SET( CTEST_DROP_METHOD "http" )
 SET( CTEST_DROP_LOCATION "/CDash/submit.php?project=AMR-MHD" )
 SET( CTEST_DROP_SITE_CDASH TRUE )
 SET( DROP_SITE_CDASH TRUE )
-SET( CTEST_DROP_SITE "vayu.ornl.gov" )
+SET( CTEST_DROP_SITE ${CTEST_SITE} )
 CTEST_SUBMIT()
 
 
