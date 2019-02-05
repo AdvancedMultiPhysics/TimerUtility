@@ -1,11 +1,22 @@
 // Supression file for cppcheck
 
+
+// Suppress all operatorEq (false positives if we use = default)
+operatorEq:*
+
+// Suppress all useStlAlgorithm (too aggressive)
+useStlAlgorithm:*
+
+// Suppress all operatorEq (too many false positives)
+shadowFunction:*
+shadowVar:*
+
 // Suppress missing include message (we are not checking dependencies)
-missingInclude
-unmatchedSuppression
+missingInclude:*
+unmatchedSuppression:*
 
 // Suppress unusedFunction messages (functions may be used by subsequent packages)
-unusedFunction
+unusedFunction:*
 
 // Supress known expression messages
 knownConditionTrueFalse:*/src/test/test_Callgrind.cpp
