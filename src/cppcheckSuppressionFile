@@ -33,3 +33,8 @@ unreadVariable:*/src/test/test_ProfilerApp_C.c
 // Suppress variable scope
 variableScope:*/src/matlab/profile_mex.cpp
 
+// Suppress false negativeContainerIndex
+negativeContainerIndex:*/gui/QSplitterGrid.cpp
+
+// Suppress duplicateCondition
+duplicateCondition:*/src/test/test_ProfilerApp.cpp

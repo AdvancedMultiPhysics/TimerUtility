@@ -309,12 +309,11 @@ void TraceWindow::updateDisplay( UpdateType update )
         updateTimeline();
     // Update the line positions if time changed
 
-    // Regerate the trace plots if time or processors changed
-    if ( ( update & UpdateType::time ) != 0 || ( update & UpdateType::proc ) != 0 )
+    // Regerate the trace/memory plots if time or processors changed
+    if ( ( update & UpdateType::time ) != 0 || ( update & UpdateType::proc ) != 0 ) {
         updateTimers();
-    // Regerate the memory plot if time or processors changed
-    if ( ( update & UpdateType::time ) != 0 || ( update & UpdateType::proc ) != 0 )
         updateMemory();
+    }
     // Start the resize timer to update plots
     resizeTimer.start( 10 );
     PROFILE_STOP( "updateDisplay" );
