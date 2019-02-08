@@ -4,6 +4,12 @@
 #include <vector>
 
 
+// Define NULL_USE
+#define NULL_USE(variable) do {                         \
+    if(0) {char *temp = (char *)&variable; temp++;}     \
+}while(0)
+
+
 int main( int argc, char *argv[] )
 {
     // Check the input arguments
