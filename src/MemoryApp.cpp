@@ -90,7 +90,7 @@ void* operator new( std::size_t size )
     void* ret = malloc( size );
     if ( !ret )
         throw std::bad_alloc();
-    const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( ret );
+    auto block_size = get_malloc_size( ret );
     TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_allocated, block_size );
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
@@ -100,7 +100,7 @@ void* operator new[]( std::size_t size )
     void* ret = malloc( size );
     if ( !ret )
         throw std::bad_alloc();
-    const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( ret );
+    auto block_size = get_malloc_size( ret );
     TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_allocated, block_size );
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
@@ -110,7 +110,7 @@ void* operator new( std::size_t size, const std::nothrow_t& ) noexcept
     void* ret = malloc( size );
     if ( !ret )
         return nullptr;
-    const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( ret );
+    auto block_size = get_malloc_size( ret );
     TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_allocated, block_size );
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
@@ -120,7 +120,7 @@ void* operator new[]( std::size_t size, const std::nothrow_t& ) noexcept
     void* ret = malloc( size );
     if ( !ret )
         return nullptr;
-    const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( ret );
+    auto block_size = get_malloc_size( ret );
     TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_allocated, block_size );
     TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_new );
     return ret;
@@ -128,7 +128,7 @@ void* operator new[]( std::size_t size, const std::nothrow_t& ) noexcept
 void operator delete( void* data ) noexcept
 {
     if ( data != nullptr ) {
-        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
+        auto block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
@@ -137,7 +137,7 @@ void operator delete( void* data ) noexcept
 void operator delete[]( void* data ) noexcept
 {
     if ( data != nullptr ) {
-        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
+        auto block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
@@ -146,7 +146,7 @@ void operator delete[]( void* data ) noexcept
 void operator delete(void* data, const std::nothrow_t&) noexcept
 {
     if ( data != nullptr ) {
-        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
+        auto block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
@@ -155,7 +155,7 @@ void operator delete(void* data, const std::nothrow_t&) noexcept
 void operator delete[]( void* data, const std::nothrow_t& ) noexcept
 {
     if ( data != nullptr ) {
-        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
+        auto block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
@@ -164,7 +164,7 @@ void operator delete[]( void* data, const std::nothrow_t& ) noexcept
 void operator delete( void* data, std::size_t ) noexcept
 {
     if ( data != nullptr ) {
-        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
+        auto block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
@@ -173,7 +173,7 @@ void operator delete( void* data, std::size_t ) noexcept
 void operator delete[]( void* data, std::size_t ) noexcept
 {
     if ( data != nullptr ) {
-        const TimerUtility::atomic::int64_atomic block_size = get_malloc_size( data );
+        auto block_size = get_malloc_size( data );
         free( data );
         TimerUtility::atomic::atomic_add( &MemoryApp::d_bytes_deallocated, block_size );
         TimerUtility::atomic::atomic_increment( &MemoryApp::d_calls_delete );
