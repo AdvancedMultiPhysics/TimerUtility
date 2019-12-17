@@ -157,7 +157,7 @@ MACRO( CONFIGURE_SYSTEM )
         MESSAGE("System libs: ${SYSTEM_LIBS}")
     ELSEIF( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
         # Linux specific system libraries
-        SET( SYSTEM_LIBS -lz -lpthread -ldl )
+        SET( SYSTEM_LIBS -lpthread -ldl )
         IF ( NOT USE_STATIC )
             # Try to add rdynamic so we have names in backtrace
             SET( CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_FLAGS} -rdynamic" )
@@ -173,7 +173,7 @@ MACRO( CONFIGURE_SYSTEM )
         ENDIF()
     ELSEIF( ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" )
         # Max specific system libraries
-        SET( SYSTEM_LIBS -lz -lpthread -ldl )
+        SET( SYSTEM_LIBS -lpthread -ldl )
     ELSEIF( ${CMAKE_SYSTEM_NAME} STREQUAL "Generic" )
         # Generic system libraries
     ELSE()
