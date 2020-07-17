@@ -7,7 +7,7 @@
 #include <stdexcept>
 
 
-// Use the hashing function 2^32*0.5*(sqrt(5)-1)
+// Use the hashing function 2^64*0.5*(sqrt(5)-1)
 #define GET_TIMER_HASH( id ) ( ( ( id * 0x9E3779B97F4A7C15 ) >> 48 ) % TIMER_HASH_SIZE )
 
 

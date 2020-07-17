@@ -337,12 +337,12 @@ int32_atomic atomic_fetch_and_and( int32_atomic volatile *v, int32_atomic x )
 {
     return OSAtomicAnd32Orig( x, (volatile uint32_t *) v );
 }
-int64_atomic atomic_fetch_and_or( int64_atomic volatile *v, int64_atomic x )
+int64_atomic atomic_fetch_and_or( int64_atomic volatile *, int64_atomic )
 {
     throw std::logic_error( "Not availible for this OS" );
     return 0;
 }
-int64_atomic atomic_fetch_and_and( int64_atomic volatile *v, int64_atomic x )
+int64_atomic atomic_fetch_and_and( int64_atomic volatile *, int64_atomic )
 {
     throw std::logic_error( "Not availible for this OS" );
     return 0;
