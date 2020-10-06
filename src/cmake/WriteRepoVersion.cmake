@@ -21,11 +21,11 @@ IF ( NOT filename )
 ENDIF()
 
 # Get the repo version
-EXECUTE_PROCESS( COMMAND hg id -i  WORKING_DIRECTORY "${src_dir}"  OUTPUT_VARIABLE VERSION_OUT )
-STRING(REGEX REPLACE "(\r?\n)+$" "" VERSION_OUT "${VERSION_OUT}")
+# EXECUTE_PROCESS( COMMAND hg id -i  WORKING_DIRECTORY "${src_dir}"  OUTPUT_VARIABLE VERSION_OUT )
+# STRING(REGEX REPLACE "(\r?\n)+$" "" VERSION_OUT "${VERSION_OUT}")
 
 # Write the results to the file
-FILE(WRITE  "${tmp_file}" "#define ${PROJ}_VERSION \"${VERSION_OUT}\"\n" )
-EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different "${tmp_file}" "${filename}" )
-MESSAGE("${PROJ} Version = ${VERSION_OUT}")
+# FILE(WRITE  "${tmp_file}" "#define ${PROJ}_VERSION \"${VERSION_OUT}\"\n" )
+# EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different "${tmp_file}" "${filename}" )
+# MESSAGE("${PROJ} Version = ${VERSION_OUT}")
 
