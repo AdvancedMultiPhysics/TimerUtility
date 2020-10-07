@@ -20,12 +20,29 @@ IF ( NOT filename )
     MESSAGE( FATAL_ERROR "Output file is not set")
 ENDIF()
 
-# Get the repo version
-# EXECUTE_PROCESS( COMMAND hg id -i  WORKING_DIRECTORY "${src_dir}"  OUTPUT_VARIABLE VERSION_OUT )
-# STRING(REGEX REPLACE "(\r?\n)+$" "" VERSION_OUT "${VERSION_OUT}")
+SET( VERSION_OUT )
+
+INCLUDE(FindGit)
+FIND_PACKAGE(Git)
+IF( Git_FOUND )
+  MESSAGE( "git found: ${GIT_EXECUTABLE}" )
+  # Get the repo version
+  EXECUTE_PROCESS( COMMAND ${GIT_EXECUTABLE} rev-parse HEAD  WORKING_DIRECTORY "${src_dir}"  OUTPUT_VARIABLE long_hash )
+  STRING(REGEX REPLACE "(\r?\n)+$" "" long_hash "${long_hash}")
+  SET( VERSION_OUT ${long_hash} )
+ELSE()
+  INCLUDE(FindHg)
+  FIND_PACKAGE(Hg)
+  IF( Hg_FOUND )
+    MESSAGE( "hg found: ${HG_EXECUTABLE}" )
+    # Get the repo version
+    EXECUTE_PROCESS( COMMAND ${HG_EXECUTABLE} id -i  WORKING_DIRECTORY "${src_dir}"  OUTPUT_VARIABLE VERSION_OUT )
+    STRING(REGEX REPLACE "(\r?\n)+$" "" VERSION_OUT "${VERSION_OUT}")
+  ENDIF()
+ENDIF()
 
 # Write the results to the file
-# FILE(WRITE  "${tmp_file}" "#define ${PROJ}_VERSION \"${VERSION_OUT}\"\n" )
-# EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different "${tmp_file}" "${filename}" )
-# MESSAGE("${PROJ} Version = ${VERSION_OUT}")
+FILE(WRITE  "${tmp_file}" "#define ${PROJ}_VERSION \"${VERSION_OUT}\"\n" )
+EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different "${tmp_file}" "${filename}" )
+MESSAGE("${PROJ} Version = ${VERSION_OUT}")
 
