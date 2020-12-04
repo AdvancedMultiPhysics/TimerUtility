@@ -1,57 +1,8 @@
 syntax: glob
 
-# Ignore timer files
-*.timer
-*.trace
-*.memory
-
-# Ignore mex files
-*.mexa64
-
 # Ignore MAC files
 .DS_Store
 */.DS_Store
 
 
-# Ignore build files
-build/*/TimerUtilitiy.cmake
-build/*/include/*
-build/*/lib/*
-build/*/bin/*
-build/*/gui/*
-build/*/doc/*
-build/*/latex_docs/*
-build/*/matlab/*
-build/*/mex/*
-build/*/test/*
-build/*/tmp/*
-build/*/CMakeFiles/*
-build/*/CMakeCache.txt
-build/*/CMakeDoxy*
-build/*/CTestTestfile.cmake
-build/*/DartConfiguration.tcl
-build/*/Testing/*
-build/*/Doxyfile
-build/*/Makefile
-build/*/cmake_install.cmake
-build/*/install_manifest.txt
-build/*/.metadata/*
-build/*/libtimerutility.*
-build/*/.project
-build/*/.cproject
-build/*/atomic.dir
-build/*/*.vcxproj*
-build/*/x64
-build/*/ATOMIC.*
-build/*/Debug
-build/*/distclean.bat
-build/*/ipch
-build/*/timerutility.lib
-build/*/timerutility.dir
-build/*/TIMER.*
-build/*/QWT/*
-build/*/cppclean
-build/*/compile_commands.json
-build/*/gmon.out
-build/*/configure*
 
