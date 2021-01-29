@@ -154,13 +154,13 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
         std::vector<std::vector<uint64_t>> N( Nt );
         std::vector<std::vector<float>> min( Nt ), max( Nt ), tot( Nt );
         std::vector<std::vector<std::vector<uint64_t>>> start( Nt ), stop( Nt );
-        for ( size_t i = 0; i < Nt; i++ ) {
-            N[i].resize( data.N_procs * N_threads, 0 );
-            min[i].resize( data.N_procs * N_threads, 0 );
-            max[i].resize( data.N_procs * N_threads, 0 );
-            tot[i].resize( data.N_procs * N_threads, 0 );
-            start[i].resize( data.N_procs * N_threads );
-            stop[i].resize( data.N_procs * N_threads );
+        for ( size_t j = 0; j < Nt; j++ ) {
+            N[j].resize( data.N_procs * N_threads, 0 );
+            min[j].resize( data.N_procs * N_threads, 0 );
+            max[j].resize( data.N_procs * N_threads, 0 );
+            tot[j].resize( data.N_procs * N_threads, 0 );
+            start[j].resize( data.N_procs * N_threads );
+            stop[j].resize( data.N_procs * N_threads );
         }
         // Fill N, min, max, tot, start, stop
         for ( const auto& trace : timer.trace ) {
@@ -175,9 +175,9 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
                 start[k][index].reserve( trace.N_trace );
                 stop[k][index].reserve( trace.N_trace );
                 uint64_t last = 0;
-                for ( size_t i = 0; i < trace.N_trace; i++ ) {
-                    uint64_t t1 = last + trace.times[2 * i + 0];
-                    uint64_t t2 = t1 + trace.times[2 * i + 1];
+                for ( size_t m = 0; m < trace.N_trace; m++ ) {
+                    uint64_t t1 = last + trace.times[2 * m + 0];
+                    uint64_t t2 = t1 + trace.times[2 * m + 1];
                     last        = t2;
                     if ( t1 == t2 )
                         continue;

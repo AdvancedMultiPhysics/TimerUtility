@@ -6,8 +6,8 @@
 #include <limits>
 #include <random>
 #include <string>
-#include <vector>
 #include <unistd.h>
+#include <vector>
 
 #ifdef USE_MPI
 #include <mpi.h>

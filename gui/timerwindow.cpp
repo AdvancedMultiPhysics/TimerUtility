@@ -70,10 +70,10 @@ inline bool keepTrace( const TraceSummary& trace, const std::vector<id_struct>& 
     const bool keep_subfunctions )
 {
     bool keep = true;
-    for ( const auto& i : callList ) {
-        bool found = trace.id == i;
-        for ( const auto& j : trace.active )
-            found = found || i == j;
+    for ( const auto& id : callList ) {
+        bool found = trace.id == id;
+        for ( const auto& id2 : trace.active )
+            found = found || id == id2;
         keep = keep && found;
     }
     if ( keep && !keep_subfunctions ) {
@@ -322,9 +322,9 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         close();
         // Get the filename and path
         bool global = filename.rfind( ".0.timer" ) != std::string::npos;
-        size_t i    = filename.rfind( '.', filename.rfind( ".timer" ) - 1 );
-        filename    = filename.substr( 0, i );
-        int pos     = -1;
+        int pos     = filename.rfind( '.', filename.rfind( ".timer" ) - 1 );
+        filename    = filename.substr( 0, pos );
+        pos         = -1;
         if ( filename.rfind( (char) 47 ) != std::string::npos )
             pos = std::max<int>( pos, filename.rfind( (char) 47 ) );
         if ( filename.rfind( (char) 92 ) != std::string::npos )
@@ -441,15 +441,15 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         }
         traceToolbar->setVisible( hasTraceData() );
         // Set min for any ranks with zero calls to zero
-        for ( auto& i : d_dataTimer ) {
+        for ( auto& time : d_dataTimer ) {
             for ( int k = 0; k < N_procs; k++ ) {
-                if ( i.N[k] == 0 )
-                    i.min[k] = 0;
+                if ( time.N[k] == 0 )
+                    time.min[k] = 0;
             }
-            for ( auto& i : d_dataTrace ) {
+            for ( auto& trace : d_dataTrace ) {
                 for ( int k = 0; k < N_procs; k++ ) {
-                    if ( i->N[k] == 0 )
-                        i->min[k] = 0;
+                    if ( trace->N[k] == 0 )
+                        trace->min[k] = 0;
                 }
             }
         }
@@ -462,17 +462,17 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             ADD_MENU_ACTION( processorButtonMenu, "Minimum", -2 );
             ADD_MENU_ACTION( processorButtonMenu, "Maximum", -3 );
             if ( N_procs < 100 ) {
-                for ( int i = 0; i < N_procs; i++ )
-                    ADD_MENU_ACTION( processorButtonMenu, stringf( "Rank %i", i ).c_str(), i );
+                for ( int j = 0; j < N_procs; j++ )
+                    ADD_MENU_ACTION( processorButtonMenu, stringf( "Rank %i", j ).c_str(), j );
             } else {
                 const int ranks_per_menu = 250;
                 QMenu* rank_menu         = nullptr;
-                for ( int i = 0; i < N_procs; i++ ) {
-                    if ( i % ranks_per_menu == 0 ) {
-                        auto name = stringf( "Ranks %i-%i", i, i + ranks_per_menu - 1 );
+                for ( int j = 0; j < N_procs; j++ ) {
+                    if ( j % ranks_per_menu == 0 ) {
+                        auto name = stringf( "Ranks %i-%i", j, j + ranks_per_menu - 1 );
                         rank_menu = processorButtonMenu->addMenu( name.c_str() );
                     }
-                    ADD_MENU_ACTION( rank_menu, stringf( "%5i", i ).c_str(), i );
+                    ADD_MENU_ACTION( rank_menu, stringf( "%5i", j ).c_str(), j );
                 }
             }
             connect( signalMapper, SIGNAL( mapped( int ) ), this, SLOT( selectProcessor( int ) ) );
@@ -555,8 +555,8 @@ void TimerWindow::updateDisplay()
         const auto& timer      = findTimer( d_data.timers, callList[0] );
         std::string call_stack = timer.message;
         for ( size_t i = 1; i < callList.size(); i++ ) {
-            const auto& timer = findTimer( d_data.timers, callList[i] );
-            call_stack += " -> " + std::string( timer.message );
+            const auto& timer2 = findTimer( d_data.timers, callList[i] );
+            call_stack += " -> " + std::string( timer2.message );
         }
         callLineText->setText( call_stack.c_str() );
         callLineText->show();

@@ -1,12 +1,12 @@
 # To run clang tools:
 #   cd to root directory
 # To update format only:
-#   find src -name "*.cpp" -or -name "*.cc" -or -name "*.h" -or -name "*.hpp" -or -name "*.I" | xargs -I{} clang-format -i {}
+#   find . -name "*.cpp" -or -name "*.cc" -or -name "*.h" -or -name "*.hpp" -or -name "*.I" | xargs -I{} clang-format -i {}
 # To run modernize
 #   export CLANG_PATH=/packages/llvm/build/llvm-60
 #   export PATH=${CLANG_PATH}/bin:${CLANG_PATH}/share/clang:$PATH
-#   find src -name "*.cpp" -or -name "*.cc" | xargs -I{} clang-tidy -checks=modernize* -p=/projects/TimerUtility/build/debug -fix {}
-#   find src -name "*.cpp" -or -name "*.cc" -or -name "*.h" -or -name "*.hpp" -or -name "*.I" | xargs -I{} clang-format -i {}
+#   find . -name "*.cpp" -or -name "*.cc" | xargs -I{} clang-tidy -checks=modernize* -p=/projects/TimerUtility/build/debug -fix {}
+#   find . -name "*.cpp" -or -name "*.cc" -or -name "*.h" -or -name "*.hpp" -or -name "*.I" | xargs -I{} clang-format -i {}
 
 
 

@@ -1,4 +1,5 @@
-// Supression file for cppcheck
+// Supression ConfigurationNotChecked
+ConfigurationNotChecked
 
 
 // Suppress all operatorEq (false positives if we use = default)
@@ -23,6 +24,7 @@ knownConditionTrueFalse:*/src/test/test_Callgrind.cpp
 knownConditionTrueFalse:*/src/test/test_Load.cpp
 knownConditionTrueFalse:*/src/test/test_ProfilerApp.cpp
 knownConditionTrueFalse:*/src/ProfilerApp.cpp
+knownConditionTrueFalse:*/src/gui/timerwindow.cpp
 
 // Suppress mismatchAllocDealloc (This is an intentional test)
 mismatchAllocDealloc:*/src/test/test_MemoryApp.cpp

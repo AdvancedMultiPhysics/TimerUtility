@@ -14,7 +14,6 @@
     } while ( 0 )
 
 
-
 int main( int argc, char *argv[] )
 {
     // Check the input arguments

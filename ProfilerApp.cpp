@@ -1250,7 +1250,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     MemoryResults data;
     data.time.resize( N );
     data.bytes.resize( N );
-    for ( size_t i = 0; i < N; i++ ) {
+    for ( i = 0; i < N; i++ ) {
         data.time[i]  = time[i];
         data.bytes[i] = bytes[i];
     }
