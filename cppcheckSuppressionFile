@@ -20,23 +20,23 @@ unmatchedSuppression:*
 unusedFunction:*
 
 // Supress known expression messages
-knownConditionTrueFalse:*/src/test/test_Callgrind.cpp
-knownConditionTrueFalse:*/src/test/test_Load.cpp
-knownConditionTrueFalse:*/src/test/test_ProfilerApp.cpp
-knownConditionTrueFalse:*/src/ProfilerApp.cpp
-knownConditionTrueFalse:*/src/gui/timerwindow.cpp
+knownConditionTrueFalse:*/test/test_Callgrind.cpp
+knownConditionTrueFalse:*/test/test_Load.cpp
+knownConditionTrueFalse:*/test/test_ProfilerApp.cpp
+knownConditionTrueFalse:*/ProfilerApp.cpp
+knownConditionTrueFalse:*/gui/timerwindow.cpp
 
 // Suppress mismatchAllocDealloc (This is an intentional test)
-mismatchAllocDealloc:*/src/test/test_MemoryApp.cpp
+mismatchAllocDealloc:*/test/test_MemoryApp.cpp
 
 // Suppress unreadVariable
-unreadVariable:*/src/test/test_ProfilerApp_C.c
+unreadVariable:*/test/test_ProfilerApp_C.c
 
 // Suppress variable scope
-variableScope:*/src/matlab/profile_mex.cpp
+variableScope:*/matlab/profile_mex.cpp
 
 // Suppress false negativeContainerIndex
 negativeContainerIndex:*/gui/QSplitterGrid.cpp
 
 // Suppress duplicateCondition
-duplicateCondition:*/src/test/test_ProfilerApp.cpp
+duplicateCondition:*/test/test_ProfilerApp.cpp
