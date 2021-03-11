@@ -2278,6 +2278,7 @@ static inline void quicksort2( int n, type_a* arr, type_b* brr )
 /***********************************************************************
  * Test uint16f                                                        *
  ***********************************************************************/
+static_assert( sizeof( uint16f ) == 2, "uint16f is not 2 bytes" );
 static_assert( static_cast<uint64_t>( uint16f( 0u ) ) == 0u, "Error in uint16f" );
 static_assert( static_cast<uint64_t>( uint16f( 1u ) ) == 1u, "Error in uint16f" );
 static_assert( static_cast<uint64_t>( uint16f( 1023u ) ) == 1023u, "Error in uint16f" );

@@ -31,10 +31,6 @@ class uint16f
 public:
     // Constructors
     constexpr uint16f() : data( 0 ) {}
-    constexpr uint16f( const uint16f& x ) = default;
-    constexpr uint16f& operator=( const uint16f& x ) = default;
-    constexpr uint16f( uint16f&& x )                 = default;
-    constexpr uint16f& operator=( uint16f&& x ) = default;
     explicit inline constexpr uint16f( uint64_t x ) : data( getData( x ) ) {}
     // Comparison operators
     inline constexpr bool operator==( const uint16f& rhs ) const { return data == rhs.data; }
