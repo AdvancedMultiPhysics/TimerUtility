@@ -28,6 +28,15 @@
                                                                                          \
     } while ( false )
 
+#define NULL_USE( variable )                   \
+    do {                                       \
+        if ( 0 ) {                             \
+            auto static t = (char*) &variable; \
+            t++;                               \
+        }                                      \
+    } while ( 0 )
+
+
 #define diff_ns( X, Y ) std::chrono::duration_cast<std::chrono::nanoseconds>( X - Y ).count()
 
 
@@ -374,8 +383,11 @@ inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLev
     if ( level == MemoryLevel::Fast )
         bytes = MemoryApp::getMemoryUsage();
     else
-#endif
         bytes = MemoryApp::getTotalMemoryUsage();
+#else
+    NULL_USE( level );
+    bytes = MemoryApp::getTotalMemoryUsage();
+#endif
     bytes -= *bytes_profiler;
     // Check if we need to allocate more memory
     if ( d_size == d_capacity ) {

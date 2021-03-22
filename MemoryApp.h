@@ -3,6 +3,7 @@
 
 
 #include "ProfilerAtomicHelpers.h"
+#include "ProfilerDefinitions.h"
 
 #include <cstring>
 #include <iostream>
@@ -10,16 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
-
-
-#if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
-#include <Psapi.h>
-#include <windows.h>
-#elif defined( __APPLE__ )
-#include <mach/mach.h>
-#else
-#include <malloc.h>
-#endif
 
 
 /** \class MemoryApp
@@ -72,7 +63,7 @@ public:
      * @details  This function will attempt to return the total memory in use
      *   including the stack and memory allocated with malloc.
      */
-    static inline size_t getTotalMemoryUsage() noexcept;
+    static size_t getTotalMemoryUsage() noexcept;
 
     /*!
      * Function to get the memory availible.
@@ -82,7 +73,6 @@ public:
      * If this function fails, it will return 0.
      */
     static inline size_t getSystemMemory() { return d_physical_memory; }
-
 
     /*!
      * Function to get the memory statistics
@@ -118,47 +108,6 @@ private:
     friend void operator delete[]( void* data, std::size_t ) noexcept;
 #endif
 };
-
-
-/***********************************************************************
- * Function to return the current memory usage                          *
- ***********************************************************************/
-// clang-format off
-inline size_t MemoryApp::getTotalMemoryUsage() noexcept
-{
-    size_t N_bytes = 0;
-    try {
-        #if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
-            // Windows
-            PROCESS_MEMORY_COUNTERS memCounter;
-            GetProcessMemoryInfo( GetCurrentProcess(), &memCounter, sizeof( memCounter ) );
-            N_bytes = memCounter.WorkingSetSize;
-        #elif defined( __APPLE__ )
-            // MAC
-            struct task_basic_info t_info;
-            mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
-            kern_return_t rtn =
-                task_info( mach_task_self(), TASK_BASIC_INFO, (task_info_t) &t_info, &t_info_count );
-            if ( rtn != KERN_SUCCESS )
-                return 0;
-            N_bytes = t_info.virtual_size;
-        #else
-            // Linux
-            auto meminfo = mallinfo();
-            size_t size_hblkhd   = static_cast<unsigned int>( meminfo.hblkhd );
-            size_t size_uordblks = static_cast<unsigned int>( meminfo.uordblks );
-            N_bytes              = size_hblkhd + size_uordblks;
-            // Correct for possible 32-bit wrap around
-            size_t N_bytes_new = d_bytes_allocated - d_bytes_deallocated;
-            while ( N_bytes < N_bytes_new )
-                N_bytes += 0x100000000;
-        #endif
-    } catch ( ... ) {
-        N_bytes = d_bytes_allocated - d_bytes_deallocated;
-    }
-    return N_bytes;
-}
-// clang-format on
 
 
 #endif
