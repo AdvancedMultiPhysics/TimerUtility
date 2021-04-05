@@ -99,7 +99,7 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock( thread_info* thread_data
         // The timer does not exist, create it
         auto new_timer         = new store_timer;
         constexpr int64_t size = sizeof( store_timer );
-        TimerUtility::atomic::atomic_add( &d_bytes, size );
+        d_bytes.fetch_add( size );
         new_timer->id          = id;
         new_timer->is_active   = false;
         new_timer->trace_index = thread_data->N_timers;
@@ -114,7 +114,7 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock( thread_info* thread_data
                 return nullptr;
             auto new_timer         = new store_timer;
             constexpr int64_t size = sizeof( store_timer );
-            TimerUtility::atomic::atomic_add( &d_bytes, size );
+            d_bytes.fetch_add( size );
             new_timer->id          = id;
             new_timer->is_active   = false;
             new_timer->trace_index = thread_data->N_timers;

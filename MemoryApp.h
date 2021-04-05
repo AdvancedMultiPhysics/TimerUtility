@@ -2,9 +2,9 @@
 #define included_MemoryApp
 
 
-#include "ProfilerAtomicHelpers.h"
 #include "ProfilerDefinitions.h"
 
+#include <atomic>
 #include <cstring>
 #include <iostream>
 #include <stdint.h>
@@ -85,11 +85,10 @@ private:
     ~MemoryApp();
 
     // Private data
-    using int64_atomic = TimerUtility::atomic::int64_atomic;
-    static int64_atomic d_bytes_allocated;
-    static int64_atomic d_bytes_deallocated;
-    static int64_atomic d_calls_new;
-    static int64_atomic d_calls_delete;
+    static volatile std::atomic_int64_t d_bytes_allocated;
+    static volatile std::atomic_int64_t d_bytes_deallocated;
+    static volatile std::atomic_int64_t d_calls_new;
+    static volatile std::atomic_int64_t d_calls_delete;
     static size_t d_page_size;
     static size_t d_physical_memory;
     static void* d_base_frame;

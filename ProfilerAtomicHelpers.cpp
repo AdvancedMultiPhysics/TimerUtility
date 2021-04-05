@@ -1,4 +1,3 @@
-#include "ProfilerAtomicHelpers.h"
 #include <stdexcept>
 
 #ifdef USE_PTHREAD_ATOMIC_LOCK

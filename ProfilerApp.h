@@ -3,6 +3,7 @@
 
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <iostream>
@@ -15,7 +16,6 @@
 #include <string>
 #include <vector>
 
-#include "ProfilerAtomicHelpers.h"
 #include "ProfilerDefinitions.h"
 
 
@@ -619,8 +619,8 @@ private: // Member classes
         }
         inline StoreMemory( const StoreMemory& rhs ) = delete;
         inline StoreMemory& operator=( const StoreMemory& rhs ) = delete;
-        inline void add( uint64_t time, MemoryLevel level,
-            volatile TimerUtility::atomic::int64_atomic* bytes_profiler );
+        inline void add(
+            uint64_t time, MemoryLevel level, volatile std::atomic_int64_t& bytes_profiler );
         void reset();
         void swap( StoreMemory& rhs );
         void get( std::vector<uint64_t>& time, std::vector<uint64_t>& bytes ) const;
@@ -750,11 +750,8 @@ private: // Member classes
     };
 
 private: // Member data
-    typedef TimerUtility::atomic::int32_atomic int32_atomic;
-    typedef TimerUtility::atomic::int64_atomic int64_atomic;
-
     // Store thread specific info
-    volatile int32_atomic d_N_threads;
+    volatile std::atomic_int32_t d_N_threads;
     thread_info* thread_table[MAX_THREADS];
 
     // Store the global timer info in a hash table
@@ -765,20 +762,20 @@ private: // Member data
     mutable std::mutex d_lock;
 
     // Misc variables
-    bool d_store_trace_data;               // Store trace information?
-    MemoryLevel d_store_memory_data;       // Store memory information?
-    bool d_disable_timer_error;            // Disable the timer errors for start/stop?
-    int8_t d_level;                        // Timer level (default is 0, -1 is disabled)
-    time_point d_construct_time;           // Constructor time
-    uint64_t d_shift;                      // Offset to synchronize the trace data
-    mutable volatile int64_atomic d_bytes; // The current memory used by the profiler
+    bool d_store_trace_data;                      // Store trace information?
+    MemoryLevel d_store_memory_data;              // Store memory information?
+    bool d_disable_timer_error;                   // Disable the timer errors for start/stop?
+    int8_t d_level;                               // Timer level (default is 0, -1 is disabled)
+    time_point d_construct_time;                  // Constructor time
+    uint64_t d_shift;                             // Offset to synchronize the trace data
+    mutable volatile std::atomic_int64_t d_bytes; // The current memory used by the profiler
 
 private: // Private member functions
     // Function to return a pointer to the thread info (or create it if necessary)
     // Note: this function does not require any blocking
     inline thread_info* getThreadData()
     {
-        thread_local int id = TimerUtility::atomic::atomic_increment( &d_N_threads ) - 1;
+        thread_local int id = d_N_threads++;
         if ( !thread_table[id] )
             thread_table[id] = new thread_info( id );
         return thread_table[id];

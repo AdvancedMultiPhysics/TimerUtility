@@ -1,6 +1,5 @@
 #include "ProfilerApp.h"
 #include "MemoryApp.h"
-#include "ProfilerAtomicHelpers.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -371,8 +370,8 @@ uint16f* ProfilerApp::StoreTimes::take()
 /***********************************************************************
  * StoreMemory                                                          *
  ***********************************************************************/
-inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLevel level,
-    volatile TimerUtility::atomic::int64_atomic* bytes_profiler )
+inline void ProfilerApp::StoreMemory::add(
+    uint64_t time, ProfilerApp::MemoryLevel level, volatile std::atomic_int64_t& bytes_profiler )
 {
     static_assert( MAX_ENTRIES <= 0xFFFFFFFF, "MAX_ENTRIES must be < 2^32" );
     if ( d_size == MAX_ENTRIES )
@@ -388,7 +387,7 @@ inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLev
     NULL_USE( level );
     bytes = MemoryApp::getTotalMemoryUsage();
 #endif
-    bytes -= *bytes_profiler;
+    bytes_profiler.fetch_sub( bytes );
     // Check if we need to allocate more memory
     if ( d_size == d_capacity ) {
         auto old_t = d_time;
@@ -403,7 +402,7 @@ inline void ProfilerApp::StoreMemory::add( uint64_t time, ProfilerApp::MemoryLev
         memcpy( d_bytes, old_b, d_size * sizeof( uint64_t ) );
         delete[] old_t;
         delete[] old_b;
-        TimerUtility::atomic::atomic_add( bytes_profiler, ( d_capacity - old_c ) * 16 );
+        bytes_profiler.fetch_add( ( d_capacity - old_c ) * 16 );
     }
     // Store the entry
     size_t i = d_size;
@@ -905,7 +904,7 @@ void ProfilerApp::start( thread_info* thread, store_timer* timer )
     timer->start_time = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
     // Record the memory usage
     if ( d_store_memory_data != MemoryLevel::None )
-        thread->memory.add( timer->start_time, d_store_memory_data, &d_bytes );
+        thread->memory.add( timer->start_time, d_store_memory_data, d_bytes );
 }
 
 
@@ -945,7 +944,7 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     if ( trace == nullptr ) {
         trace                 = new store_trace;
         constexpr size_t size = sizeof( store_trace );
-        TimerUtility::atomic::atomic_add( &d_bytes, size );
+        d_bytes.fetch_add( size );
         trace->trace = timer->trace;
         if ( !timer->trace_head ) {
             timer->trace_head = trace;
@@ -969,7 +968,7 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     trace->N_calls++;
     // Get the memory usage
     if ( d_store_memory_data != MemoryLevel::None )
-        thread->memory.add( stop, d_store_memory_data, &d_bytes );
+        thread->memory.add( stop, d_store_memory_data, d_bytes );
 }
 
 
@@ -980,7 +979,7 @@ void ProfilerApp::memory()
 {
     if ( d_store_memory_data != MemoryLevel::None ) {
         int64_t ns = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
-        getThreadData()->memory.add( ns, d_store_memory_data, &d_bytes );
+        getThreadData()->memory.add( ns, d_store_memory_data, d_bytes );
     }
 }
 
@@ -1201,7 +1200,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     if ( d_store_memory_data != MemoryLevel::None ) {
         auto thread = const_cast<ProfilerApp*>( this )->getThreadData();
         int64_t ns  = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
-        thread->memory.add( ns, d_store_memory_data, &d_bytes );
+        thread->memory.add( ns, d_store_memory_data, d_bytes );
     }
     // Get the memory info for each thread
     size_t N = 0;
@@ -2053,7 +2052,7 @@ ProfilerApp::store_timer_data_info* ProfilerApp::getTimerData(
         if ( timer_table[key] == nullptr ) {
             // Create a new entry
             auto* info_tmp = new store_timer_data_info( message, filename, id, start, stop );
-            TimerUtility::atomic::atomic_add( &d_bytes, sizeof( store_timer_data_info ) );
+            d_bytes.fetch_add( sizeof( store_timer_data_info ) );
             timer_table[key] = info_tmp;
             N_timers++;
         }
