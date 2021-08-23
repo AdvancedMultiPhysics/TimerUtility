@@ -1,6 +1,8 @@
 #ifndef Array_H
 #define Array_H
 
+#include <algorithm>
+#include <cstring>
 #include <stdint.h>
 
 

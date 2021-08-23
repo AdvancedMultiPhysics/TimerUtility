@@ -75,7 +75,7 @@ int load_test( const std::string& name, size_t size, bool includes_trace, bool i
 }
 
 
-int main( int, char* [] )
+int main( int, char*[] )
 {
 
     // Run the tests

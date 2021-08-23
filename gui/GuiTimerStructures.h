@@ -8,15 +8,31 @@
 #include <vector>
 
 
+// Struct to hold active trace ids
+struct ActiveStruct {
+    ActiveStruct();
+    ActiveStruct( const std::vector<id_struct>& );
+    inline size_t size() const { return active.size(); }
+    inline auto begin() const { return active.begin(); }
+    inline auto end() const { return active.end(); }
+    bool operator==( const ActiveStruct& ) const;
+    inline uint64_t getHash() const { return hash; }
+
+private:
+    uint64_t hash;
+    std::vector<id_struct> active; //!<  Ids that are active for this trace
+};
+
+
 // Struct to hold the summary info for a trace
 struct TraceSummary {
-    id_struct id;                  //!<  Timer ID
-    std::vector<id_struct> active; //!<  Ids that are active for this trace
-    std::set<int> threads;         //!<  Threads that are active for this timer
-    std::vector<int> N;            //!<  Number of calls
-    std::vector<float> min;        //!<  Minimum time
-    std::vector<float> max;        //!<  Maximum time
-    std::vector<float> tot;        //!<  Total time
+    id_struct id;           //!<  Timer ID
+    ActiveStruct active;    //!<  Ids that are active for this trace
+    std::set<int> threads;  //!<  Threads that are active for this timer
+    std::vector<int> N;     //!<  Number of calls
+    std::vector<float> min; //!<  Minimum time
+    std::vector<float> max; //!<  Maximum time
+    std::vector<float> tot; //!<  Total time
     TraceSummary() {}
     ~TraceSummary() {}
 };

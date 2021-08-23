@@ -186,7 +186,7 @@ void operator delete[]( void* data ) noexcept
         ++MemoryApp::d_calls_delete;
     }
 }
-void operator delete(void* data, const std::nothrow_t&) noexcept
+void operator delete( void* data, const std::nothrow_t& ) noexcept
 {
     if ( data != nullptr ) {
         auto block_size = get_malloc_size( data );

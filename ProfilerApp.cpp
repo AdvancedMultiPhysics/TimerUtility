@@ -228,7 +228,7 @@ inline void ProfilerApp::StoreActive::set( size_t i )
     size_t j     = i >> 6;
     size_t k     = i & 0x3F;
     size_t mask  = ( (uint64_t) 0x1 ) << k;
-    uint64_t tmp = ( trace[j] & mask ) == 0 ? ( C * i ) : 0;
+    uint64_t tmp = ( trace[j] & mask ) == 0 ? ( C * ( i + 1 ) ) : 0;
     trace[j] |= mask;
     hash ^= tmp;
 }
@@ -241,7 +241,7 @@ inline void ProfilerApp::StoreActive::unset( size_t i )
     size_t j     = i >> 6;
     size_t k     = i & 0x3F;
     size_t mask  = ( (uint64_t) 0x1 ) << k;
-    uint64_t tmp = ( trace[j] & mask ) == 0 ? 0 : ( C * i );
+    uint64_t tmp = ( trace[j] & mask ) == 0 ? 0 : ( C * ( i + 1 ) );
     trace[j] &= ~mask;
     hash ^= tmp;
 }

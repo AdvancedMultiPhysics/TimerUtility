@@ -40,3 +40,6 @@ negativeContainerIndex:*/gui/QSplitterGrid.cpp
 
 // Suppress duplicateCondition
 duplicateCondition:*/test/test_ProfilerApp.cpp
+
+// Suppress noExplicitConstructor
+noExplicitConstructor:*/gui/GuiTimerStructures.h

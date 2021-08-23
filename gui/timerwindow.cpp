@@ -61,6 +61,7 @@ inline std::vector<id_struct> getActive( const TraceResults& trace )
     std::vector<id_struct> active( trace.N_active );
     for ( size_t i = 0; i < active.size(); i++ )
         active[i] = trace.active[i];
+    std::sort( active.begin(), active.end() );
     return active;
 }
 
@@ -149,6 +150,19 @@ double mean( const std::vector<TYPE>& x )
             throw std::logic_error( stream.str() );                                       \
         }                                                                                 \
     } while ( 0 )
+
+
+/***********************************************************************
+ * ActiveStruct                                                         *
+ ***********************************************************************/
+ActiveStruct::ActiveStruct() : hash( 0 ) {}
+ActiveStruct::ActiveStruct( const std::vector<id_struct>& ids ) : hash( 0 ), active( ids )
+{
+    constexpr uint64_t C = 0x61C8864680B583EBull;
+    for ( auto id : ids )
+        hash ^= C * static_cast<uint32_t>( id );
+}
+bool ActiveStruct::operator==( const ActiveStruct& rhs ) const { return hash == rhs.hash; }
 
 
 /***********************************************************************
@@ -706,43 +720,39 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
     }
     // Keep only the traces that are directly inherited from the current call hierarchy
     if ( !includeSubfunctions ) {
+        PROFILE_START( "getTimers-hideSubfunctions", 1 );
         std::map<id_struct, int> id_map;
         for ( size_t i = 0; i < d_dataTimer.size(); i++ )
             id_map.insert( std::pair<id_struct, int>( d_dataTimer[i].id, (int) i ) );
-        std::vector<id_struct> ids( timers.size() );
-        for ( size_t i = 0; i < ids.size(); i++ )
-            ids[i] = timers[i]->id;
+        std::vector<bool> tmp0( id_map.size(), 0 );
+        for ( size_t i = 0; i < timers.size(); i++ )
+            tmp0[id_map[timers[i]->id]] = true;
         std::vector<bool> keep( timers.size(), false );
-        for ( size_t i = 0; i < ids.size(); i++ ) {
+        for ( size_t i = 0; i < timers.size(); i++ ) {
             auto timer  = timers[i].get();
             auto trace2 = timer->trace;
             timer->trace.resize( 0 );
-            for ( auto& j : trace2 ) {
-                const std::vector<id_struct>& id2 = j->active;
-                std::vector<int> tmp( id_map.size(), 0 );
-                for ( const auto& id : ids )
-                    tmp[id_map[id]]++;
-                for ( const auto& k : id2 )
-                    tmp[id_map[k]]++;
+            for ( auto& t : trace2 ) {
                 int tmp2 = 0;
-                for ( int k : tmp ) {
-                    if ( k == 2 )
+                for ( const auto& k : t->active ) {
+                    if ( tmp0[id_map[k]] )
                         tmp2++;
                 }
                 if ( tmp2 <= 1 ) {
                     keep[i] = true;
-                    timer->trace.push_back( j );
+                    timer->trace.push_back( t );
                 }
             }
         }
         size_t k = 0;
-        for ( size_t i = 0; i < ids.size(); i++ ) {
+        for ( size_t i = 0; i < timers.size(); i++ ) {
             if ( keep[i] ) {
                 std::swap( timers[k], timers[i] );
                 k++;
             }
         }
         timers.resize( k );
+        PROFILE_STOP( "getTimers-hideSubfunctions", 1 );
     }
     // Compute the timer statistics
     for ( auto& timer : timers ) {
@@ -764,31 +774,25 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
     }
     // Update the timers to remove the time from sub-timers if necessary
     if ( !inclusiveTime ) {
-        std::vector<std::vector<int>> tmp( timers.size() );
-        for ( size_t i = 0; i < timers.size(); i++ ) {
-            tmp[i].resize( timers[i]->trace.size() );
-            for ( size_t j = 0; j < timers[i]->trace.size(); j++ )
-                tmp[i][j] = timers[i]->trace[j]->active.size();
-        }
+        PROFILE_START( "getTimers-removeSubtimers", 1 );
+        constexpr uint64_t C = 0x61C8864680B583EBull;
         for ( size_t i1 = 0; i1 < timers.size(); i1++ ) {
             for ( size_t j1 = 0; j1 < timers[i1]->trace.size(); j1++ ) {
-                auto a1 = timers[i1]->trace[j1]->active;
-                a1.push_back( timers[i1]->id );
-                std::sort( a1.begin(), a1.end() );
-                for ( size_t i2 = 0; i2 < tmp.size(); i2++ ) {
-                    for ( size_t j2 = 0; j2 < tmp[i2].size(); j2++ ) {
-                        if ( tmp[i2][j2] == (int) a1.size() ) {
-                            const auto& a2 = timers[i2]->trace[j2]->active;
-                            if ( a1 == a2 ) {
-                                const auto& tot = timers[i2]->trace[j2]->tot;
-                                for ( int k = 0; k < N_procs; k++ )
-                                    timers[i1]->tot[k] -= tot[k];
-                            }
+                auto h1 = timers[i1]->trace[j1]->active.getHash();
+                h1 ^= C * static_cast<uint32_t>( timers[i1]->id );
+                for ( size_t i2 = 0; i2 < timers.size(); i2++ ) {
+                    for ( size_t j2 = 0; j2 < timers[i2]->trace.size(); j2++ ) {
+                        auto h2 = timers[i2]->trace[j2]->active.getHash();
+                        if ( h1 == h2 ) {
+                            const auto& tot = timers[i2]->trace[j2]->tot;
+                            for ( int k = 0; k < N_procs; k++ )
+                                timers[i1]->tot[k] -= tot[k];
                         }
                     }
                 }
             }
         }
+        PROFILE_STOP( "getTimers-removeSubtimers", 1 );
     }
     PROFILE_STOP( "getTimers" );
     return timers;

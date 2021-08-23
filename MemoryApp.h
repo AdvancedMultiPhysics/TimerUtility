@@ -101,7 +101,7 @@ private:
     friend void* operator new[]( std::size_t size, const std::nothrow_t& ) noexcept;
     friend void operator delete( void* data ) noexcept;
     friend void operator delete[]( void* data ) noexcept;
-    friend void operator delete(void* data, const std::nothrow_t&) noexcept;
+    friend void operator delete( void* data, const std::nothrow_t& ) noexcept;
     friend void operator delete[]( void* data, const std::nothrow_t& ) noexcept;
     friend void operator delete( void* data, std::size_t ) noexcept;
     friend void operator delete[]( void* data, std::size_t ) noexcept;

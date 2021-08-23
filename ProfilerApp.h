@@ -71,6 +71,8 @@ public:
     std::array<char, 6> str() const;
     // Return a std::string
     inline std::string string() const { return std::string( str().data() ); }
+    // Overload typecast
+    inline constexpr operator uint32_t() const { return data; }
 
 private:
     uint32_t data;
