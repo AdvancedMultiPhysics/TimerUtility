@@ -21,6 +21,7 @@ class QAction;
 class QMenu;
 class QTableView;
 class TraceWindow;
+class MemoryWindow;
 
 
 class TimerWindow : public ThreadedSlotsClass
@@ -48,6 +49,7 @@ private slots:
     void exclusiveFun();
     void subfunctionFun();
     void traceFun();
+    void memoryFun();
     void selectProcessor( int );
 
     void resizeEvent( QResizeEvent *e );
@@ -77,10 +79,12 @@ private:
     QPushButton *exclusiveButton;
     QPushButton *subfunctionButton;
     QPushButton *traceButton;
+    QPushButton *memoryButton;
     QAction *processorToolbar;
     QAction *exclusiveToolbar;
     QAction *subfunctionToolbar;
     QAction *traceToolbar;
+    QAction *memoryToolbar;
     LoadBalance *loadBalance;
 
     QMenu *fileMenu;
@@ -117,8 +121,10 @@ protected:
     bool inclusiveTime;
     bool includeSubfunctions;
     mutable std::unique_ptr<TraceWindow> traceWindow;
+    mutable std::unique_ptr<MemoryWindow> memoryWindow;
 
     friend class TraceWindow;
+    friend class MemoryWindow;
 
     // Data for unit testing
 public:

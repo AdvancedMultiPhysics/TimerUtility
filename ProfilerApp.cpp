@@ -888,7 +888,7 @@ void ProfilerApp::activeErrStart( thread_info* thread, store_timer* timer )
         // Throw an error
         char msg[2048];
         const auto& data = *( timer->timer_data );
-        sprintf( msg, "Timer is not active, did you forget to call stop? (%s in %s at line %i)",
+        sprintf( msg, "Timer is active, did you forget to call stop? (%s in %s at line %i)",
             data.message, data.filename, data.start_line );
         throw std::logic_error( msg );
     }

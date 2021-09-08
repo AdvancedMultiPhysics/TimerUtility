@@ -20,6 +20,7 @@
 
 #include "ProfilerApp.h"
 #include "TableValue.h"
+#include "memorywindow.h"
 #include "timerwindow.h"
 #include "tracewindow.h"
 
@@ -271,6 +272,7 @@ void TimerWindow::close()
     d_dataTimer.clear();
     d_dataTrace.clear();
     traceWindow.reset();
+    memoryWindow.reset();
     QWidget::setWindowTitle( QString( "load_timer" ) );
     reset();
 }
@@ -288,6 +290,7 @@ void TimerWindow::reset()
     inclusiveTime       = true;
     includeSubfunctions = true;
     traceToolbar->setVisible( false );
+    memoryToolbar->setVisible( false );
     updateDisplay();
 }
 
@@ -454,6 +457,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.threads = std::vector<int>( ids.begin(), ids.end() );
         }
         traceToolbar->setVisible( hasTraceData() );
+        memoryToolbar->setVisible( !d_data.memory.empty() );
         // Set min for any ranks with zero calls to zero
         for ( auto& time : d_dataTimer ) {
             for ( int k = 0; k < N_procs; k++ ) {
@@ -976,9 +980,12 @@ void TimerWindow::createToolBars()
     connect( subfunctionButton, SIGNAL( released() ), this, SLOT( subfunctionFun() ) );
     subfunctionToolbar = fileToolBar->addWidget( subfunctionButton );
     // Hide subfunctions
-    traceButton = new QPushButton( "Plot Trace Data" );
+    traceButton  = new QPushButton( "Plot Trace Data" );
+    memoryButton = new QPushButton( "Plot Memory Data" );
     connect( traceButton, SIGNAL( released() ), this, SLOT( traceFun() ) );
-    traceToolbar = fileToolBar->addWidget( traceButton );
+    connect( memoryButton, SIGNAL( released() ), this, SLOT( memoryFun() ) );
+    traceToolbar  = fileToolBar->addWidget( traceButton );
+    memoryToolbar = fileToolBar->addWidget( memoryButton );
 
 
     // editToolBar = addToolBar(tr("Edit"));
@@ -1027,6 +1034,20 @@ void TimerWindow::traceFun()
     traceWindow->showMaximized();
 #else
     traceWindow->show();
+#endif
+}
+
+
+/***********************************************************************
+ * Create the memory window                                             *
+ ***********************************************************************/
+void TimerWindow::memoryFun()
+{
+    memoryWindow.reset( new MemoryWindow( this ) );
+#if defined( Q_OS_SYMBIAN )
+    memoryWindow->showMaximized();
+#else
+    memoryWindow->show();
 #endif
 }
 
