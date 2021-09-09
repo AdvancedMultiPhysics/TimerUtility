@@ -1,85 +1,129 @@
-CHECK_ENABLE_FLAG( ENABLE_GUI 1 )
-IF ( NOT ENABLE_GUI )
-    MESSAGE("gui disabled")
-    RETURN()
+# Set some CMake properties    
+CMAKE_MINIMUM_REQUIRED(VERSION 3.9)
+IF ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0" )
+    CMAKE_POLICY( SET CMP0115 OLD )
 ENDIF()
-IF ( (NOT QWT_URL) AND (NOT QWT_SRC_DIR) )
-    MESSAGE("Qwt source is not found, gui will be disabled."
-            " Please set either QWT_URL or QWT_SRC_DIR" )
-    RETURN()
+SET( DISABLE_LTO TRUE )
+
+
+MESSAGE( "===========================" )
+MESSAGE( "Configuring Timer Utility"   )
+MESSAGE( "===========================" )
+
+
+
+# Set the project name
+SET( PROJ TIMER_GUI )          # Set the project name for CMake
+
+
+# Initialize the project
+PROJECT( ${PROJ} LANGUAGES CXX )
+
+
+# Prevent users from building in place
+IF ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}" )
+    MESSAGE( FATAL_ERROR "Building code in place is a bad idea" )
 ENDIF()
-FIND_PACKAGE( Qt4 COMPONENTS QtCore QtGui QtOpenGL QtSvg QtSql REQUIRED )
-IF( NOT Qt4_FOUND )
-    MESSAGE("Qt not found, gui will be disabled")
-    RETURN()
+
+
+# Set source/install paths
+SET( ${PROJ}_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}" )
+SET( ${PROJ}_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}" )
+IF( ${PROJ}_INSTALL_DIR )
+    SET( ${PROJ}_INSTALL_DIR "${${PROJ}_INSTALL_DIR}" )
+ELSEIF( NOT ${PROJ}_INSTALL_DIR )
+    SET( ${PROJ}_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}" )
 ENDIF()
+INCLUDE_DIRECTORIES( "${${PROJ}_INSTALL_DIR}/include" )
+SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
+
+
+# Set the default C++ standard
+IF ( NOT CXX_STD )
+    MESSAGE( WARNING "CXX_STD not set, defaulting to c++14" )
+    SET( CXX_STD 14 )
+ENDIF()
+IF ( "${CXX_STD}" STREQUAL "98" OR "${CXX_STD}" STREQUAL "11" )
+    MESSAGE( FATAL_ERROR "c++14 or higher is required" )
+ENDIF()
+
+
+
+# Include CMake files
+INCLUDE( ../cmake/macros.cmake )
+INCLUDE( ../cmake/libraries.cmake )
+
+
+# Include timer library and source
+INCLUDE_DIRECTORIES( ${TIMER_INSTALL_DIR}/include )
+LINK_DIRECTORIES( ${TIMER_INSTALL_DIR}/lib ${TIMER_BUILD_DIR} )
+
+# Find QT
+CONFIGURE_QT()
+
+
+# Find QWT
+IF ( NOT QWT_INSTALL_DIR )
+    MESSAGE("FATAL_ERROR Qwt is not found.  Please set either QWT_INSTALL_DIR" )
+ENDIF()
+INCLUDE_DIRECTORIES( ${QWT_INSTALL_DIR}/include )
+LINK_DIRECTORIES( ${QWT_INSTALL_DIR}/lib )
+SET( CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib" )
+
 
 # Strip coverage flags (we want to add them only to our files (not qwt)
 REMOVE_DEFINITIONS( ${COVERAGE_FLAGS} )
 
+
 # Set extra compiler flags that are necessary for qt
-SET( QT4_FLAGS )
+SET( QT_FLAGS )
 IF ( USING_GCC )
-    SET( QT4_FLAGS "-Wno-strict-overflow -Wno-overloaded-virtual -Wno-unused-variable" )
+    SET( QT_FLAGS "-Wno-strict-overflow -Wno-overloaded-virtual -Wno-unused-variable" )
 ELSEIF ( USING_CLANG )
-    SET( QT4_FLAGS "-Wno-deprecated-register -Wno-unused-function -Wno-tautological-constant-out-of-range-compare" )
+    SET( QT_FLAGS "-Wno-deprecated-register -Wno-unused-function -Wno-tautological-constant-out-of-range-compare" )
 ENDIF()
 
+
 # Set Qt include paths
-INCLUDE( ${QT_USE_FILE} )
-FOREACH( tmp ${QT4_INCLUDES} )
+FOREACH( tmp ${QT_USE_FILE} )
+    INCLUDE( ${tmp} )
+ENDFOREACH()
+SET( QT_INCLUDES ${${QT}_INCLUDES} )
+FOREACH( tmp ${QT_INCLUDES} )
     INCLUDE_DIRECTORIES( ${tmp} )
 ENDFOREACH()
 
-# Create Qwt library
-IF ( QWT_URL )
-    SET( QWT_SOURCE_DIR "${CMAKE_BINARY_DIR}/QWT" )
-    EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E make_directory ${QWT_SOURCE_DIR} )
-    EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E tar xf ${QWT_URL} 
-        WORKING_DIRECTORY "${QWT_SOURCE_DIR}" )
-    FILE(GLOB QWT_SRC_DIR "${QWT_SOURCE_DIR}/qwt-*/src" )
-    IF ( NOT QWT_SRC_DIR )
-        MESSAGE(FATAL_ERROR "QWT_SRC_DIR not set, problem extracting?")
-    ENDIF()
-    MESSAGE("QWT_SRC_DIR = ${QWT_SRC_DIR}")
-ELSEIF( QWT_SRC_DIR )
-    MESSAGE("QWT_SRC_DIR = ${QWT_SRC_DIR}")
-ELSE()
-    MESSAGE(FATAL_ERROR "QWT_URL or QWT_SRC_DIR must be set")
-ENDIF()
-VERIFY_PATH( "${QWT_SRC_DIR}" )
-INCLUDE_DIRECTORIES( "${QWT_SRC_DIR}" )
-FILE( GLOB QWT_CPP_SOURCES "${QWT_SRC_DIR}/*.cpp" )
-FILE( GLOB QWT_HEADERS "${QWT_SRC_DIR}/*.h" )
-QT4_WRAP_CPP(QWT_H_SOURCES ${QWT_HEADERS})
-ADD_LIBRARY( QWT ${QWT_CPP_SOURCES} ${QWT_H_SOURCES} )
-SET_TARGET_PROPERTIES( QWT PROPERTIES COMPILE_FLAGS "${QT4_FLAGS}" )
-FOREACH( tmp ${QT4_INCLUDES} )
-    target_include_directories( QWT PUBLIC ${tmp} )
-ENDFOREACH()
-INSTALL( TARGETS QWT DESTINATION "${TIMER_INSTALL_DIR}/lib" )
+# Setup rpath
+SET(CMAKE_SKIP_BUILD_RPATH FALSE)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+SET(CMAKE_INSTALL_RPATH "${${PROJ}_INSTALL_DIR}/lib ${TIMER_GUI_INSTALL_DIR}/lib" "${TIMER_INSTALL_DIR}/lib" "${QWT_INSTALL_DIR}/lib" )
+
 
 # Create the application
 SET(QtApp_SRCS load_timer.cpp timerwindow.cpp tracewindow.cpp memorywindow.cpp LoadBalance.cpp MemoryPlot.cpp QSplitterGrid.cpp ThreadedSlotsClass.cpp )
 SET(QtApp_MOCS timerwindow.h tracewindow.h memorywindow.h LoadBalance.h MemoryPlot.h QSplitterGrid.h ThreadedSlotsClass.h )
 SET(QtApp_RCCS application.qrc)
-# generate rules for building source files from the resources
-QT4_ADD_RESOURCES(QtApp_RCC_SRCS ${QtApp_RCCS})
-# generate rules for building source files that moc generates
-QT4_WRAP_CPP(QtApp_MOC_SRCS ${QtApp_MOCS})
+IF ( ${QT_VERSION} EQUAL "4" )
+    QT4_ADD_RESOURCES(QtApp_RCC_SRCS ${QtApp_RCCS})
+    QT4_WRAP_CPP(QtApp_MOC_SRCS ${QtApp_MOCS})
+ELSEIF( ${QT_VERSION} EQUAL "5" )
+    QT5_ADD_RESOURCES(QtApp_RCC_SRCS ${QtApp_RCCS})
+    QT5_WRAP_CPP(QtApp_MOC_SRCS ${QtApp_MOCS})
+ENDIF()
 # build sources, moc'd sources, and rcc'd sources
 ADD_EXECUTABLE( load_timer ${QtApp_SRCS} ${QtApp_MOC_SRCS} ${QtApp_RCC_SRCS} )
 INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/bin )
-SET_TARGET_PROPERTIES( load_timer PROPERTIES COMPILE_FLAGS "${QT4_FLAGS} ${COVERAGE_FLAGS}" )
-TARGET_LINK_LIBRARIES( load_timer QWT ${QT4_QTMAIN_LIBRARY} ${QT4_LIBRARIES} )
-TARGET_LINK_LIBRARIES( load_timer Qt4::QtSql )
-TARGET_LINK_LIBRARIES( load_timer Qt4::QtSvg )
-TARGET_LINK_LIBRARIES( load_timer Qt4::QtOpenGL )
-TARGET_LINK_LIBRARIES( load_timer Qt4::QtGui )
-ADD_PROJ_EXE_DEP( load_timer )
+SET_TARGET_PROPERTIES( load_timer PROPERTIES COMPILE_FLAGS "${QT_FLAGS} ${COVERAGE_FLAGS}" )
+TARGET_LINK_LIBRARIES( load_timer timerutility )
+TARGET_LINK_LIBRARIES( load_timer qwt )
+TARGET_LINK_LIBRARIES( load_timer ${${QT}_QTMAIN_LIBRARY} ${${QT}_LIBRARIES} )
+FOREACH ( tmp ${QT_COMPONENTS} )
+    TARGET_LINK_LIBRARIES( load_timer ${Qt}::${tmp} )
+ENDFOREACH()
 GLOBAL_SET( load_timer-BINDIR "${CMAKE_CURRENT_BINARY_DIR}" )
 IF ( NOT "${CMAKE_CURRENT_BINARY_DIR}" MATCHES "${${PROJ}_INSTALL_DIR}/gui" )
-    INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/gui )
+    INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/bin )
+    INSTALL( TARGETS load_timer DESTINATION ${TIMER_INSTALL_DIR}/bin )
 ENDIF()
 
 # Add the tests
@@ -90,6 +134,6 @@ SET( COPY_LIST  set1.1.timer  set1.2.timer  set1.3.timer  set1.4.timer
 FOREACH( tmp ${COPY_LIST} )
     CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/../test/data/${tmp} ${CMAKE_CURRENT_BINARY_DIR}/${tmp} COPYONLY )
 ENDFOREACH()
-ADD_TIMER_TEST( load_timer set1.1.timer set2.1.timer )
+ADD_TIMER_GUI_TEST( load_timer set1.1.timer set2.1.timer )
 
 

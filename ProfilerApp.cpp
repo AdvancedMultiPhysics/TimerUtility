@@ -69,13 +69,13 @@ static inline std::string getDateString()
  * Helper functions to pack/unpack data                            *
  ******************************************************************/
 template<class TYPE>
-static inline void pack_buffer( TYPE x, size_t &N_bytes, char *data )
+static inline void pack_buffer( TYPE x, size_t& N_bytes, char* data )
 {
     memcpy( &data[N_bytes], &x, sizeof( TYPE ) );
     N_bytes += sizeof( TYPE );
 }
 template<class TYPE>
-static inline void unpack_buffer( TYPE &x,  size_t &N_bytes, const char *data )
+static inline void unpack_buffer( TYPE& x, size_t& N_bytes, const char* data )
 {
     memcpy( &x, &data[N_bytes], sizeof( TYPE ) );
     N_bytes += sizeof( TYPE );
@@ -204,7 +204,7 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
     ASSERT( err == MPI_SUCCESS );
     return data;
 }
-#else// Helper functions to pack a value to a char array and increment N_bytes
+#else // Helper functions to pack a value to a char array and increment N_bytes
 static inline int comm_size() { return 1; }
 static inline int comm_rank() { return 0; }
 static inline void comm_barrier() {}
@@ -218,7 +218,6 @@ template<class TYPE>
 static inline TYPE* comm_recv1( int, int )
 {
     throw std::logic_error( "Calling MPI routine in no-mpi build" );
-    return nullptr;
 }
 template<class TYPE>
 static inline void comm_send2( const std::vector<TYPE>&, int, int )
@@ -229,7 +228,6 @@ template<class TYPE>
 static inline std::vector<TYPE> comm_recv2( int, int )
 {
     throw std::logic_error( "Calling MPI routine in no-mpi build" );
-    return std::vector<TYPE>();
 }
 #endif
 
@@ -662,8 +660,8 @@ size_t TraceResults::unpack( const char* data )
     unpack_buffer( max, pos, data );
     unpack_buffer( tot, pos, data );
     unpack_buffer( N, pos, data );
-    active     = nullptr;
-    times      = nullptr;
+    active = nullptr;
+    times  = nullptr;
     if ( N_active > 0 ) {
         active = new id_struct[N_active];
         memcpy( active, &data[pos], N_active * sizeof( id_struct ) );
@@ -1302,6 +1300,7 @@ MemoryResults ProfilerApp::getMemoryResults() const
     N        = i + 1;
     // Create the memory results
     MemoryResults data;
+    data.rank = 0;
     data.time.resize( N );
     data.bytes.resize( N );
     for ( i = 0; i < N; i++ ) {

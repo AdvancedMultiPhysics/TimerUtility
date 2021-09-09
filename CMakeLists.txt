@@ -111,7 +111,7 @@ SET( EXCLUDE_TESTS_FROM_ALL 0 )
 ADD_CUSTOM_TARGET( build-test )
 ADD_CUSTOM_TARGET( build-examples )
 ADD_CUSTOM_TARGET( check COMMAND  make test  )
-ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT Debug TIMER.build TIMER.xcodeproj )
+ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT Debug TIMER.build TIMER.xcodeproj features gmon.out GUI-prefix plugins QWT-prefix )
 
 
 # Get the version information
@@ -150,10 +150,27 @@ IF ( NOT ONLY_BUILD_DOCS )
     INSTALL_PROJ_LIB()
     ADD_SUBDIRECTORY( test )
     ADD_SUBDIRECTORY( matlab )
-    ADD_SUBDIRECTORY( gui )
 ENDIF()
 IF ( USE_LATEX )
     ADD_SUBDIRECTORY(latex_docs)
+ENDIF()
+
+
+# Add the GUI
+CHECK_ENABLE_FLAG( ENABLE_GUI 1 )
+IF ( ENABLE_GUI )
+    # Check for QT
+    CONFIGURE_QT()
+    IF( NOT QT_FOUND )
+        MESSAGE("${Qt} not found, gui will be disabled")
+    ELSE()
+        # Configure QWT
+        CONFIGURE_QWT()
+        # Configure GUI
+        CONFIGURE_GUI()
+        # Add the tests
+        ADD_TEST( NAME load_timer COMMAND ${TIMER_INSTALL_DIR}/bin/load_timer set1.1.timer set2.1.timer WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test )
+    ENDIF()
 ENDIF()
 
 

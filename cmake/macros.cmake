@@ -61,15 +61,6 @@ IF ( UNIX AND NOT APPLE AND NOT DISABLE_GOLD )
 ENDIF()
 
 
-# Add some default targets if they do not exist
-IF ( NOT TARGET copy-${PROJ}-Data )
-    ADD_CUSTOM_TARGET( copy-${PROJ}-Data ALL )
-ENDIF()
-IF ( NOT TARGET copy-${PROJ}-include )
-    ADD_CUSTOM_TARGET( copy-${PROJ}-include ALL )
-ENDIF()
-
-
 # Dummy use to prevent unused cmake variable warning
 MACRO( NULL_USE VAR )
     IF ( "${${VAR}}" STREQUAL "dummy" )
@@ -263,6 +254,10 @@ ENDMACRO()
 
 # Install a package
 MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
+    # Add some default targets if they do not exist
+    IF ( NOT TARGET copy-${PROJ}-include )
+        ADD_CUSTOM_TARGET( copy-${PROJ}-include ALL )
+    ENDIF()
     # Find all files in the current directory
     FIND_FILES()
     # Create the copy target
@@ -562,6 +557,9 @@ ENDMACRO()
 
 # Macro to copy data file at build time
 MACRO( COPY_DATA_FILE SRC_FILE DST_FILE )
+    IF ( NOT TARGET copy-${PROJ}-Data )
+        ADD_CUSTOM_TARGET( copy-${PROJ}-Data ALL )
+    ENDIF()
     STRING(REGEX REPLACE "${${PROJ}_SOURCE_DIR}/" "" COPY_TARGET "copy-${PROJ}-${CMAKE_CURRENT_SOURCE_DIR}" )
     STRING(REGEX REPLACE "-${${PROJ}_SOURCE_DIR}" "" COPY_TARGET "${COPY_TARGET}" )
     STRING(REGEX REPLACE "/" "-" COPY_TARGET ${COPY_TARGET} )

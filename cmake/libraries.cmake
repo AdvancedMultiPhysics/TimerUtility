@@ -346,3 +346,78 @@ MACRO( CONFIGURE_TIMER )
 ENDMACRO()
 
 
+
+# Macro to find QT
+MACRO( CONFIGURE_QT )
+    IF ( NOT DEFINED QT_VERSION )
+        SET( QT_VERSION "4" )
+    ENDIF()
+    IF ( ${QT_VERSION} EQUAL "4" )
+        # Using Qt4
+        SET( QT "QT4" )
+        SET( Qt "Qt4" )
+        SET( QT_COMPONENTS  QtCore QtGui QtOpenGL QtSvg QtSql )
+    ELSEIF ( ${QT_VERSION} EQUAL "5" )
+        # Using Qt5
+        SET( QT "QT5" )
+        SET( Qt "Qt5" )
+        SET( QT_COMPONENTS  Core Gui OpenGL Svg Sql )
+    ELSE()
+        MESSAGE( FATAL_ERROR "Unknown Qt version")
+    ENDIF()
+    FIND_PACKAGE( ${Qt} COMPONENTS ${QT_COMPONENTS} REQUIRED )
+    SET( QT_FOUND ${Qt}_FOUND )
+    IF ( NOT ${Qt}_FOUND )
+        RETURN()
+    ENDIF()
+    IF ( ${QT_VERSION} EQUAL "5" )
+        GET_TARGET_PROPERTY( QT_QMAKE_EXECUTABLE ${Qt}::qmake IMPORTED_LOCATION )
+    ENDIF()
+ENDMACRO()
+
+
+# Macro to configure QWT
+MACRO( CONFIGURE_QWT )
+    IF ( QWT_INSTALL_DIR )
+        RETURN()
+    ENDIF()
+    INCLUDE(ProcessorCount)
+    INCLUDE(ExternalProject)
+    ProcessorCount( PROCS_INSTALL )
+    SET( QWT_BUILD_DIR "${CMAKE_BINARY_DIR}/QWT-prefix/src/QWT-build" )
+    SET( QWT_SRC_DIR "${CMAKE_BINARY_DIR}/QWT-prefix/src/QWT-src" )
+    SET( QWT_INSTALL_DIR "${TIMER_INSTALL_DIR}/qwt" )
+    ExternalProject_Add(
+        QWT
+        URL                 "${QWT_URL}"
+        SOURCE_DIR          "${QWT_SRC_DIR}"
+        PATCH_COMMAND       patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/cmake/QWT.patch
+        CONFIGURE_COMMAND   ${QT_QMAKE_EXECUTABLE} QWT_INSTALL_PREFIX=${QWT_INSTALL_DIR} qwt.pro
+        BUILD_COMMAND       make -j ${PROCS_INSTALL}
+        INSTALL_COMMAND     make install
+        BUILD_IN_SOURCE     1
+        DEPENDS             
+        LOG_DOWNLOAD 1   LOG_UPDATE 1   LOG_CONFIGURE 1   LOG_BUILD 1   LOG_TEST 1   LOG_INSTALL 1
+    )
+ENDMACRO()
+
+
+
+# Macro to configure GUI
+MACRO( CONFIGURE_GUI )
+    SET( GUI_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/gui" )
+    SET( GUI_INSTALL_DIR "${TIMER_INSTALL_DIR}/gui" )
+    ExternalProject_Add(
+        GUI
+        SOURCE_DIR          "${GUI_SRC_DIR}"
+        CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -DCXX_STD=${CXX_STD} -DTIMER_INSTALL_DIR=${TIMER_INSTALL_DIR} -DTIMER_BUILD_DIR=${CMAKE_CURRENT_BINARY_DIR} -DQT_VERSION=${QT_VERSION} -DQWT_INSTALL_DIR=${QWT_INSTALL_DIR} -DTIMER_GUI_INSTALL_DIR=${GUI_INSTALL_DIR}
+        BUILD_COMMAND       make -j ${PROCS_INSTALL}
+        INSTALL_COMMAND     make install
+        BUILD_IN_SOURCE     0
+        DEPENDS             QWT ${TIMER_LIB}
+        LOG_DOWNLOAD 1   LOG_UPDATE 1   LOG_CONFIGURE 1   LOG_BUILD 0   LOG_TEST 1   LOG_INSTALL 1
+    )
+ENDMACRO()
+
+
+

@@ -6,13 +6,13 @@
 
 #include <qstringlist.h>
 #include <qwt_plot.h>
-#include <qwt_plot_barchart.h>
-#include <qwt_plot_canvas.h>
-#include <qwt_plot_curve.h>
 
 #include <QMouseEvent>
 
 class DrawBoxClass;
+class QwtPlotCanvas;
+class QwtPlotBarChart;
+class QwtPlotCurve;
 
 
 class LoadBalance : public QwtPlot

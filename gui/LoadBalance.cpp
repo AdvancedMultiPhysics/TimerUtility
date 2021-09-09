@@ -1,14 +1,25 @@
 #include "LoadBalance.h"
 #include "ProfilerApp.h"
+#include "UtilityMacros.h"
+
+#include <QPainter>
+
+#include <cmath>
+
+DISABLE_WARNINGS
 #include <qwt_column_symbol.h>
 #include <qwt_legend.h>
 #include <qwt_plot.h>
 #include <qwt_plot_barchart.h>
+#include <qwt_plot_canvas.h>
+#include <qwt_plot_curve.h>
 #include <qwt_plot_layout.h>
 #include <qwt_plot_renderer.h>
 #include <qwt_scale_draw.h>
 #include <qwt_scale_engine.h>
+#include <qwt_scale_map.h>
 #include <qwt_scale_widget.h>
+ENABLE_WARNINGS
 
 
 // Class to draw a box
