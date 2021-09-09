@@ -54,6 +54,7 @@ constexpr size_t ProfilerApp::TIMER_HASH_SIZE;
 template<class type_a, class type_b>
 static inline void quicksort2( int n, type_a* arr, type_b* brr );
 
+
 // Inline function to get the current time/date string (without the newline character)
 static inline std::string getDateString()
 {
@@ -61,6 +62,23 @@ static inline std::string getDateString()
     time( &rawtime );
     std::string tmp( ctime( &rawtime ) );
     return tmp.substr( 0, tmp.length() - 1 );
+}
+
+
+/******************************************************************
+ * Helper functions to pack/unpack data                            *
+ ******************************************************************/
+template<class TYPE>
+static inline void pack_buffer( TYPE x, size_t &N_bytes, char *data )
+{
+    memcpy( &data[N_bytes], &x, sizeof( TYPE ) );
+    N_bytes += sizeof( TYPE );
+}
+template<class TYPE>
+static inline void unpack_buffer( TYPE &x,  size_t &N_bytes, const char *data )
+{
+    memcpy( &x, &data[N_bytes], sizeof( TYPE ) );
+    N_bytes += sizeof( TYPE );
 }
 
 
@@ -186,7 +204,7 @@ static inline std::vector<TYPE> comm_recv2( int source, int tag )
     ASSERT( err == MPI_SUCCESS );
     return data;
 }
-#else
+#else// Helper functions to pack a value to a char array and increment N_bytes
 static inline int comm_size() { return 1; }
 static inline int comm_rank() { return 0; }
 static inline void comm_barrier() {}
@@ -588,7 +606,16 @@ TraceResults& TraceResults::operator=( TraceResults&& rhs )
 }
 size_t TraceResults::size( bool store_trace ) const
 {
-    size_t bytes = sizeof( TraceResults );
+    size_t bytes = 0;
+    bytes += sizeof( id );
+    bytes += sizeof( N_active );
+    bytes += sizeof( thread );
+    bytes += sizeof( rank );
+    bytes += sizeof( N_trace );
+    bytes += sizeof( min );
+    bytes += sizeof( max );
+    bytes += sizeof( tot );
+    bytes += sizeof( N );
     bytes += N_active * sizeof( id_struct );
     if ( store_trace )
         bytes += 2 * N_trace * sizeof( uint16f );
@@ -600,8 +627,16 @@ size_t TraceResults::pack( char* data, bool store_trace ) const
     auto* this2   = const_cast<TraceResults*>( this );
     if ( !store_trace )
         this2->N_trace = 0;
-    memcpy( data, this, sizeof( TraceResults ) );
-    size_t pos = sizeof( TraceResults );
+    size_t pos = 0;
+    pack_buffer( id, pos, data );
+    pack_buffer( N_active, pos, data );
+    pack_buffer( thread, pos, data );
+    pack_buffer( rank, pos, data );
+    pack_buffer( N_trace, pos, data );
+    pack_buffer( min, pos, data );
+    pack_buffer( max, pos, data );
+    pack_buffer( tot, pos, data );
+    pack_buffer( N, pos, data );
     if ( N_active > 0 ) {
         memcpy( &data[pos], active, N_active * sizeof( id_struct ) );
         pos += N_active * sizeof( id_struct );
@@ -617,8 +652,16 @@ size_t TraceResults::unpack( const char* data )
 {
     delete[] active;
     delete[] times;
-    memcpy( this, data, sizeof( TraceResults ) );
-    size_t pos = sizeof( TraceResults );
+    size_t pos = 0;
+    unpack_buffer( id, pos, data );
+    unpack_buffer( N_active, pos, data );
+    unpack_buffer( thread, pos, data );
+    unpack_buffer( rank, pos, data );
+    unpack_buffer( N_trace, pos, data );
+    unpack_buffer( min, pos, data );
+    unpack_buffer( max, pos, data );
+    unpack_buffer( tot, pos, data );
+    unpack_buffer( N, pos, data );
     active     = nullptr;
     times      = nullptr;
     if ( N_active > 0 ) {
