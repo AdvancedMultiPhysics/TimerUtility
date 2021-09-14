@@ -58,6 +58,11 @@ INCLUDE( ../cmake/libraries.cmake )
 INCLUDE_DIRECTORIES( ${TIMER_INSTALL_DIR}/include )
 LINK_DIRECTORIES( ${TIMER_INSTALL_DIR}/lib ${TIMER_BUILD_DIR} )
 
+
+# Configure system libraries
+CONFIGURE_SYSTEM()
+
+
 # Find QT
 CONFIGURE_QT()
 
@@ -114,7 +119,7 @@ ENDIF()
 ADD_EXECUTABLE( load_timer ${QtApp_SRCS} ${QtApp_MOC_SRCS} ${QtApp_RCC_SRCS} )
 INSTALL( TARGETS load_timer DESTINATION ${${PROJ}_INSTALL_DIR}/bin )
 SET_TARGET_PROPERTIES( load_timer PROPERTIES COMPILE_FLAGS "${QT_FLAGS} ${COVERAGE_FLAGS}" )
-TARGET_LINK_LIBRARIES( load_timer timerutility )
+TARGET_LINK_LIBRARIES( load_timer timerutility ${SYSTEM_LIBS} )
 TARGET_LINK_LIBRARIES( load_timer qwt )
 TARGET_LINK_LIBRARIES( load_timer ${${QT}_QTMAIN_LIBRARY} ${${QT}_LIBRARIES} )
 FOREACH ( tmp ${QT_COMPONENTS} )
