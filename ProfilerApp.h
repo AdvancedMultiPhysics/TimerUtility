@@ -650,7 +650,7 @@ private: // Member classes
         store_trace()
             : N_calls( 0 ),
               next( nullptr ),
-              min_time( std::numeric_limits<int64_t>::max() ),
+              min_time( std::numeric_limits<uint64_t>::max() ),
               max_time( 0 ),
               total_time( 0 )
         {

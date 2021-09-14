@@ -1129,7 +1129,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             for ( size_t j = 0; j < list.size(); j++ )
                 results.trace[k].active[j] = list[j];
             // Determine if we need to add the running trace
-            if ( trace_id == trace->trace.id() ) {
+            if ( trace_id == trace->trace.id() && time > 0 ) {
                 results.trace[k].min = std::min<float>( results.trace[k].min, time );
                 results.trace[k].max = std::max<float>( results.trace[k].max, time );
                 results.trace[k].tot += time;
@@ -1384,15 +1384,15 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             size_t i      = id_order[ii];
             int N_threads = d_N_threads;
             std::vector<int> N_thread( N_threads, 0 );
-            std::vector<float> min_thread( N_threads, 1e38f );
-            std::vector<float> max_thread( N_threads, 0.0f );
+            std::vector<double> min_thread( N_threads, 1e99 );
+            std::vector<double> max_thread( N_threads, 0.0 );
             std::vector<double> tot_thread( N_threads, 0.0 );
             for ( auto& trace : results[i].trace ) {
                 int k = trace.thread;
                 N_thread[k] += trace.N;
-                min_thread[k] = std::min( min_thread[k], 1e-9f * trace.min );
-                max_thread[k] = std::max( max_thread[k], 1e-9f * trace.max );
-                tot_thread[k] += 1e-9f * trace.tot;
+                min_thread[k] = std::min( min_thread[k], 1e-9 * trace.min );
+                max_thread[k] = std::max( max_thread[k], 1e-9 * trace.max );
+                tot_thread[k] += 1e-9 * trace.tot;
             }
             for ( int j = 0; j < N_threads; j++ ) {
                 if ( N_thread[j] == 0 )
@@ -2363,10 +2363,12 @@ void global_profiler_set_store_memory( int flag )
 }
 void global_profiler_start( const char* name, const char* file, int line, int level )
 {
+    printf( "global_profiler.start( %s, %s, %i, %i );\n", name, file, line, level );
     global_profiler.start( name, file, line, level );
 }
 void global_profiler_stop( const char* name, const char* file, int line, int level )
 {
+    printf( "global_profiler.stop( %s, %s, %i, %i );\n", name, file, line, level );
     global_profiler.stop( name, file, line, level );
 }
 void global_profiler_save( const char* name, int global )

@@ -5,5 +5,5 @@ ADD_MATLAB_TEST( test_hello_world )
 SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES PASS_REGULAR_EXPRESSION "Hello World" )
 
 # Add the MATLAB tests   
-
+ADD_MATLAB_TEST( test_profiler )
 
