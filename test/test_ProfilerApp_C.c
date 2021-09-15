@@ -41,7 +41,7 @@ int run_tests( bool enable_trace, const char* save_name )
     PROFILE_START("dummy1"); 
     PROFILE_STOP("dummy1"); 
 
-/*    // Check the performance
+    // Check the performance
     for (i=0; i<N_it; i++) {
         // Test how long it takes to start/stop the timers
         PROFILE_START("level 0");
@@ -69,7 +69,7 @@ int run_tests( bool enable_trace, const char* save_name )
         PROFILE_STOP("allocate3");
         free(tmp);
         PROFILE_STOP("allocate1");
-    }*/
+    }
 
     // Profile the save
     PROFILE_START("SAVE");

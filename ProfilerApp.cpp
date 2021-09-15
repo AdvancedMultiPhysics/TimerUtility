@@ -2363,12 +2363,10 @@ void global_profiler_set_store_memory( int flag )
 }
 void global_profiler_start( const char* name, const char* file, int line, int level )
 {
-    printf( "global_profiler.start( %s, %s, %i, %i );\n", name, file, line, level );
     global_profiler.start( name, file, line, level );
 }
 void global_profiler_stop( const char* name, const char* file, int line, int level )
 {
-    printf( "global_profiler.stop( %s, %s, %i, %i );\n", name, file, line, level );
     global_profiler.stop( name, file, line, level );
 }
 void global_profiler_save( const char* name, int global )
