@@ -4,6 +4,19 @@
 #include <string>
 
 
+/************************************************************************
+ * Mex assert                                                            *
+ ************************************************************************/
+inline void mexAssert( bool cond, const char *msg )
+{
+    if ( !cond )
+        mexErrMsgTxt( msg );
+}
+
+
+/************************************************************************
+ * profile_mex                                                           *
+ ************************************************************************/
 void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
 {
 
@@ -41,12 +54,10 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
         "      Stop a timer for the given name, file, line number, and level\n";
 
     //  Check that there are the proper number of arguments on each side
-    if ( nrhs == 0 || nlhs != 0 )
-        mexErrMsgTxt( msg );
+    mexAssert( nrhs != 0 && nlhs == 0, msg );
 
     // Load the command
-    if ( mxGetClassID( prhs[0] ) != mxCHAR_CLASS )
-        mexErrMsgTxt( "command must be a string" );
+    mexAssert( mxGetClassID( prhs[0] ) == mxCHAR_CLASS, "command must be a string" );
     char *input_buf = mxArrayToString( prhs[0] );
     std::string command( input_buf );
     mxFree( input_buf );
@@ -54,15 +65,12 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
     // Apply the given command
     if ( command == "ENABLE" || command == "DISABLE" ) {
         // Enable/disable the timers
-        if ( nrhs < 1 || nlhs > 2 )
-            mexErrMsgTxt( msg );
+        mexAssert( nrhs == 1 || nrhs == 2, msg );
         int level = 0;
         if ( nrhs == 2 ) {
-            if ( mxGetNumberOfElements( prhs[1] ) != 1 )
-                mexErrMsgTxt( "level must be size 1" );
+            mexAssert( mxGetNumberOfElements( prhs[1] ) == 1, "level must be size 1" );
             level = static_cast<int>( mxGetScalar( prhs[1] ) );
-            if ( level < 0 )
-                mexErrMsgTxt( "Invalid value for level" );
+            mexAssert( level >= 0, "Invalid value for level" );
         }
         if ( command == "ENABLE" )
             PROFILE_ENABLE( level );
@@ -70,12 +78,9 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
             PROFILE_DISABLE();
     } else if ( command == "ENABLE_TRACE" ) {
         // Enable/disable the trace data
-        if ( nrhs != 2 )
-            mexErrMsgTxt( msg );
-        if ( mxGetNumberOfElements( prhs[1] ) != 1 )
-            mexErrMsgTxt( "flag must be size 1" );
-        if ( mxGetClassID( prhs[1] ) != mxLOGICAL_CLASS )
-            mexErrMsgTxt( "flag must be a logical type" );
+        mexAssert( nrhs == 2, msg );
+        mexAssert( mxGetNumberOfElements( prhs[1] ) == 1, "flag must be size 1" );
+        mexAssert( mxGetClassID( prhs[1] ) == mxLOGICAL_CLASS, "flag must be a logical type" );
         bool flag = mxGetScalar( prhs[1] ) != 0;
         if ( flag )
             PROFILE_ENABLE_TRACE();
@@ -83,12 +88,9 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
             PROFILE_DISABLE_TRACE();
     } else if ( command == "ENABLE_MEMORY" ) {
         // Enable/disable the memory trace data
-        if ( nrhs != 2 )
-            mexErrMsgTxt( msg );
-        if ( mxGetNumberOfElements( prhs[1] ) != 1 )
-            mexErrMsgTxt( "flag must be size 1" );
-        if ( mxGetClassID( prhs[1] ) != mxLOGICAL_CLASS )
-            mexErrMsgTxt( "flag must be a logical type" );
+        mexAssert( nrhs == 2, msg );
+        mexAssert( mxGetNumberOfElements( prhs[1] ) == 1, "flag must be size 1" );
+        mexAssert( mxGetClassID( prhs[1] ) == mxLOGICAL_CLASS, "flag must be a logical type" );
         bool flag = mxGetScalar( prhs[1] ) != 0;
         if ( flag )
             PROFILE_ENABLE_MEMORY();
@@ -96,21 +98,17 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
             PROFILE_DISABLE_MEMORY();
     } else if ( command == "SAVE" ) {
         // Save the trace data
-        if ( nrhs != 2 )
-            mexErrMsgTxt( msg );
-        if ( mxGetClassID( prhs[1] ) != mxCHAR_CLASS )
-            mexErrMsgTxt( "command must be a string" );
+        mexAssert( nrhs == 2, msg );
+        mexAssert( mxGetClassID( prhs[1] ) == mxCHAR_CLASS, "command must be a string" );
         char *filename_buf = mxArrayToString( prhs[1] );
         std::string filename( filename_buf );
         mxFree( filename_buf );
         PROFILE_SAVE( filename );
     } else if ( command == "START" || command == "STOP" ) {
         // Start/stop a timer
-        if ( nrhs != 2 && nrhs != 3 && nrhs != 5 )
-            mexErrMsgTxt( msg );
+        mexAssert( nrhs == 2 || nrhs == 3 || nrhs == 5, msg );
         // Get the timer name
-        if ( mxGetClassID( prhs[1] ) != mxCHAR_CLASS )
-            mexErrMsgTxt( "name must be a string" );
+        mexAssert( mxGetClassID( prhs[1] ) == mxCHAR_CLASS, "name must be a string" );
         char *name_buf = mxArrayToString( prhs[1] );
         std::string name( name_buf );
         mxFree( name_buf );
@@ -118,25 +116,20 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
         std::string file;
         int line = -1, level = 0;
         if ( nrhs == 5 ) {
-            if ( mxGetClassID( prhs[2] ) != mxCHAR_CLASS )
-                mexErrMsgTxt( "file must be a string" );
+            mexAssert( mxGetClassID( prhs[2] ) == mxCHAR_CLASS, "file must be a string" );
             char *file_buf = mxArrayToString( prhs[2] );
             file           = std::string( file_buf );
             mxFree( file_buf );
-            if ( mxGetNumberOfElements( prhs[3] ) != 1 )
-                mexErrMsgTxt( "line must be size 1" );
-            line = static_cast<int>( mxGetScalar( prhs[3] ) );
-            if ( mxGetNumberOfElements( prhs[4] ) != 1 )
-                mexErrMsgTxt( "level must be size 1" );
+            mexAssert( mxGetNumberOfElements( prhs[3] ) == 1, "line must be size 1" );
+            mexAssert( mxGetNumberOfElements( prhs[4] ) == 1, "level must be size 1" );
+            line  = static_cast<int>( mxGetScalar( prhs[3] ) );
             level = static_cast<int>( mxGetScalar( prhs[4] ) );
         } else {
             // Get the file and line number by calling DBSTACK
             mxArray *lhs[1];
             int error = mexCallMATLAB( 1, lhs, 0, nullptr, "dbstack" );
-            if ( error != 0 )
-                mexErrMsgTxt( "Error calling dbstack" );
-            if ( mxGetNumberOfElements( lhs[0] ) == 0 )
-                mexErrMsgTxt( "No stack found from dbstack" );
+            mexAssert( error == 0, "Error calling dbstack" );
+            mexAssert( mxGetNumberOfElements( lhs[0] ) != 0, "No stack found from dbstack" );
             char *file_buf = mxArrayToString( mxGetField( lhs[0], 0, "file" ) );
             file           = std::string( file_buf );
             mxFree( file_buf );
@@ -144,8 +137,7 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
             mxDestroyArray( lhs[0] );
             // Get the level
             if ( nrhs == 3 ) {
-                if ( mxGetNumberOfElements( prhs[2] ) != 1 )
-                    mexErrMsgTxt( "level must be size 1" );
+                mexAssert( mxGetNumberOfElements( prhs[2] ) == 1, "level must be size 1" );
                 level = static_cast<int>( mxGetScalar( prhs[2] ) );
             }
         }

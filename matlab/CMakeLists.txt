@@ -45,7 +45,6 @@ IF ( USE_MATLAB )
     # Add the MATLAB MEX files
     ADD_MATLAB_MEX( load_timer_file.cpp )
     ADD_MATLAB_MEX( get_memory_time.cpp )
-    ADD_MATLAB_MEX( get_active_times.cpp )
     ADD_MATLAB_MEX( profile_mex.cpp )
 
     # Create the wrappers for Matlab
