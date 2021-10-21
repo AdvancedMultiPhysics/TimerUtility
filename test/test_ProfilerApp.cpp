@@ -536,9 +536,9 @@ int main( int argc, char *argv[] )
     // Run the profiler tests
     {
         std::vector<std::tuple<bool, bool, std::string>> tests;
-        tests.emplace_back( false, false, "test_ProfilerApp" );
-        tests.emplace_back( true, false, "test_ProfilerApp-trace" );
-        tests.emplace_back( true, true, "test_ProfilerApp-memory" );
+        tests.emplace_back<bool, bool, std::string>( false, false, "test_ProfilerApp" );
+        tests.emplace_back<bool, bool, std::string>( true, false, "test_ProfilerApp-trace" );
+        tests.emplace_back<bool, bool, std::string>( true, true, "test_ProfilerApp-memory" );
         for ( auto &test : tests ) {
             N_errors += run_tests( std::get<0>( test ), std::get<1>( test ), std::get<2>( test ) );
             PROFILE_DISABLE();
