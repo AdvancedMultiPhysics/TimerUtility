@@ -43,3 +43,7 @@ duplicateCondition:*/test/test_ProfilerApp.cpp
 
 // Suppress noExplicitConstructor
 noExplicitConstructor:*/gui/GuiTimerStructures.h
+noExplicitConstructor:*/ProfilerApp.h
+
+// Suppress knownEmptyContainer
+knownEmptyContainer:*/test/test_ProfilerApp.cpp
