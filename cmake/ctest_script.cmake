@@ -40,7 +40,7 @@ SET( SKIP_TESTS         $ENV{SKIP_TESTS}        )
 SET( BUILDNAME_POSTFIX "$ENV{BUILDNAME_POSTFIX}" )
 SET( QWT_URL           "$ENV{QWT_URL}"          )
 SET( QWT_SRC_DIR       "$ENV{QWT_SRC_DIR}"      )
-SET( CTEST_SITE        "$ENV{CTEST_SITE}"       )
+SET( CTEST_URL         "$ENV{CTEST_URL}"        )
 
 
 # Add the C++ version to the project name
@@ -268,10 +268,15 @@ MESSAGE("Configure options:")
 MESSAGE("   ${CTEST_OPTIONS}")
 
 
-# Configure and run the tests
-IF ( NOT CTEST_SITE )
-    SET( CTEST_SITE ${HOSTNAME} )
+
+# Configure the drop site
+IF ( NOT CTEST_URL )
+    MESSAGE( FATAL_ERROR "Must set CTEST_URL" )
 ENDIF()
+STRING( REPLACE "PROJECT" "TimerUtility" CTEST_URL "${CTEST_URL}" )
+
+
+# Configure and run the tests
 CTEST_START( "${CTEST_DASHBOARD}" )
 CTEST_UPDATE()
 CTEST_CONFIGURE(
@@ -301,13 +306,6 @@ ENDIF()
 
 
 # Submit the results to CDash
-SET( CTEST_DROP_METHOD "http" )
-SET( CTEST_DROP_LOCATION "/CDash/submit.php?project=TimerUtility" )
-SET( CTEST_DROP_SITE_CDASH TRUE )
-SET( DROP_SITE_CDASH TRUE )
-IF ( NOT CTEST_DROP_SITE )
-  SET( CTEST_DROP_SITE ${CTEST_SITE} )
-ENDIF()
 CTEST_SUBMIT()
 
 
