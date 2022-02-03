@@ -274,6 +274,7 @@ IF ( NOT CTEST_URL )
     MESSAGE( FATAL_ERROR "Must set CTEST_URL" )
 ENDIF()
 STRING( REPLACE "PROJECT" "TimerUtility" CTEST_URL "${CTEST_URL}" )
+SET( CTEST_SUBMIT_URL "${CTEST_URL}" )
 
 
 # Configure and run the tests
