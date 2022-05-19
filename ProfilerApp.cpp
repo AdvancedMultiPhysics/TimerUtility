@@ -1752,15 +1752,15 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
                     if ( strcmp( fields[i].first, "message" ) == 0 ) {
                         // Load the message
                         memset( timer.message, 0, sizeof( timer.message ) );
-                        strncpy( timer.message, fields[i].second, sizeof( timer.message ) );
+                        strncpy( timer.message, fields[i].second, sizeof( timer.message ) - 1 );
                     } else if ( strcmp( fields[i].first, "file" ) == 0 ) {
                         // Load the filename
                         memset( timer.file, 0, sizeof( timer.file ) );
-                        strncpy( timer.file, fields[i].second, sizeof( timer.file ) );
+                        strncpy( timer.file, fields[i].second, sizeof( timer.file ) - 1 );
                     } else if ( strcmp( fields[i].first, "path" ) == 0 ) {
                         // Load the path
                         memset( timer.path, 0, sizeof( timer.path ) );
-                        strncpy( timer.path, fields[i].second, sizeof( timer.path ) );
+                        strncpy( timer.path, fields[i].second, sizeof( timer.path ) - 1 );
                     } else if ( strcmp( fields[i].first, "start" ) == 0 ) {
                         // Load the start line
                         timer.start = atoi( fields[i].second );
