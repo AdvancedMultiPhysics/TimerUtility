@@ -101,7 +101,7 @@ protected:
 
     // Data for unit testing
 public:
-    int runUnitTests();
+    bool runUnitTests();
 
 private:
     void callDefaultTests();

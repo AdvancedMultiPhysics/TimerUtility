@@ -784,11 +784,10 @@ void TraceWindow::callDefaultTests()
     resizeDone();
     update();
 }
-int TraceWindow::runUnitTests()
+bool TraceWindow::runUnitTests()
 {
-    int N_errors = 0;
     callFun( std::bind( &TraceWindow::update, this ) );
     callFun( std::bind( &TraceWindow::callDefaultTests, this ) );
     callFun( std::bind( &TraceWindow::update, this ) );
-    return N_errors;
+    return true;
 }

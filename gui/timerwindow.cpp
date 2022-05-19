@@ -624,7 +624,9 @@ void TimerWindow::updateDisplay()
         max_data[i] = getTableData( current_timers[i]->max, selected_rank );
         tot_data[i] = getTableData( current_timers[i]->tot, selected_rank );
     }
-    double tot_max = max( tot_data );
+    double tot_max = d_data.walltime;
+    if ( !callList.empty() )
+        tot_max = max( tot_data );
     std::vector<double> ratio( N_timers, 0 );
     for ( size_t i = 0; i < N_timers; i++ )
         ratio[i] = tot_data[i] / tot_max;
@@ -1061,8 +1063,8 @@ void TimerWindow::runUnitTestsSlot()
     QString filename = QFileDialog::getOpenFileName(
         this, "Select the timer file to test", lastPath.c_str(), "*.0.timer *.1.timer" );
     // Run the unit tests
-    int N_errors = runUnitTests( filename.toStdString() );
-    if ( N_errors == 0 ) {
+    bool pass = runUnitTests( filename.toStdString() );
+    if ( pass ) {
         QMessageBox::information( this, tr( "All tests passed" ), tr( "All tests passed" ) );
     } else {
         QMessageBox::information( this, tr( "Some tests failed" ), tr( "Some tests failed" ) );
@@ -1088,15 +1090,14 @@ void TimerWindow::callSelectCell()
     backButtonPressed();
 }
 void TimerWindow::closeTrace() { traceWindow->close(); }
-int TimerWindow::runUnitTests( const std::string& filename )
+bool TimerWindow::runUnitTests( const std::string& filename )
 {
-    int N_errors = 0;
     // Try to load the file
     unitTestFilename = filename;
     callFun( std::bind( &TimerWindow::callLoadFile, this ) );
     if ( d_dataTimer.empty() ) {
         printf( "   Failed to load file %s\n", filename.c_str() );
-        N_errors++;
+        return false;
     }
     // Select the first cell
     callFun( std::bind( &TimerWindow::callSelectCell, this ) );
@@ -1104,14 +1105,15 @@ int TimerWindow::runUnitTests( const std::string& filename )
     // Run the trace unit tests
     if ( hasTraceData() ) {
         callFun( std::bind( &TimerWindow::traceFun, this ) );
-        N_errors += traceWindow->runUnitTests();
+        if ( !traceWindow->runUnitTests() )
+            return false;
         callFun( std::bind( &TimerWindow::closeTrace, this ) );
     }
     // Try to close the file
     callFun( std::bind( &TimerWindow::close, this ) );
     if ( !d_dataTimer.empty() ) {
         printf( "   Failed call to close\n" );
-        N_errors++;
+        return false;
     }
-    return N_errors;
+    return true;
 }

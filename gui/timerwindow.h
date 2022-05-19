@@ -128,7 +128,7 @@ protected:
 
     // Data for unit testing
 public:
-    int runUnitTests( const std::string &file );
+    bool runUnitTests( const std::string &file );
 
 private:
     std::string unitTestFilename;

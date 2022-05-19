@@ -822,7 +822,7 @@ bool MemoryResults::operator==( const MemoryResults& rhs ) const
  ***********************************************************************/
 size_t TimerMemoryResults::size() const
 {
-    size_t bytes = 3 * sizeof( int );
+    size_t bytes = 3 * sizeof( int ) + sizeof( walltime );
     for ( const auto& timer : timers )
         bytes += timer.size();
     for ( const auto& i : memory )
@@ -834,6 +834,8 @@ size_t TimerMemoryResults::pack( char* data ) const
     const int tmp[3] = { N_procs, (int) timers.size(), (int) memory.size() };
     memcpy( data, &tmp, sizeof( tmp ) );
     size_t pos = sizeof( tmp );
+    memcpy( data + pos, &walltime, sizeof( walltime ) );
+    pos += sizeof( walltime );
     for ( const auto& timer : timers )
         pos += timer.pack( &data[pos] );
     for ( const auto& i : memory )
@@ -845,7 +847,9 @@ size_t TimerMemoryResults::unpack( const char* data )
     int tmp[3];
     memcpy( &tmp, data, sizeof( tmp ) );
     size_t pos = sizeof( tmp );
-    N_procs    = tmp[0];
+    memcpy( &walltime, data + pos, sizeof( walltime ) );
+    pos += sizeof( walltime );
+    N_procs = tmp[0];
     timers.resize( tmp[1] );
     memory.resize( tmp[2] );
     for ( auto& timer : timers )
@@ -857,6 +861,7 @@ size_t TimerMemoryResults::unpack( const char* data )
 bool TimerMemoryResults::operator==( const TimerMemoryResults& rhs ) const
 {
     bool equal = N_procs == rhs.N_procs;
+    equal      = equal && walltime == rhs.walltime;
     equal      = equal && timers.size() == rhs.timers.size();
     equal      = equal && memory.size() == rhs.memory.size();
     if ( !equal )
@@ -1034,6 +1039,8 @@ void ProfilerApp::enable( int level )
     if ( level < 0 || level >= 128 )
         throw std::logic_error( "level must be in the range 0-127" );
     d_lock.lock();
+    if ( d_level < 0 )
+        d_construct_time = std::chrono::steady_clock::now();
     d_level = level;
     d_lock.unlock();
 }
@@ -1341,6 +1348,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         // Gather the timers from all files (rank 0 will do all writing)
         gatherTimers( results );
     }
+    double walltime = 1e-9 * diff_ns( std::chrono::steady_clock::now(), d_construct_time );
     if ( !results.empty() ) {
         // Get the timer ids and sort the ids by the total time
         // to create a global order to save the results
@@ -1373,12 +1381,11 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             }
         }
         // Create the file header
-        fprintf( timerFile, "                  Message                      Filename        " );
-        fprintf( timerFile,
-            "  Thread  Start Line  Stop Line  N_calls  Min Time  Max Time  Total Time\n" );
-        fprintf( timerFile, "---------------------------------------------------------------" );
-        fprintf( timerFile,
-            "------------------------------------------------------------------------\n" );
+        char header[] = "                  Message                      Filename          Thread  "
+                        "Start Line  Stop Line  N_calls  Min Time  Max Time  Total Time  %% Time\n"
+                        "-------------------------------------------------------------------------"
+                        "----------------------------------------------------------------------\n";
+        fprintf( timerFile, "%s", header );
         // Loop through the list of timers, storing the most expensive first
         for ( int ii = static_cast<int>( results.size() ) - 1; ii >= 0; ii-- ) {
             size_t i      = id_order[ii];
@@ -1401,9 +1408,10 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 // Note: we always want one space in front in case the timer starts
                 //    with '<' and is long.
                 fprintf( timerFile,
-                    " %29s  %30s   %4i   %7i    %7i  %8i     %8.3f  %8.3f  %10.3f\n",
+                    " %29s  %30s   %4i   %7i    %7i  %8i     %8.3f  %8.3f  %10.3f  %6.1f\n",
                     results[i].message, results[i].file, j, results[i].start, results[i].stop,
-                    N_thread[j], min_thread[j], max_thread[j], tot_thread[j] );
+                    N_thread[j], min_thread[j], max_thread[j], tot_thread[j],
+                    100 * tot_thread[j] / walltime );
             }
         }
         // Loop through all of the entries, saving the detailed data and the trace logs
@@ -1411,6 +1419,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         fprintf( timerFile, "<N_procs=%i,id=%i", N_procs, rank );
         fprintf( timerFile, ",store_trace=%i", d_store_trace_data ? 1 : 0 );
         fprintf( timerFile, ",store_memory=%i", d_store_memory_data != MemoryLevel::None ? 1 : 0 );
+        fprintf( timerFile, ",walltime=%e", walltime );
         fprintf( timerFile, ",date='%s'>\n", getDateString().c_str() );
         // Loop through the list of timers, storing the most expensive first
         for ( int ii = static_cast<int>( results.size() ) - 1; ii >= 0; ii-- ) {
@@ -1602,7 +1611,7 @@ int ProfilerApp::loadFiles( const std::string& filename, int index, TimerMemoryR
     sprintf( timer, "%s.%i.timer", filename.c_str(), index );
     sprintf( trace, "%s.%i.trace", filename.c_str(), index );
     sprintf( memory, "%s.%i.memory", filename.c_str(), index );
-    loadTimer( timer, data.timers, N_procs, date, trace_data, memory_data );
+    loadTimer( timer, data.timers, N_procs, data.walltime, date, trace_data, memory_data );
     if ( trace_data )
         loadTrace( trace, data.timers );
     if ( memory_data )
@@ -1652,7 +1661,7 @@ TimerMemoryResults ProfilerApp::load( const std::string& filename, int rank, boo
     return data;
 }
 void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResults>& data,
-    int& N_procs, std::string& date, bool& trace_data, bool& memory_data )
+    int& N_procs, double& walltime, std::string& date, bool& trace_data, bool& memory_data )
 {
     // Load the file to memory for reading
     FILE* fid = fopen( filename.c_str(), "rb" );
@@ -1682,6 +1691,7 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
     // Parse the data (this take most of the time)
     N_procs     = -1;
     int rank    = -1;
+    walltime    = -1;
     trace_data  = false;
     memory_data = false;
     date        = std::string();
@@ -1714,6 +1724,9 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
                 } else if ( strcmp( fields[i].first, "store_memory" ) == 0 ) {
                     // Check if we stored the memory file (optional)
                     memory_data = atoi( fields[i].second ) == 1;
+                } else if ( strcmp( fields[i].first, "walltime" ) == 0 ) {
+                    // Check if we stored the total wallclock time
+                    walltime = atof( fields[i].second );
                 } else if ( strcmp( fields[i].first, "date" ) == 0 ) {
                     // Load the date (optional)
                     date = std::string( fields[i].second );
@@ -1813,6 +1826,14 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
             }
         } else {
             throw std::logic_error( "Unknown data field" );
+        }
+    }
+    // Fill walltime with largest timer (if it does not exist for backward compatibility)
+    if ( walltime < 0 ) {
+        walltime = 0;
+        for ( const auto& timer : data ) {
+            for ( const auto& trace : timer.trace )
+                walltime = std::max<double>( walltime, trace.tot );
         }
     }
     delete[] buffer;

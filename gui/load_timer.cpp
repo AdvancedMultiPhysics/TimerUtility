@@ -16,12 +16,12 @@ void runUnitTests( int N, char *files[], TimerWindow &app )
     std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
     for ( int i = 0; i < N; i++ ) {
         printf( "Testing %s:\n", files[i] );
-        int N_errors = app.runUnitTests( files[i] );
-        N_errors_global += N_errors;
-        if ( N_errors > 0 ) {
-            printf( "   Failed some tests\n" );
-        } else {
+        bool pass = app.runUnitTests( files[i] );
+        if ( pass ) {
             printf( "   Passed all tests\n" );
+        } else {
+            printf( "   Failed some tests\n" );
+            N_errors_global++;
         }
     }
     app.exit();

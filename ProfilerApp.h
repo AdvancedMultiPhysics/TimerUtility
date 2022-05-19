@@ -171,12 +171,13 @@ struct MemoryResults {
  */
 struct TimerMemoryResults {
     int N_procs;
-    std::vector<TimerResults> timers;
-    std::vector<MemoryResults> memory;
+    double walltime;                   //!< The walltime elapsed during run
+    std::vector<TimerResults> timers;  //!< The timer results
+    std::vector<MemoryResults> memory; //!< The memory results
     size_t size() const;               //!< The number of bytes needed to pack the trace
     size_t pack( char* data ) const;   //!<  Pack the data to a buffer
     size_t unpack( const char* data ); //!<  Unpack the data from a buffer
-    TimerMemoryResults() : N_procs( 0 ) {}
+    TimerMemoryResults() : N_procs( 0 ), walltime( 0 ) {}
     bool operator==( const TimerMemoryResults& rhs ) const; //! Comparison operator
     inline bool operator!=( const TimerMemoryResults& rhs ) const
     {
@@ -814,7 +815,7 @@ private: // Private member functions
     // Functions to load files
     static int loadFiles( const std::string& filename, int index, TimerMemoryResults& data );
     static void loadTimer( const std::string& filename, std::vector<TimerResults>& timers,
-        int& N_procs, std::string& date, bool& load_trace, bool& load_memory );
+        int& N_procs, double& walltime, std::string& date, bool& load_trace, bool& load_memory );
     static void loadTrace( const std::string& filename, std::vector<TimerResults>& timers );
     static void loadMemory( const std::string& filename, std::vector<MemoryResults>& memory );
 
