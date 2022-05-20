@@ -6,9 +6,9 @@ ENDIF()
 SET( DISABLE_LTO TRUE )
 
 
-MESSAGE( "===========================" )
-MESSAGE( "Configuring Timer Utility"   )
-MESSAGE( "===========================" )
+MESSAGE( "=============================" )
+MESSAGE( "Configuring Timer Utility GUI" )
+MESSAGE( "=============================" )
 
 
 

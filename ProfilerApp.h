@@ -292,8 +292,10 @@ public:
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whos level is <= the level will be included.
      */
-    inline void start( const std::string& message, const char* filename, int line, int level = 0 )
+    inline void start( const std::string& message, const char* filename, int line, int level = -1 )
     {
+        if ( level == -1 )
+            level = 0;
         if ( level < 0 || level >= 128 )
             throw std::logic_error( "level must be in the range 0-127" );
         if ( level <= d_level ) {
@@ -315,16 +317,23 @@ public:
      * @param[in] line      Line number containing the start command
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whos level is <= the level will be included.
+     * @param[in] trace     Store trace-level data for the timer:
+     *                      -1: Default, use the global trace flag
+     *                       0: Disable trace data for this timer
+     *                       1: Enable trace data for this timer
      */
-    inline void stop( const std::string& message, const char* filename, int line, int level = 0 )
+    inline void stop(
+        const std::string& message, const char* filename, int line, int level = -1, int trace = -1 )
     {
+        if ( level == -1 )
+            level = 0;
         if ( level < 0 || level >= 128 )
             throw std::logic_error( "level must be in the range 0-127" );
         if ( level <= d_level ) {
             uint32_t v1 = hashString( stripPath( filename ) );
             uint32_t v2 = hashString( message.c_str() );
             uint64_t id = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
-            stop( id, message.c_str(), filename, line, level );
+            stop( id, message.c_str(), filename, line, level, trace );
         }
     }
 
@@ -502,6 +511,8 @@ public: // Fast interface to start/stop
      */
     inline void start( uint64_t id, const char* message, const char* filename, int line, int level )
     {
+        if ( level == -1 )
+            level = 0;
         if ( level <= d_level && level >= 0 ) {
             auto thread_data = getThreadData();
             auto timer       = getBlock( thread_data, id, true, message, filename, line, -1 );
@@ -522,14 +533,21 @@ public: // Fast interface to start/stop
      * @param[in] line      Line number containing the start command
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whos level is <= the level will be included.
+     * @param[in] trace     Store trace-level data for the timer:
+     *                      -1: Default, use the global trace flag
+     *                       0: Disable trace data for this timer
+     *                       1: Enable trace data for this timer
      */
-    inline void stop( uint64_t id, const char* message, const char* filename, int line, int level )
+    inline void stop( uint64_t id, const char* message, const char* filename, int line, int level,
+        int trace = -1 )
     {
+        if ( level == -1 )
+            level = 0;
         if ( level <= d_level && level >= 0 ) {
             auto end_time    = std::chrono::steady_clock::now();
             auto thread_data = getThreadData();
             auto timer       = getBlock( thread_data, id, true, message, filename, -1, line );
-            stop( thread_data, timer, end_time );
+            stop( thread_data, timer, end_time, trace );
         }
     }
 
@@ -765,7 +783,7 @@ private: // Member data
     mutable std::mutex d_lock;
 
     // Misc variables
-    bool d_store_trace_data;                      // Store trace information?
+    bool d_store_trace_data;                      // Store trace information (default value)?
     MemoryLevel d_store_memory_data;              // Store memory information?
     bool d_disable_timer_error;                   // Disable the timer errors for start/stop?
     int8_t d_level;                               // Timer level (default is 0, -1 is disabled)
@@ -801,7 +819,7 @@ private: // Private member functions
     // Start/stop the timer
     void start( thread_info* thread, store_timer* timer );
     void stop( thread_info* thread, store_timer* timer,
-        time_point end_time = std::chrono::steady_clock::now() );
+        time_point end_time = std::chrono::steady_clock::now(), int trace = -1 );
     void activeErrStart( thread_info*, store_timer* );
     void activeErrStop( thread_info*, store_timer* );
 

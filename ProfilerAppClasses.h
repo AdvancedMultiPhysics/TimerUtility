@@ -34,11 +34,17 @@ public:
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whos level is <= the level will be included.
      * @param[in] app       Profiler application to use (default will use the global profiler)
+     * @param[in] trace     Store trace-level data for the timer:
+     *                      -1: Default, use the global trace flag
+     *                       0: Disable trace data for this timer
+     *                       1: Enable trace data for this timer
      */
-    ScopedTimer( const std::string& msg, const char* file, const int line, const int level = 0,
-        ProfilerApp& app = global_profiler )
-        : d_app( app ), d_thread( nullptr ), d_timer( nullptr )
+    ScopedTimer( const std::string& msg, const char* file, int line, int level = -1,
+        ProfilerApp& app = global_profiler, int trace = -1 )
+        : d_trace( trace ), d_app( app ), d_thread( nullptr ), d_timer( nullptr )
     {
+        if ( level == -1 )
+            level = 0;
         if ( level >= 0 && level <= app.getLevel() ) {
             uint32_t v1 = ProfilerApp::hashString( ProfilerApp::stripPath( file ) );
             uint32_t v2 = ProfilerApp::hashString( msg.c_str() );
@@ -47,10 +53,12 @@ public:
     }
 
     // Advanced interface
-    ScopedTimer( uint32_t v1, uint32_t v2, const char* msg, const char* file, const int line,
-        const int level, ProfilerApp& app )
-        : d_app( app ), d_thread( nullptr ), d_timer( nullptr )
+    ScopedTimer( uint32_t v1, uint32_t v2, const char* msg, const char* file, int line, int level,
+        ProfilerApp& app, int trace )
+        : d_trace( trace ), d_app( app ), d_thread( nullptr ), d_timer( nullptr )
     {
+        if ( level == -1 )
+            level = 0;
         if ( level >= 0 && level <= app.getLevel() )
             initialize( v1, v2, msg, file, line );
     }
@@ -59,7 +67,7 @@ public:
     ~ScopedTimer()
     {
         if ( d_timer )
-            d_app.stop( d_thread, d_timer );
+            d_app.stop( d_thread, d_timer, std::chrono::steady_clock::now(), d_trace );
     }
 
     ScopedTimer( const ScopedTimer& ) = delete;
@@ -68,6 +76,7 @@ public:
 
 
 private:
+    int d_trace;
     ProfilerApp& d_app;
     ProfilerApp::thread_info* d_thread;
     ProfilerApp::store_timer* d_timer;

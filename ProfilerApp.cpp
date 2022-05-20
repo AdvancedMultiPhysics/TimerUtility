@@ -892,20 +892,8 @@ ProfilerApp::ProfilerApp() : d_N_threads( 0 ), d_construct_time( std::chrono::st
     d_bytes               = sizeof( ProfilerApp );
 }
 ProfilerApp::~ProfilerApp() { disable(); }
-void ProfilerApp::setStoreTrace( bool profile )
-{
-    if ( N_timers == 0 )
-        d_store_trace_data = profile;
-    else
-        throw std::logic_error( "Cannot change trace status after a timer is started" );
-}
-void ProfilerApp::setStoreMemory( MemoryLevel memory )
-{
-    if ( N_timers == 0 )
-        d_store_memory_data = memory;
-    else
-        throw std::logic_error( "Cannot change memory status after a timer is started" );
-}
+void ProfilerApp::setStoreTrace( bool profile ) { d_store_trace_data = profile; }
+void ProfilerApp::setStoreMemory( MemoryLevel memory ) { d_store_memory_data = memory; }
 
 
 /***********************************************************************
@@ -970,7 +958,8 @@ void ProfilerApp::activeErrStop( thread_info* thread, store_timer* timer )
         throw std::logic_error( msg );
     }
 }
-void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_time )
+void ProfilerApp::stop(
+    thread_info* thread, store_timer* timer, time_point end_time, int enableTrace )
 {
     if ( !timer->is_active ) {
         activeErrStop( thread, timer );
@@ -1005,7 +994,9 @@ void ProfilerApp::stop( thread_info* thread, store_timer* timer, time_point end_
     uint64_t stop = diff_ns( end_time, d_construct_time );
     uint64_t ns   = stop - timer->start_time;
     // Save the starting and ending time if we are storing the detailed traces
-    if ( d_store_trace_data )
+    if ( enableTrace == -1 )
+        enableTrace = d_store_trace_data ? 1 : 0;
+    if ( enableTrace )
         trace->times.add( timer->start_time, stop );
     // Save the new time info to the trace
     trace->max_time = std::max( trace->max_time, ns );
@@ -1143,7 +1134,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
                 trace_id     = 0;
                 create_trace = false;
             }
-            // Save the detailed trace results (this is a binary file)
+            // Save the detailed trace results
             if ( trace->times.size() > 0 ) {
                 StoreTimes times( trace->times, d_shift );
                 results.trace[k].N_trace = times.size();
@@ -1372,12 +1363,17 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             return;
         }
         FILE* traceFile = nullptr;
-        if ( d_store_trace_data ) {
-            traceFile = fopen( filename_trace, "wb" );
-            if ( traceFile == nullptr ) {
-                std::cerr << "Error opening file for writing (trace)";
-                fclose( timerFile );
-                return;
+        for ( auto it = results.begin(); it != results.end() && !traceFile; ++it ) {
+            for ( auto& trace : it->trace ) {
+                if ( trace.times ) {
+                    traceFile = fopen( filename_trace, "wb" );
+                    if ( traceFile == nullptr ) {
+                        std::cerr << "Error opening file for writing (trace)";
+                        fclose( timerFile );
+                        return;
+                    }
+                    break;
+                }
             }
         }
         // Create the file header
@@ -1417,7 +1413,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         // Loop through all of the entries, saving the detailed data and the trace logs
         fprintf( timerFile, "\n\n\n" );
         fprintf( timerFile, "<N_procs=%i,id=%i", N_procs, rank );
-        fprintf( timerFile, ",store_trace=%i", d_store_trace_data ? 1 : 0 );
+        fprintf( timerFile, ",store_trace=%i", traceFile ? 1 : 0 );
         fprintf( timerFile, ",store_memory=%i", d_store_memory_data != MemoryLevel::None ? 1 : 0 );
         fprintf( timerFile, ",walltime=%e", walltime );
         fprintf( timerFile, ",date='%s'>\n", getDateString().c_str() );
