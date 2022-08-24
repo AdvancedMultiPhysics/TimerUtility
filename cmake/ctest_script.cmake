@@ -40,6 +40,7 @@ SET( SKIP_TESTS          $ENV{SKIP_TESTS}         )
 SET( BUILDNAME_POSTFIX  "$ENV{BUILDNAME_POSTFIX}" )
 SET( QWT_URL            "$ENV{QWT_URL}"           )
 SET( QWT_SRC_DIR        "$ENV{QWT_SRC_DIR}"       )
+SET( CTEST_SITE         "$ENV{CTEST_SITE}"        )
 SET( CTEST_URL          "$ENV{CTEST_URL}"         )
 
 
@@ -172,8 +173,6 @@ ENDIF()
 SET( CTEST_CUSTOM_WARNING_EXCEPTION 
     "has no symbols"
     "the table of contents is empty"
-    "warning: -jN forced in submake: disabling jobserver mode" 
-    "warning: jobserver unavailable" 
     "This object file does not define any previously undefined public symbols"
     "Note: No relevant classes found. No output generated."
     "The version of gcc is not supported. The version currently supported with MEX is"
@@ -268,8 +267,10 @@ MESSAGE("Configure options:")
 MESSAGE("   ${CTEST_OPTIONS}")
 
 
-
 # Configure the drop site
+IF ( NOT CTEST_SITE )
+    SET( CTEST_SITE ${HOSTNAME} )
+ENDIF()
 IF ( NOT CTEST_URL )
     MESSAGE( FATAL_ERROR "CTEST_URL is not set" )
 ENDIF()
@@ -286,7 +287,8 @@ CTEST_CONFIGURE(
     OPTIONS "${CTEST_OPTIONS}"
 )
 
-# Run the configure/build 
+
+# Run the configure/build/test
 CTEST_BUILD()
 IF ( SKIP_TESTS )
     # Do not run tests

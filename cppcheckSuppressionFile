@@ -47,3 +47,6 @@ noExplicitConstructor:*/ProfilerApp.h
 
 // Suppress knownEmptyContainer
 knownEmptyContainer:*/test/test_ProfilerApp.cpp
+
+
+preprocessorErrorDirective:*

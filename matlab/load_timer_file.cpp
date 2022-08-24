@@ -55,8 +55,10 @@ inline std::vector<int> getActive(
     std::vector<int> active( trace.N_active );
     for ( size_t i = 0; i < active.size(); i++ ) {
         auto it = id_map.find( trace.active[i] );
-        ASSERT( it != id_map.end() );
-        active[i] = it->second;
+        if ( it == id_map.end() )
+            mexErrMsgTxt( "Active id not found" );
+        else
+            active[i] = it->second;
     }
     return active;
 }

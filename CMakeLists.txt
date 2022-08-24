@@ -181,10 +181,8 @@ ENDIF()
 
 
 # Add the cppcheck tests
-SET( CPPCHECK_INCLUDE "" )
-SET( CPPCHECK_OPTIONS -q --enable=all --force  --std=c11 --std=c++${CXX_STD} --suppress=missingIncludeSystem 
-    "--suppressions-list=${CMAKE_CURRENT_SOURCE_DIR}/cppcheckSuppressionFile" )
 SET( CPPCHECK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}" )
+SET( CPPCHECK_USE_JSON TRUE )
 FIND_PACKAGE( Cppcheck )
 
 
