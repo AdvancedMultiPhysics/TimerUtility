@@ -41,7 +41,7 @@ public:
      */
     ScopedTimer( const std::string& msg, const char* file, int line, int level = -1,
         ProfilerApp& app = global_profiler, int trace = -1 )
-        : d_trace( trace ), d_app( app ), d_thread( nullptr ), d_timer( nullptr )
+        : d_trace( trace ), d_app( app ), d_timer( nullptr )
     {
         if ( level == -1 )
             level = 0;
@@ -55,7 +55,7 @@ public:
     // Advanced interface
     ScopedTimer( uint32_t v1, uint32_t v2, const char* msg, const char* file, int line, int level,
         ProfilerApp& app, int trace )
-        : d_trace( trace ), d_app( app ), d_thread( nullptr ), d_timer( nullptr )
+        : d_trace( trace ), d_app( app ), d_timer( nullptr )
     {
         if ( level == -1 )
             level = 0;
@@ -67,7 +67,7 @@ public:
     ~ScopedTimer()
     {
         if ( d_timer )
-            d_app.stop( d_thread, d_timer, std::chrono::steady_clock::now(), d_trace );
+            d_app.stop( d_timer, std::chrono::steady_clock::now(), d_trace );
     }
 
     ScopedTimer( const ScopedTimer& ) = delete;
@@ -78,7 +78,6 @@ public:
 private:
     int d_trace;
     ProfilerApp& d_app;
-    ProfilerApp::thread_info* d_thread;
     ProfilerApp::store_timer* d_timer;
 
 
@@ -86,11 +85,9 @@ private:
     inline void initialize(
         uint32_t v1, uint32_t v2, const char* msg, const char* file, const int line )
     {
-        // Get the thread data
-        d_thread = d_app.getThreadData();
         // Get the appropriate timer
         uint64_t id = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
-        d_timer     = d_app.getBlock( d_thread, id, true, msg, file, line, -1 );
+        d_timer     = d_app.getBlock( id, true, msg, file, line, -1 );
         if ( d_timer->is_active ) {
             char msg2[512];
             size_t N = strlen( msg );
@@ -117,11 +114,11 @@ private:
                     v3 = ( ( v3 << 5 ) + v3 ) ^ c;
                 id = ( static_cast<uint64_t>( v3 ) << 32 ) + static_cast<uint64_t>( v1 ^ v3 );
                 // Check if the timer is active
-                d_timer = d_app.getBlock( d_thread, id, true, msg2, file, line, -1 );
+                d_timer = d_app.getBlock( id, true, msg2, file, line, -1 );
             }
         }
         // Start the timer
-        d_app.start( d_thread, d_timer );
+        d_app.start( d_timer );
     }
 };
 

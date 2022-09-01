@@ -87,50 +87,47 @@ public:
  * Function to get the timmer for a particular block of code            *
  * Note: This function performs some blocking as necessary.             *
  ***********************************************************************/
-inline ProfilerApp::store_timer* ProfilerApp::getBlock( thread_info* thread_data, uint64_t id,
-    bool create, const char* message, const char* filename, const int start, const int stop )
+inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id, bool create,
+    const char* message, const char* filename, const int start, const int stop )
 {
     using std::to_string;
+    uint32_t thread_id = getThreadID();
+    if ( thread_id >= MAX_THREADS )
+        return nullptr;
     // Search for the thread-specific timer and create it if necessary (does not need blocking)
-    size_t key = GET_TIMER_HASH( id ); // Get the hash index
-    if ( thread_data->head[key] == nullptr ) {
+    size_t key         = GET_TIMER_HASH( id ); // Get the hash index
+    store_timer* timer = d_head[thread_id][key];
+    if ( !timer ) {
         if ( !create )
             return nullptr;
         // The timer does not exist, create it
-        auto new_timer         = new store_timer;
-        constexpr int64_t size = sizeof( store_timer );
-        d_bytes.fetch_add( size );
+        auto new_timer = new store_timer;
+        d_bytes.fetch_add( sizeof( store_timer ) );
         new_timer->id          = id;
         new_timer->is_active   = false;
-        new_timer->trace_index = thread_data->N_timers;
-        thread_data->N_timers++;
-        thread_data->head[key] = new_timer;
+        new_timer->trace_index = d_N_timers[thread_id]++;
+        new_timer->timer_data  = getTimerData( id, message, filename, start, stop );
+        d_head[thread_id][key] = new_timer;
+        timer                  = new_timer;
     }
-    store_timer* timer = thread_data->head[key];
     while ( timer->id != id ) {
         // Check if there is another entry to check (and create one if necessary)
         if ( timer->next == nullptr ) {
             if ( !create )
                 return nullptr;
-            auto new_timer         = new store_timer;
-            constexpr int64_t size = sizeof( store_timer );
-            d_bytes.fetch_add( size );
+            auto new_timer = new store_timer;
+            d_bytes.fetch_add( sizeof( store_timer ) );
             new_timer->id          = id;
             new_timer->is_active   = false;
-            new_timer->trace_index = thread_data->N_timers;
-            thread_data->N_timers++;
-            timer->next = new_timer;
+            new_timer->trace_index = d_N_timers[thread_id]++;
+            new_timer->timer_data  = getTimerData( id, message, filename, start, stop );
+            timer->next            = new_timer;
         }
         // Advance to the next entry
         timer = timer->next;
     }
-    // Get the global timer info and create if necessary
-    auto global_info = timer->timer_data;
-    if ( global_info == nullptr ) {
-        global_info       = getTimerData( id, message, filename, start, stop );
-        timer->timer_data = global_info;
-    }
     // Check the status of the timer
+    auto global_info = timer->timer_data;
     int global_start = global_info->start_line;
     int global_stop  = global_info->stop_line;
     bool check = ( start != -1 && start != global_start ) || ( stop != -1 && stop != global_stop );

@@ -48,7 +48,7 @@ constexpr size_t ProfilerApp::StoreTimes::MAX_TRACE;
 constexpr size_t ProfilerApp::StoreMemory::MAX_ENTRIES;
 constexpr size_t ProfilerApp::MAX_THREADS;
 constexpr size_t ProfilerApp::TIMER_HASH_SIZE;
-
+volatile std::atomic_uint32_t ProfilerApp::d_N_threads( 0 );
 
 // Declare quicksort
 template<class type_a, class type_b>
@@ -877,13 +877,16 @@ bool TimerMemoryResults::operator==( const TimerMemoryResults& rhs ) const
 /***********************************************************************
  * Constructor/Destructor                                               *
  ***********************************************************************/
-ProfilerApp::ProfilerApp() : d_N_threads( 0 ), d_construct_time( std::chrono::steady_clock::now() )
+ProfilerApp::ProfilerApp() : d_construct_time( std::chrono::steady_clock::now() )
 {
-    for ( auto& i : thread_table )
-        i = nullptr;
-    for ( auto& i : timer_table )
-        i = nullptr;
-    N_timers              = 0;
+    for ( auto& N : d_N_timers )
+        N = 0;
+    for ( auto& table : d_head ) {
+        for ( auto& tmp : table )
+            tmp = nullptr;
+    }
+    for ( auto& tmp : d_timer_table )
+        tmp = nullptr;
     d_level               = 0;
     d_shift               = 0;
     d_store_trace_data    = false;
@@ -913,11 +916,11 @@ void ProfilerApp::synchronize()
 /***********************************************************************
  * Function to start profiling a block of code                          *
  ***********************************************************************/
-void ProfilerApp::activeErrStart( thread_info* thread, store_timer* timer )
+void ProfilerApp::activeErrStart( store_timer* timer )
 {
     if ( d_disable_timer_error ) {
         // Stop the timer before starting
-        this->stop( thread, timer );
+        this->stop( timer );
     } else {
         // Throw an error
         char msg[2048];
@@ -927,29 +930,30 @@ void ProfilerApp::activeErrStart( thread_info* thread, store_timer* timer )
         throw std::logic_error( msg );
     }
 }
-void ProfilerApp::start( thread_info* thread, store_timer* timer )
+void ProfilerApp::start( store_timer* timer )
 {
     if ( timer->is_active )
-        activeErrStart( thread, timer );
+        activeErrStart( timer );
     // Start the timer
-    timer->trace     = thread->active;
-    timer->is_active = true;
-    thread->active.set( timer->trace_index );
+    uint32_t thread_id = getThreadID();
+    timer->trace       = d_active[thread_id];
+    timer->is_active   = true;
+    d_active[thread_id].set( timer->trace_index );
     timer->start_time = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
     // Record the memory usage
     if ( d_store_memory_data != MemoryLevel::None )
-        thread->memory.add( timer->start_time, d_store_memory_data, d_bytes );
+        d_memory[thread_id].add( timer->start_time, d_store_memory_data, d_bytes );
 }
 
 
 /***********************************************************************
  * Function to stop profiling a block of code                           *
  ***********************************************************************/
-void ProfilerApp::activeErrStop( thread_info* thread, store_timer* timer )
+void ProfilerApp::activeErrStop( store_timer* timer )
 {
     if ( d_disable_timer_error ) {
         // Start the timer before stopping
-        this->start( thread, timer );
+        this->start( timer );
     } else {
         char msg[2048];
         const auto& data = *( timer->timer_data );
@@ -958,17 +962,17 @@ void ProfilerApp::activeErrStop( thread_info* thread, store_timer* timer )
         throw std::logic_error( msg );
     }
 }
-void ProfilerApp::stop(
-    thread_info* thread, store_timer* timer, time_point end_time, int enableTrace )
+void ProfilerApp::stop( store_timer* timer, time_point end_time, int enableTrace )
 {
     if ( !timer->is_active ) {
-        activeErrStop( thread, timer );
+        activeErrStop( timer );
         end_time = std::chrono::steady_clock::now();
     }
     timer->is_active = false;
     // Update the active trace log
-    thread->active.unset( timer->trace_index );
-    timer->trace &= thread->active;
+    uint32_t thread_id = getThreadID();
+    d_active[thread_id].unset( timer->trace_index );
+    timer->trace &= d_active[thread_id];
     // Find the trace to save
     auto trace = timer->trace_head;
     while ( trace ) {
@@ -1005,18 +1009,19 @@ void ProfilerApp::stop(
     trace->N_calls++;
     // Get the memory usage
     if ( d_store_memory_data != MemoryLevel::None )
-        thread->memory.add( stop, d_store_memory_data, d_bytes );
+        d_memory[thread_id].add( stop, d_store_memory_data, d_bytes );
 }
 
 
 /***********************************************************************
- * Function to enable/disable the timers                                *
+ * Function to store current memory usage                               *
  ***********************************************************************/
 void ProfilerApp::memory()
 {
     if ( d_store_memory_data != MemoryLevel::None ) {
-        int64_t ns = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
-        getThreadData()->memory.add( ns, d_store_memory_data, d_bytes );
+        int64_t ns         = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
+        uint32_t thread_id = getThreadID();
+        d_memory[thread_id].add( ns, d_store_memory_data, d_bytes );
     }
 }
 
@@ -1040,18 +1045,25 @@ void ProfilerApp::disable()
     // First, change the status flag
     d_lock.lock();
     d_level = -1;
-    // delete the thread structures
-    for ( auto& i : thread_table ) {
-        delete i;
-        i = nullptr;
+    // Reset thread-specific data
+    for ( auto& tmp : d_N_timers )
+        tmp = tmp;
+    for ( auto& tmp : d_active )
+        tmp = StoreActive();
+    for ( auto& tmp : d_memory )
+        tmp.reset();
+    for ( auto& table : d_head ) {
+        for ( auto& tmp : table ) {
+            delete tmp;
+            tmp = nullptr;
+        }
     }
-    // delete the timer data structures
-    for ( auto& i : timer_table ) {
-        delete i;
-        i = nullptr;
+    // Reset timer data structures
+    for ( auto& tmp : d_timer_table ) {
+        delete tmp;
+        tmp = nullptr;
     }
-    N_timers = 0;
-    d_bytes  = 0;
+    d_bytes = 0;
     d_lock.unlock();
 }
 
@@ -1059,14 +1071,13 @@ void ProfilerApp::disable()
 /***********************************************************************
  * Function to return the profiling info                                *
  ***********************************************************************/
-inline void ProfilerApp::getTimerResultsID( uint64_t id,
-    std::vector<const thread_info*>& thread_list, int rank, const time_point& end_time,
-    TimerResults& results ) const
+inline void ProfilerApp::getTimerResultsID(
+    uint64_t id, int rank, const time_point& end_time, TimerResults& results ) const
 {
     const size_t key = GET_TIMER_HASH( id );
     results.id       = id_struct( id );
     // Search for the global timer info
-    auto* timer_global = const_cast<store_timer_data_info*>( timer_table[key] );
+    auto* timer_global = const_cast<store_timer_data_info*>( d_timer_table[key] );
     while ( timer_global != nullptr ) {
         if ( timer_global->id == id )
             break;
@@ -1081,10 +1092,9 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
     results.start = timer_global->start_line;
     results.stop  = timer_global->stop_line;
     // Loop through the thread entries
-    for ( auto thread_data : thread_list ) {
-        int thread_id = thread_data->id;
+    for ( size_t thread_id = 0; thread_id < MAX_THREADS; thread_id++ ) {
         // Search for a timer that matches the current id
-        store_timer* timer = thread_data->head[key];
+        store_timer* timer = d_head[thread_id][key];
         while ( timer != nullptr ) {
             if ( timer->id == id )
                 break;
@@ -1100,7 +1110,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
         uint64_t trace_id = 0;
         if ( timer->is_active ) {
             time        = diff_ns( end_time, d_construct_time ) - timer->start_time;
-            auto active = thread_data->active;
+            auto active = d_active[thread_id];
             active.unset( timer->trace_index );
             active &= timer->trace;
             trace_id     = active.id();
@@ -1112,7 +1122,7 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
             size_t k = results.trace.size();
             results.trace.resize( k + 1 );
             // Get the active list
-            auto list = getActiveList( trace->trace, timer->trace_index, thread_data );
+            auto list = getActiveList( trace->trace, timer->trace_index, d_head[thread_id] );
             // Get the running times of the trace
             results.trace[k].id       = results.id;
             results.trace[k].thread   = thread_id;
@@ -1147,11 +1157,11 @@ inline void ProfilerApp::getTimerResultsID( uint64_t id,
         if ( create_trace ) {
             size_t k = results.trace.size();
             results.trace.resize( k + 1 );
-            auto active = thread_data->active;
+            auto active = d_active[thread_id];
             active &= timer->trace;
             active.unset( timer->trace_index );
-            auto list                 = getActiveList( active, timer->trace_index, thread_data );
-            results.trace[k].id       = results.id;
+            auto list           = getActiveList( active, timer->trace_index, d_head[thread_id] );
+            results.trace[k].id = results.id;
             results.trace[k].thread   = thread_id;
             results.trace[k].rank     = rank;
             results.trace[k].N        = 1;
@@ -1181,28 +1191,19 @@ std::vector<TimerResults> ProfilerApp::getTimerResults() const
     int rank      = comm_rank();
     // Get a lock
     d_lock.lock();
-    // Get the thread data
-    // This can safely be done lock-free
-    std::vector<const thread_info*> thread_list;
-    for ( auto thread : thread_table ) {
-        if ( thread != nullptr )
-            thread_list.push_back( thread );
-    }
     // Get a list of all timer ids
     std::vector<size_t> ids;
-    for ( auto i : timer_table ) {
+    for ( auto i : d_timer_table ) {
         auto* timer_global = const_cast<store_timer_data_info*>( i );
         while ( timer_global != nullptr ) {
             ids.push_back( timer_global->id );
             timer_global = const_cast<store_timer_data_info*>( timer_global->next );
         }
     }
-    if ( (int) ids.size() != N_timers )
-        throw std::logic_error( "Not all timers were found" );
     // Begin storing the timers
     std::vector<TimerResults> results( ids.size() );
     for ( size_t i = 0; i < ids.size(); i++ )
-        getTimerResultsID( ids[i], thread_list, rank, end_time, results[i] );
+        getTimerResultsID( ids[i], rank, end_time, results[i] );
     // Release the mutex
     d_lock.unlock();
     return results;
@@ -1214,16 +1215,9 @@ TimerResults ProfilerApp::getTimerResults( uint64_t id ) const
     int rank      = comm_rank();
     // Get a lock
     d_lock.lock();
-    // Get the thread data
-    // This can safely be done lock-free
-    std::vector<const thread_info*> thread_list;
-    for ( auto thread : thread_table ) {
-        if ( thread != nullptr )
-            thread_list.push_back( thread );
-    }
     // Get the timer
     TimerResults results;
-    getTimerResultsID( id, thread_list, rank, end_time, results );
+    getTimerResultsID( id, rank, end_time, results );
     // Release the mutex
     d_lock.unlock();
     return results;
@@ -1237,22 +1231,21 @@ MemoryResults ProfilerApp::getMemoryResults() const
 {
     // Get the current memory usage
     if ( d_store_memory_data != MemoryLevel::None ) {
-        auto thread = const_cast<ProfilerApp*>( this )->getThreadData();
-        int64_t ns  = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
-        thread->memory.add( ns, d_store_memory_data, d_bytes );
+        uint32_t thread_id = getThreadID();
+        int64_t ns         = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
+        const_cast<ProfilerApp*>( this )->d_memory[thread_id].add(
+            ns, d_store_memory_data, d_bytes );
     }
     // Get the memory info for each thread
     size_t N = 0;
     std::vector<std::vector<uint64_t>> time_list, bytes_list;
-    for ( auto thread : thread_table ) {
-        if ( thread != nullptr ) {
-            std::vector<uint64_t> time, bytes;
-            thread->memory.get( time, bytes );
-            if ( !time.empty() ) {
-                N += time.size();
-                time_list.emplace_back( std::move( time ) );
-                bytes_list.emplace_back( std::move( bytes ) );
-            }
+    for ( auto& memory : d_memory ) {
+        std::vector<uint64_t> time, bytes;
+        memory.get( time, bytes );
+        if ( !time.empty() ) {
+            N += time.size();
+            time_list.emplace_back( std::move( time ) );
+            bytes_list.emplace_back( std::move( bytes ) );
         }
     }
     // Merge the data
@@ -1333,8 +1326,6 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
     }
     // Get the current results
     auto results = getTimerResults();
-    if ( (int) results.size() != N_timers )
-        throw std::logic_error( "Not all timers were found" );
     if ( global ) {
         // Gather the timers from all files (rank 0 will do all writing)
         gatherTimers( results );
@@ -2022,7 +2013,7 @@ void ProfilerApp::loadMemory( const std::string& filename, std::vector<MemoryRes
  * Function to get the list of active timers                            *
  ***********************************************************************/
 std::vector<id_struct> ProfilerApp::getActiveList(
-    const StoreActive& active, unsigned int myIndex, const thread_info* head )
+    const StoreActive& active, unsigned int myIndex, store_timer* const* head )
 {
     auto list = active.getSet();
     std::vector<id_struct> active_list;
@@ -2031,8 +2022,8 @@ std::vector<id_struct> ProfilerApp::getActiveList(
         if ( k == myIndex )
             continue;
         store_timer* timer_tmp = nullptr;
-        for ( auto m : head->head ) {
-            timer_tmp = m;
+        for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ ) {
+            timer_tmp = head[i];
             while ( timer_tmp != nullptr ) {
                 if ( timer_tmp->trace_index == k )
                     break;
@@ -2103,34 +2094,32 @@ ProfilerApp::store_timer_data_info* ProfilerApp::getTimerData(
     uint64_t id, const char* message, const char* filename, int start, int stop )
 {
     size_t key = GET_TIMER_HASH( id ); // Get the hash index
-    if ( timer_table[key] == nullptr ) {
+    if ( d_timer_table[key] == nullptr ) {
         // The global timer does not exist, create it (requires blocking)
-        // Acquire the lock (neccessary for modifying the timer_table)
+        // Acquire the lock (necessary for modifying the timer_table)
         d_lock.lock();
         // Check if the entry is still nullptr
-        if ( timer_table[key] == nullptr ) {
+        if ( d_timer_table[key] == nullptr ) {
             // Create a new entry
             auto* info_tmp = new store_timer_data_info( message, filename, id, start, stop );
             d_bytes.fetch_add( sizeof( store_timer_data_info ) );
-            timer_table[key] = info_tmp;
-            N_timers++;
+            d_timer_table[key] = info_tmp;
         }
         // Release the lock
         d_lock.unlock();
     }
-    volatile store_timer_data_info* info = timer_table[key];
+    volatile store_timer_data_info* info = d_timer_table[key];
     while ( info->id != id ) {
         // Check if there is another entry to check (and create one if necessary)
         if ( info->next == nullptr ) {
             // Acquire the lock
-            // Acquire the lock (neccessary for modifying the timer_table)
+            // Acquire the lock (necessary for modifying the timer_table)
             d_lock.lock();
             // Check if another thread created an entry while we were waiting for the lock
             if ( info->next == nullptr ) {
                 // Create a new entry
                 auto* info_tmp = new store_timer_data_info( message, filename, id, start, stop );
                 info->next     = info_tmp;
-                N_timers++;
             }
             // Release the lock
             d_lock.unlock();

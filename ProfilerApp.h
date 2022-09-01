@@ -354,7 +354,7 @@ public:
     inline bool active( const std::string& message, const char* filename )
     {
         uint64_t id = getTimerId( message.c_str(), filename );
-        auto timer  = getBlock( getThreadData(), id );
+        auto timer  = getBlock( id );
         return !timer ? false : timer->is_active;
     }
 
@@ -365,7 +365,7 @@ public:
      */
     inline bool active( uint64_t id )
     {
-        auto timer = getBlock( getThreadData(), id );
+        auto timer = getBlock( id );
         return !timer ? false : timer->is_active;
     }
 
@@ -514,9 +514,8 @@ public: // Fast interface to start/stop
         if ( level == -1 )
             level = 0;
         if ( level <= d_level && level >= 0 ) {
-            auto thread_data = getThreadData();
-            auto timer       = getBlock( thread_data, id, true, message, filename, line, -1 );
-            start( thread_data, timer );
+            auto timer = getBlock( id, true, message, filename, line, -1 );
+            start( timer );
         }
     }
 
@@ -544,10 +543,9 @@ public: // Fast interface to start/stop
         if ( level == -1 )
             level = 0;
         if ( level <= d_level && level >= 0 ) {
-            auto end_time    = std::chrono::steady_clock::now();
-            auto thread_data = getThreadData();
-            auto timer       = getBlock( thread_data, id, true, message, filename, -1, line );
-            stop( thread_data, timer, end_time, trace );
+            auto end_time = std::chrono::steady_clock::now();
+            auto timer    = getBlock( id, true, message, filename, -1, line );
+            stop( timer, end_time, trace );
         }
     }
 
@@ -744,40 +742,17 @@ private: // Member classes
         store_timer& operator=( const store_timer& rhs ) = delete;
     };
 
-    // Structure to store thread specific information
-    struct thread_info {
-        int id;                             // The id of the thread
-        unsigned int N_timers;              // The number of timers seen by the current thread
-        StoreActive active;                 // Store the active trace
-        store_timer* head[TIMER_HASH_SIZE]; // Store the timers in a hash table
-        StoreMemory memory;                 // Memory usage information
-        // Constructor used to initialize key values
-        explicit thread_info( int id_ ) : id( id_ ), N_timers( 0 )
-        {
-            for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ )
-                head[i] = nullptr;
-        }
-        // Destructor
-        ~thread_info()
-        {
-            for ( size_t i = 0; i < TIMER_HASH_SIZE; i++ ) {
-                delete head[i];
-                head[i] = nullptr;
-            }
-        }
-        thread_info()                         = delete;
-        thread_info( const thread_info& rhs ) = delete;
-        thread_info& operator=( const thread_info& rhs ) = delete;
-    };
 
 private: // Member data
     // Store thread specific info
-    volatile std::atomic_int32_t d_N_threads;
-    thread_info* thread_table[MAX_THREADS];
+    static volatile std::atomic_uint32_t d_N_threads;
+    uint32_t d_N_timers[MAX_THREADS];
+    StoreActive d_active[MAX_THREADS];
+    StoreMemory d_memory[MAX_THREADS];
+    store_timer* d_head[MAX_THREADS][TIMER_HASH_SIZE];
 
     // Store the global timer info in a hash table
-    volatile int N_timers;
-    volatile store_timer_data_info* timer_table[TIMER_HASH_SIZE];
+    volatile store_timer_data_info* d_timer_table[TIMER_HASH_SIZE];
 
     // Handle to a mutex lock
     mutable std::mutex d_lock;
@@ -792,14 +767,11 @@ private: // Member data
     mutable volatile std::atomic_int64_t d_bytes; // The current memory used by the profiler
 
 private: // Private member functions
-    // Function to return a pointer to the thread info (or create it if necessary)
-    // Note: this function does not require any blocking
-    inline thread_info* getThreadData()
+    // Function to get a global thread id
+    static inline int32_t getThreadID()
     {
-        thread_local int id = d_N_threads++;
-        if ( !thread_table[id] )
-            thread_table[id] = new thread_info( id );
-        return thread_table[id];
+        static thread_local int id = d_N_threads++;
+        return id;
     }
 
     // Function to return a pointer to the global timer info (or create it if necessary)
@@ -808,24 +780,23 @@ private: // Private member functions
         uint64_t id, const char* message, const char* filename, int start, int stop );
 
     // Function to return the appropriate timer block
-    inline store_timer* getBlock( thread_info* thread_data, uint64_t id, bool create = false,
-        const char* message = nullptr, const char* filename = nullptr, const int start = -1,
-        const int stop = -1 );
+    inline store_timer* getBlock( uint64_t id, bool create = false, const char* message = nullptr,
+        const char* filename = nullptr, const int start = -1, const int stop = -1 );
 
     // Function to get the timer results
-    inline void getTimerResultsID( uint64_t id, std::vector<const thread_info*>& threads, int rank,
-        const time_point& end_time, TimerResults& results ) const;
+    inline void getTimerResultsID(
+        uint64_t id, int rank, const time_point& end_time, TimerResults& results ) const;
 
     // Start/stop the timer
-    void start( thread_info* thread, store_timer* timer );
-    void stop( thread_info* thread, store_timer* timer,
-        time_point end_time = std::chrono::steady_clock::now(), int trace = -1 );
-    void activeErrStart( thread_info*, store_timer* );
-    void activeErrStop( thread_info*, store_timer* );
+    void start( store_timer* timer );
+    void stop( store_timer* timer, time_point end_time = std::chrono::steady_clock::now(),
+        int trace = -1 );
+    void activeErrStart( store_timer* );
+    void activeErrStop( store_timer* );
 
     // Function to return the string of active timers
     static std::vector<id_struct> getActiveList(
-        const StoreActive& active, unsigned int myIndex, const thread_info* head );
+        const StoreActive& active, unsigned int myIndex, store_timer* const* head );
 
     // Function to get the current memory usage
     static inline size_t getMemoryUsage();
