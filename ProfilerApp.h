@@ -106,7 +106,7 @@ public:
     TraceResults( const TraceResults& ) = delete;
     TraceResults( TraceResults&& );
     TraceResults& operator=( const TraceResults& ) = delete;
-    TraceResults& operator                         =( TraceResults&& );
+    TraceResults& operator=( TraceResults&& );
     // Helper functions
     size_t size( bool store_trace = true ) const; //!< The number of bytes needed to pack the data
     size_t pack( char* data, bool store_trace = true ) const; //!<  Pack the data to a buffer
@@ -133,10 +133,10 @@ public:
     std::vector<TraceResults> trace; //!<  Trace data
     // Constructors/destructor
     TimerResults();
-    TimerResults( const TimerResults& ) = delete;
-    TimerResults( TimerResults&& )      = default;
+    TimerResults( const TimerResults& )            = delete;
+    TimerResults( TimerResults&& )                 = default;
     TimerResults& operator=( const TimerResults& ) = delete;
-    TimerResults& operator=( TimerResults&& ) = default;
+    TimerResults& operator=( TimerResults&& )      = default;
     // Helper functions
     size_t size( bool store_trace = true ) const; //!<  The number of bytes needed to pack the trace
     size_t pack( char* data, bool store_trace = true ) const; //!<  Pack the data to a buffer
@@ -579,7 +579,7 @@ private: // Member classes
     public:
         StoreActive() { memset( this, 0, sizeof( *this ) ); }
         inline StoreActive( const StoreActive& rhs ) = default;
-        inline StoreActive& operator                 =( const StoreActive& rhs );
+        inline StoreActive& operator=( const StoreActive& rhs );
         inline StoreActive& operator&=( const StoreActive& rhs );
         inline void set( size_t index );
         inline void unset( size_t index );
@@ -607,7 +607,7 @@ private: // Member classes
         StoreTimes( const StoreTimes& rhs ) = delete;
         StoreTimes( StoreTimes&& rhs );
         StoreTimes& operator=( const StoreTimes& rhs ) = delete;
-        StoreTimes& operator                           =( StoreTimes&& rhs );
+        StoreTimes& operator=( StoreTimes&& rhs );
         explicit StoreTimes( const StoreTimes& rhs, uint64_t shift );
         inline void reserve( size_t N );
         inline size_t size() const { return d_size; }
@@ -636,7 +636,7 @@ private: // Member classes
             delete[] d_time;
             delete[] d_bytes;
         }
-        inline StoreMemory( const StoreMemory& rhs ) = delete;
+        inline StoreMemory( const StoreMemory& rhs )            = delete;
         inline StoreMemory& operator=( const StoreMemory& rhs ) = delete;
         inline void add(
             uint64_t time, MemoryLevel level, volatile std::atomic_int64_t& bytes_profiler );
@@ -678,7 +678,7 @@ private: // Member classes
             delete next;
             next = nullptr;
         }
-        store_trace( const store_trace& rhs ) = delete;
+        store_trace( const store_trace& rhs )            = delete;
         store_trace& operator=( const store_trace& rhs ) = delete;
     };
 
@@ -706,7 +706,7 @@ private: // Member classes
             delete next;
             next = nullptr;
         }
-        store_timer_data_info( const store_timer_data_info& rhs ) = delete;
+        store_timer_data_info( const store_timer_data_info& rhs )            = delete;
         store_timer_data_info& operator=( const store_timer_data_info& rhs ) = delete;
     };
 
@@ -738,7 +738,7 @@ private: // Member classes
             delete trace_head;
             delete next;
         }
-        store_timer( const store_timer& rhs ) = delete;
+        store_timer( const store_timer& rhs )            = delete;
         store_timer& operator=( const store_timer& rhs ) = delete;
     };
 

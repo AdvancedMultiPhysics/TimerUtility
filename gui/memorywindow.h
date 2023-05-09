@@ -28,8 +28,8 @@ class MemoryWindow : public ThreadedSlotsClass
 
 public:
     explicit MemoryWindow( const TimerWindow *parent );
-    MemoryWindow()                       = delete;
-    MemoryWindow( const MemoryWindow & ) = delete;
+    MemoryWindow()                                  = delete;
+    MemoryWindow( const MemoryWindow & )            = delete;
     MemoryWindow &operator=( const MemoryWindow & ) = delete;
     virtual ~MemoryWindow();
 

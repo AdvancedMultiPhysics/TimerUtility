@@ -14,7 +14,7 @@ public:
     {
         resize( Nx, Ny, Nz );
     }
-    BoolArray( const BoolArray& ) = delete;
+    BoolArray( const BoolArray& )            = delete;
     BoolArray& operator=( const BoolArray& ) = delete;
     ~BoolArray() { delete[] data; }
     void resize( int Nx, int Ny = 1, int Nz = 1 )
@@ -69,7 +69,7 @@ public:
     TYPE* data;
     Matrix() : N( 0 ), M( 0 ), data( nullptr ) {}
     Matrix( int N_, int M_ ) : N( N_ ), M( M_ ), data( new TYPE[N_ * M_] ) { fill( 0 ); }
-    Matrix( const Matrix& ) = delete;
+    Matrix( const Matrix& )            = delete;
     Matrix& operator=( const Matrix& ) = delete;
     ~Matrix() { delete[] data; }
     TYPE& operator()( int i, int j ) { return data[i + j * N]; }

@@ -106,11 +106,8 @@ IF ( USE_DOXYGEN )
 ENDIF()
 
 
-# Create custom targets for build-test, check, and distclean
+# Create custom targets for distclean
 SET( EXCLUDE_TESTS_FROM_ALL 0 )
-ADD_CUSTOM_TARGET( build-test )
-ADD_CUSTOM_TARGET( build-examples )
-ADD_CUSTOM_TARGET( check COMMAND  make test  )
 ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT qwt Debug TIMER.build TIMER.xcodeproj features gmon.out GUI-prefix plugins QWT-prefix )
 
 
@@ -132,12 +129,20 @@ IF ( NOT ONLY_BUILD_DOCS )
 ENDIF()
 
 
-# Macro to create 1,2,4 processor tests
-MACRO( ADD_TIMER_TEST_1_2_4 EXENAME ${ARGN} )
+# Set a macro to add serial, 2 processor, and 4 processor tests
+MACRO( ADD_LaserCrystal_TEST_1_2_4 EXENAME ${ARGN} )
     ADD_TIMER_TEST( ${EXENAME} ${ARGN} )
-    ADD_TIMER_TEST_PARALLEL( ${EXENAME} 2 ${ARGN} )
-    ADD_TIMER_TEST_PARALLEL( ${EXENAME} 4 ${ARGN} )
+    ADD_TIMER_TEST( ${EXENAME} ${ARGN} PROCS 2 )
+    ADD_TIMER_TEST( ${EXENAME} ${ARGN} PROCS 4 )
 ENDMACRO()
+
+
+# Check for mallinfo2
+INCLUDE(CheckSymbolExists)
+CHECK_SYMBOL_EXISTS( mallinfo2 malloc.h HAVE_MALLINFO2 )
+IF ( HAVE_MALLINFO2 )
+    ADD_DEFINITIONS( -DHAVE_MALLINFO2 )
+ENDIF()
 
 
 # Add the src directories

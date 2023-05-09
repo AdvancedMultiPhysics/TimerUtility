@@ -1,9 +1,12 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.18.3)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.19)
 CMAKE_POLICY( SET CMP0057 NEW )
+CMAKE_POLICY( SET CMP0110 NEW )
+
 INCLUDE(CheckCCompilerFlag)
 INCLUDE(CheckCSourceCompiles)
 INCLUDE(CheckCXXCompilerFlag)
 INCLUDE(CheckCXXSourceCompiles)
+
 IF ( NOT TEST_FAIL_REGULAR_EXPRESSION )
     # Note: we cannot check for "handles are still allocated" due to PETSc.  See static variable
     #   Petsc_Reduction_keyval on line 234 of comb.c
@@ -30,12 +33,10 @@ SET( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
 
 # Check for link time optimization (LTO)
-IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${CMAKE_VERSION} VERSION_GREATER 3.9.4
-    AND NOT DISABLE_LTO AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION )
-    CMAKE_MINIMUM_REQUIRED(VERSION 3.9)
+IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Release" AND NOT DISABLE_LTO AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION )
     INCLUDE( CheckIPOSupported )
     CHECK_IPO_SUPPORTED(RESULT supported OUTPUT error)
-    IF( supported )
+    IF ( supported )
         MESSAGE(STATUS "IPO / LTO enabled")
         SET( LTO TRUE )
         SET( CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE )
@@ -43,10 +44,34 @@ IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${CMAKE_VERSION} VERSION_GREATER
         SET( LTO FALSE )
         MESSAGE(STATUS "IPO / LTO not supported")
     ENDIF()
-ELSEIF( NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION )
+ELSEIF ( NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION )
     SET( LTO FALSE )
     MESSAGE(STATUS "IPO / LTO disabled")
 ENDIF()
+
+
+# Set default value
+MACRO( SET_DEFAULT FLAG ${ARGN} )
+    IF ( NOT DEFINED ${FLAG} )
+        SET( ${FLAG} ${ARGN} )
+    ENDIF()
+ENDMACRO()
+
+
+# Check if a flag is enabled
+MACRO( CHECK_ENABLE_FLAG FLAG DEFAULT )
+    IF ( NOT DEFINED ${FLAG} )
+        SET( ${FLAG} ${DEFAULT} )
+    ELSEIF ( ${FLAG} STREQUAL "" )
+        SET( ${FLAG} ${DEFAULT} )
+    ELSEIF ( ( ${${FLAG}} STREQUAL "FALSE" ) OR ( ${${FLAG}} STREQUAL "false" ) OR ( ${${FLAG}} STREQUAL "0" ) OR ( ${${FLAG}} STREQUAL "OFF" ) )
+        SET( ${FLAG} 0 )
+    ELSEIF ( ( ${${FLAG}} STREQUAL "TRUE" ) OR ( ${${FLAG}} STREQUAL "true" ) OR ( ${${FLAG}} STREQUAL "1" ) OR ( ${${FLAG}} STREQUAL "ON" ) )
+        SET( ${FLAG} 1 )
+    ELSE()
+        MESSAGE( "Bad value for ${FLAG} (${${FLAG}}); use true or false" )
+    ENDIF()
+ENDMACRO()
 
 
 # Check for gold linker
@@ -61,49 +86,86 @@ IF ( UNIX AND NOT APPLE AND NOT DISABLE_GOLD )
 ENDIF()
 
 
+# Add some default targets if they do not exist
+IF ( NOT TARGET copy-${PROJ}-Data )
+    ADD_CUSTOM_TARGET( copy-${PROJ}-Data ALL )
+ENDIF()
+IF ( NOT TARGET copy-${PROJ}-include )
+    ADD_CUSTOM_TARGET( copy-${PROJ}-include ALL )
+ENDIF()
+IF ( NOT TARGET clean-makefile )
+    ADD_CUSTOM_TARGET( clean-makefile ALL )
+    ADD_DEPENDENCIES( copy-${PROJ}-Data clean-makefile )
+    ADD_DEPENDENCIES( copy-${PROJ}-include clean-makefile )
+    ADD_CUSTOM_COMMAND( TARGET clean-makefile
+        PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -f "${CMAKE_CURRENT_BINARY_DIR}/time.log"
+    )
+ENDIF()
+IF ( NOT TARGET build-test )
+    ADD_CUSTOM_TARGET( build-test )
+ENDIF()
+IF ( NOT TARGET build-examples )
+    ADD_CUSTOM_TARGET( build-examples )
+ENDIF()
+IF ( NOT TARGET check )
+    ADD_CUSTOM_TARGET( check )
+ENDIF()
+
 # Dummy use to prevent unused cmake variable warning
-MACRO( NULL_USE VAR )
+FUNCTION( NULL_USE VAR )
     IF ( "${${VAR}}" STREQUAL "dummy" )
         MESSAGE( FATAL_ERROR "NULL_USE fail" )
     ENDIF()
-ENDMACRO()
+ENDFUNCTION()
 NULL_USE( CMAKE_C_FLAGS )
 
 
-# Macro to set a global variable
-MACRO(GLOBAL_SET VARNAME)
+# Set a global variable
+MACRO( GLOBAL_SET VARNAME )
   SET(${VARNAME} ${ARGN} CACHE INTERNAL "")
 ENDMACRO()
 
 
-# Macro to print all variables
-MACRO( PRINT_ALL_VARIABLES )
+# Print all variables
+FUNCTION( PRINT_ALL_VARIABLES )
     GET_CMAKE_PROPERTY(_variableNames VARIABLES)
-    FOREACH(_variableName ${_variableNames})
+    FOREACH (_variableName ${_variableNames})
         MESSAGE(STATUS "${_variableName}=${${_variableName}}")
     ENDFOREACH()
-ENDMACRO()
+ENDFUNCTION()
 
 
 # CMake assert
-MACRO(ASSERT test comment)
-    IF (NOT ${test})
+FUNCTION( ASSERT test comment )
+    IF ( NOT ${test} )
         MESSSAGE(FATAL_ERROR "Assertion failed: ${comment}")
-    ENDIF(NOT ${test})
-ENDMACRO(ASSERT)
+    ENDIF()
+ENDFUNCTION()
+
+
+# Function to get the number of physical processors
+# Note: CMake uses OMP_NUM_THREADS which we don't want to use
+FUNCTION ( GetPhysicalProcs VAR )
+    INCLUDE( ProcessorCount )
+    SET( OMP_NUM_THREADS $ENV{OMP_NUM_THREADS}  )
+    SET( ENV{OMP_NUM_THREADS} )
+    ProcessorCount( PROCS )
+    SET( ${VAR} ${PROCS} PARENT_SCOPE )
+    SET( ENV{OMP_NUM_THREADS} ${OMP_NUM_THREADS} )
+ENDFUNCTION()
 
 
 # Set the maximum number of processors
 IF ( NOT TEST_MAX_PROCS )
-    INCLUDE(ProcessorCount)
-    ProcessorCount( TEST_MAX_PROCS )
+    GetPhysicalProcs( TEST_MAX_PROCS )
     IF ( ${TEST_MAX_PROCS} EQUAL 0 )
         SET( TEST_MAX_PROCS 16 )
     ENDIF()
 ENDIF()
 
 
-# Macro to convert a m4 file
+# Convert a m4 file
 # This command converts a file of the format "global_path/file.m4"
 # and convertes it to file.F.  It also requires the path.  
 MACRO( CONVERT_M4_FORTRAN IN LOCAL_PATH OUT_PATH )
@@ -113,7 +175,6 @@ MACRO( CONVERT_M4_FORTRAN IN LOCAL_PATH OUT_PATH )
     IF ( NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${OUT_PATH}" )
         FILE(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${OUT_PATH}" )    
     ENDIF()
-    CONFIGURE_FILE( ${IN} ${IN} COPYONLY )
     IF ("${CMAKE_GENERATOR}" STREQUAL "Xcode")
         STRING(REGEX REPLACE ".F" ".o" OUT2 "${OUT}" )
         STRING(REGEX REPLACE ";" " " COMPILE_CMD "${CMAKE_Fortran_COMPILER} -c ${OUT} ${CMAKE_Fortran_FLAGS} -o ${OUT2}")
@@ -160,7 +221,7 @@ ENDMACRO()
 
 
 # Initialize a package
-MACRO (BEGIN_PACKAGE_CONFIG PACKAGE)
+MACRO( BEGIN_PACKAGE_CONFIG PACKAGE )
     SET( HEADERS "" )
     SET( CXXSOURCES "" )
     SET( CSOURCES "" )
@@ -169,7 +230,11 @@ MACRO (BEGIN_PACKAGE_CONFIG PACKAGE)
     SET( CUDASOURCES "" )
     SET( SOURCES "" )
     SET( CURPACKAGE ${PACKAGE} )
-ENDMACRO ()
+    IF ( NOT DEFINED PACKAGE_NAME )
+        SET( PACKAGE_NAME "${PROJ}_${PACKAGE}" )
+        STRING( TOUPPER "${PACKAGE_NAME}" PACKAGE_NAME )
+    ENDIF()
+ENDMACRO()
 
 
 # Find the source files
@@ -192,7 +257,7 @@ MACRO( FIND_FILES )
     # Find the m4 fortran source (and convert)
     SET( T_M4FSOURCES "" )
     FILE( GLOB T_M4FSOURCES "*.m4" "*.fm4" )
-    FOREACH( m4file ${T_M4FSOURCES} )
+    FOREACH ( m4file ${T_M4FSOURCES} )
         CONVERT_M4_FORTRAN( ${m4file} ${CMAKE_CURRENT_SOURCE_DIR} "" )
     ENDFOREACH()
     # Add all found files to the current lists
@@ -202,7 +267,7 @@ MACRO( FIND_FILES )
     SET( CSOURCES ${CSOURCES} ${T_CSOURCES} )
     SET( FSOURCES ${FSOURCES} ${T_FSOURCES} )
     SET( M4FSOURCES ${M4FSOURCES} ${T_M4FSOURCES} )
-    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_M4FSOURCES} ${CUDASOURCES} )
+    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_M4FSOURCES} ${T_CUDASOURCES} )
 ENDMACRO()
 
 
@@ -226,7 +291,7 @@ MACRO( FIND_FILES_PATH IN_PATH )
     # Find the m4 fortran source (and convert)
     SET( T_M4FSOURCES "" )
     FILE( GLOB T_M4FSOURCES "${IN_PATH}/*.m4" "${IN_PATH}/*.fm4" )
-    FOREACH( m4file ${T_M4FSOURCES} )
+    FOREACH ( m4file ${T_M4FSOURCES} )
         CONVERT_M4_FORTRAN( ${m4file} ${CMAKE_CURRENT_SOURCE_DIR}/${IN_PATH} ${IN_PATH} )
     ENDFOREACH ()
     # Add all found files to the current lists
@@ -235,7 +300,7 @@ MACRO( FIND_FILES_PATH IN_PATH )
     SET( CUDASOURCES ${CUDASOURCES} ${T_CUDASOURCES} )
     SET( CSOURCES ${CSOURCES} ${T_CSOURCES} )
     SET( FSOURCES ${FSOURCES} ${T_FSOURCES} )
-    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${CUDASOURCES} )
+    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_CUDASOURCES} )
 ENDMACRO()
 
 
@@ -252,25 +317,55 @@ MACRO( ADD_EXTERNAL_DIRECTORY SUBDIR )
 ENDMACRO()
 
 
+# Add assembly target
+IF ( NOT TARGET assembly )
+    ADD_CUSTOM_TARGET( assembly )
+ENDIF()
+MACRO( ADD_ASSEMBLY PACKAGE SOURCE )
+    # Create the assembly targets
+    IF ( CMAKE_GENERATOR STREQUAL "Unix Makefiles" )
+        # The trick is that makefiles generator defines a [sourcefile].s target for each sourcefile of a target to generate the listing 
+        # of that file. We hook a command after build to invoke that target and copy the result file to our ourput directory:
+        SET( MAKE_TARGETS )
+        SET( COPY_COMMANDS )
+        FOREACH ( src ${SOURCES} )
+            GET_SOURCE_FILE_PROPERTY( lang "${src}" LANGUAGE) 
+            IF ( lang STREQUAL "C" OR lang STREQUAL "CXX" OR lang STREQUAL "Fortran" )
+                STRING( REPLACE "${${PROJ}_SOURCE_DIR}/" "" src_out "${src}" )
+                STRING( REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/" "" src "${src}" )
+                SET( MAKE_TARGETS ${MAKE_TARGETS} ${src}.s)
+                SET( COPY_COMMANDS ${COPY_COMMANDS} COMMAND ${CMAKE_COMMAND} -E copy
+                         "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${PACKAGE}.dir/${src}.s"
+                         "${CMAKE_BINARY_DIR}/assembly/${src_out}.s")
+            ENDIF()
+        ENDFOREACH()
+        IF ( MAKE_TARGETS )
+            ADD_CUSTOM_TARGET( ${PACKAGE}-assembly )
+            ADD_CUSTOM_COMMAND( TARGET ${PACKAGE}-assembly
+                 COMMAND $(MAKE) ${MAKE_TARGETS}
+                 ${COPY_COMMANDS}
+                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )
+            ADD_DEPENDENCIES( assembly ${PACKAGE}-assembly )
+        ENDIF()
+    ENDIF()
+ENDMACRO()
+
+
 # Install a package
 MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
-    # Add some default targets if they do not exist
-    IF ( NOT TARGET copy-${PROJ}-include )
-        ADD_CUSTOM_TARGET( copy-${PROJ}-include ALL )
-    ENDIF()
     # Find all files in the current directory
     FIND_FILES()
     # Create the copy target
     STRING(REGEX REPLACE "${${PROJ}_SOURCE_DIR}/" "" COPY_TARGET "copy-${PROJ}-${CMAKE_CURRENT_SOURCE_DIR}-include" )
     STRING(REGEX REPLACE "/" "-" COPY_TARGET ${COPY_TARGET} )
-    IF( NOT TARGET ${COPY_TARGET} )
+    IF ( NOT TARGET ${COPY_TARGET} )
         ADD_CUSTOM_TARGET( ${COPY_TARGET} ALL )
         ADD_DEPENDENCIES( copy-${PROJ}-include ${COPY_TARGET} )
     ENDIF()
     # Copy the header files to the include path
     IF ( HEADERS )
         FILE( GLOB HFILES RELATIVE "${${PROJ}_SOURCE_DIR}" ${HEADERS} )
-        FOREACH( HFILE ${HFILES} )
+        FOREACH ( HFILE ${HFILES} )
             SET( SRC_FILE "${${PROJ}_SOURCE_DIR}/${HFILE}" )
             SET( DST_FILE "${${PROJ}_INSTALL_DIR}/include/${${PROJ}_INC}/${HFILE}" )
             # Only copy the headers if the exisit in the project source directory
@@ -299,6 +394,10 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
         SET( ${PROJ}_LIBS ${${PROJ}_LIBS} ${PACKAGE} CACHE INTERNAL "")
         LIST( REMOVE_DUPLICATES ${PROJ}_LIBS )
         SET( ${PROJ}_LIBS ${${PROJ}_LIBS} CACHE INTERNAL "")
+        # If we are using CUDA and COMPILE_CXX_AS_CUDA is set, change the language
+        IF ( USE_CUDA AND COMPILE_CXX_AS_CUDA )
+            SET_SOURCE_FILES_PROPERTIES( ${CXXSOURCES} PROPERTIES LANGUAGE CUDA )
+        ENDIF()
         # Create the library
         IF ( ${PROJ}_LIB )
             # We are using a single project library
@@ -308,10 +407,11 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
             ADD_LIBRARY( ${PACKAGE} ${LIB_TYPE} ${SOURCES} ${CUBINS} )
             TARGET_LINK_EXTERNAL_LIBRARIES( ${PACKAGE} )
         ENDIF()
+        # Create the assembly targets
+        ADD_ASSEMBLY( ${PACKAGE} ${SOURCES} )
         # Add coverage flags to target
         IF ( NOT DISABLE_TARGET_COVERAGE )
             TARGET_COMPILE_DEFINITIONS( ${PACKAGE} PUBLIC ${COVERAGE_FLAGS} )
-            TARGET_LINK_LIBRARIES( ${PACKAGE} ${COVERAGE_LIBS} )
         ENDIF()
         # Add target dependencies
         IF ( TARGET write_repo_version )
@@ -338,35 +438,32 @@ MACRO( INSTALL_PROJ_LIB )
         SET( tmp_link_list ${tmp_link_list} $<TARGET_OBJECTS:${tmp}> )
     ENDFOREACH()
     ADD_LIBRARY( ${${PROJ}_LIB} ${LIB_TYPE} ${tmp_link_list} )
-    IF ( NOT DISABLE_TARGET_COVERAGE )
-        TARGET_LINK_EXTERNAL_LIBRARIES( ${${PROJ}_LIB} LINK_PUBLIC ${COVERAGE_LIBS} )
-    ELSE()
-        TARGET_LINK_EXTERNAL_LIBRARIES( ${${PROJ}_LIB} LINK_PUBLIC )
-    ENDIF()
+    TARGET_LINK_LIBRARIES( ${${PROJ}_LIB} LINK_PUBLIC ${COVERAGE_LIBS} )
+    TARGET_LINK_EXTERNAL_LIBRARIES( ${${PROJ}_LIB} LINK_PUBLIC )
     INSTALL( TARGETS ${${PROJ}_LIB} DESTINATION ${${PROJ}_INSTALL_DIR}/lib )
 ENDMACRO()
 
 
-# Macro to verify that a variable has been set
-MACRO( VERIFY_VARIABLE VARIABLE_NAME )
+# Verify that a variable has been set
+FUNCTION( VERIFY_VARIABLE VARIABLE_NAME )
     IF ( NOT ${VARIABLE_NAME} )
         MESSAGE( FATAL_ERROR "Please set: " ${VARIABLE_NAME} )
     ENDIF()
-ENDMACRO()
+ENDFUNCTION()
 
 
-# Macro to verify that a path has been set
-MACRO( VERIFY_PATH PATH_NAME )
+# Verify that a path has been set
+FUNCTION( VERIFY_PATH PATH_NAME )
     IF ("${PATH_NAME}" STREQUAL "")
         MESSAGE( FATAL_ERROR "Path is not set: ${PATH_NAME}" )
     ENDIF()
     IF ( NOT EXISTS "${PATH_NAME}" )
         MESSAGE( FATAL_ERROR "Path does not exist: ${PATH_NAME}" )
     ENDIF()
-ENDMACRO()
+ENDFUNCTION()
 
 
-# Macro to tell cmake to use static libraries
+# Tell CMake to use static libraries
 MACRO( SET_STATIC_FLAGS )
     # Remove extra library links
     SET(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
@@ -378,41 +475,41 @@ MACRO( SET_STATIC_FLAGS )
 ENDMACRO()
 
 
-# Macro to identify the compiler
+# Identify the compiler
 MACRO( IDENTIFY_COMPILER )
     # SET the C/C++ compiler
     IF ( CMAKE_C_COMPILER_WORKS OR CMAKE_CXX_COMPILER_WORKS )
-        IF( USING_GCC OR CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
+        IF ( USING_GCC OR CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
             (${CMAKE_C_COMPILER_ID} MATCHES "GNU") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "GNU") )
             SET( USING_GCC TRUE )
             ADD_DEFINITIONS( -DUSING_GCC )
             MESSAGE("Using gcc")
-        ELSEIF( USING_MSVC OR MSVC OR MSVC_IDE OR MSVC60 OR MSVC70 OR MSVC71 OR MSVC80 OR CMAKE_COMPILER_2005 OR MSVC90 OR MSVC10 )
-            IF( NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
+        ELSEIF ( USING_MSVC OR MSVC OR MSVC_IDE OR MSVC60 OR MSVC70 OR MSVC71 OR MSVC80 OR CMAKE_COMPILER_2005 OR MSVC90 OR MSVC10 )
+            IF ( NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
                 MESSAGE( FATAL_ERROR "Using microsoft compilers on non-windows system?" )
             ENDIF()
             SET( USING_MSVC TRUE )
             ADD_DEFINITIONS( -DUSING_MSVC )
             MESSAGE("Using Microsoft")
-        ELSEIF( USING_ICC OR (${CMAKE_C_COMPILER_ID} MATCHES "Intel") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Intel") ) 
+        ELSEIF ( USING_ICC OR (${CMAKE_C_COMPILER_ID} MATCHES "Intel") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Intel") ) 
             SET(USING_ICC TRUE)
             ADD_DEFINITIONS( -DUSING_ICC )
             MESSAGE("Using icc")
-        ELSEIF( USING_PGCC OR (${CMAKE_C_COMPILER_ID} MATCHES "PGI") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "PGI") )
+        ELSEIF ( USING_PGCC OR (${CMAKE_C_COMPILER_ID} MATCHES "PGI") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "PGI") )
             SET(USING_PGCC TRUE)
             ADD_DEFINITIONS( -DUSING_PGCC )
             MESSAGE("Using pgCC")
-        ELSEIF( USING_CRAY OR (${CMAKE_C_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CRAY") OR
+        ELSEIF ( USING_CRAY OR (${CMAKE_C_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CRAY") OR
                               (${CMAKE_C_COMPILER_ID} MATCHES "Cray") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Cray") )
             SET(USING_CRAY TRUE)
             ADD_DEFINITIONS( -DUSING_CRAY )
             MESSAGE("Using Cray")
-        ELSEIF( USING_CLANG OR (${CMAKE_C_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CLANG") OR
+        ELSEIF ( USING_CLANG OR (${CMAKE_C_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CLANG") OR
                                (${CMAKE_C_COMPILER_ID} MATCHES "Clang") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang") )
             SET(USING_CLANG TRUE)
             ADD_DEFINITIONS( -DUSING_CLANG )
             MESSAGE("Using Clang")
-        ELSEIF( USING_XL OR (${CMAKE_C_COMPILER_ID} MATCHES "XL") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "XL") )
+        ELSEIF ( USING_XL OR (${CMAKE_C_COMPILER_ID} MATCHES "XL") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "XL") )
             SET(USING_XL TRUE)
             ADD_DEFINITIONS( -DUSING_XL )
             MESSAGE("Using XL")
@@ -426,7 +523,7 @@ MACRO( IDENTIFY_COMPILER )
     ENDIF()
     # SET the Fortran compiler
     IF ( CMAKE_Fortran_COMPILER_WORKS )
-        IF( CMAKE_COMPILER_IS_GNUG77 OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU") )
+        IF ( CMAKE_COMPILER_IS_GNUG77 OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU") )
             SET( USING_GFORTRAN TRUE )
             MESSAGE("Using gfortran")
             IF ( NOT USING_GCC )
@@ -438,7 +535,7 @@ MACRO( IDENTIFY_COMPILER )
         ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "PGI")
             SET(USING_PGF90 TRUE)
             MESSAGE("Using pgf90")
-        ELSEIF( (${CMAKE_Fortran_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "Cray") )
+        ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "Cray") )
             SET(USING_CRAY TRUE)
             MESSAGE("Using Cray")
         ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "Clang") OR
@@ -454,47 +551,47 @@ MACRO( IDENTIFY_COMPILER )
 ENDMACRO()
 
 
-# Macro to set the proper warnings
+# Set the proper warnings
 MACRO( SET_WARNINGS )
-  IF ( USING_GCC )
-    # Add gcc specific compiler options
-    # Note: adding -Wlogical-op causes a wierd linking error on Titan using the nvcc wrapper:
-    #    /usr/bin/ld: cannot find gical-op: No such file or directory
-    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra") 
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Woverloaded-virtual -Wsign-compare -Wformat-security")
-  ELSEIF ( USING_MSVC )
-    # Add Microsoft specifc compiler options
-    SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267" )
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267" )
-  ELSEIF ( USING_ICC )
-    # Add Intel specifc compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -wd1011" )
-  ELSEIF ( USING_CRAY )
-    # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS}")
-  ELSEIF ( USING_PGCC )
-    # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -lpthread")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number")
-    # Suppress unreachable code warning, it causes non-useful warnings with some tests/templates
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185")
-  ELSEIF ( USING_CLANG )
-    # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall -Wextra")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wno-missing-braces -Wmissing-field-initializers -ftemplate-depth=1024")
-  ELSEIF ( USING_XL )
-    # Add default compiler options
-    SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall")
-    SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -ftemplate-depth=512")
-  ELSE ( )
-    MESSAGE("Compiler specific features are not set for this compiler")
-  ENDIF()
+    IF ( USING_GCC )
+        # Add gcc specific compiler options
+        # Note: adding -Wlogical-op causes a wierd linking error on Titan using the nvcc wrapper:
+        #    /usr/bin/ld: cannot find gical-op: No such file or directory
+        SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat-security -Wformat-overflow=2 -Wformat-nonliteral") 
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wformat-security -Wformat-overflow=2 -Wformat-nonliteral -Woverloaded-virtual -Wsign-compare -pedantic")
+    ELSEIF ( USING_MSVC )
+        # Add Microsoft specifc compiler options
+        SET(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267" )
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267" )
+    ELSEIF ( USING_ICC )
+        # Add Intel specifc compiler options
+        SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -wd1011" )
+    ELSEIF ( USING_CRAY )
+        # Add default compiler options
+        SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}")
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS}")
+    ELSEIF ( USING_PGCC )
+        # Add default compiler options
+        SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -lpthread")
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number")
+        # Suppress unreachable code warning, it causes non-useful warnings with some tests/templates
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185")
+    ELSEIF ( USING_CLANG )
+        # Add default compiler options
+        SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall -Wextra")
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wno-missing-braces -Wmissing-field-initializers -ftemplate-depth=1024")
+    ELSEIF ( USING_XL )
+        # Add default compiler options
+        SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall")
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -ftemplate-depth=512")
+    ELSE ( )
+        MESSAGE("Compiler specific features are not set for this compiler")
+    ENDIF()
 ENDMACRO()
 
 
-# Macro to add user compile flags
+# Add user compile flags
 MACRO( ADD_USER_FLAGS )
     STRING( STRIP "${CMAKE_C_FLAGS} ${CFLAGS} ${CFLAGS_EXTRA}" CMAKE_C_FLAGS )
     STRING( STRIP "${CMAKE_CXX_FLAGS} ${CXXFLAGS} ${CXXFLAGS_EXTRA}" CMAKE_CXX_FLAGS )
@@ -504,7 +601,7 @@ MACRO( ADD_USER_FLAGS )
 ENDMACRO()
 
 
-# Macro to set the compile/link flags
+# Set the compile/link flags
 MACRO( SET_COMPILER_FLAGS )
     # Initilaize the compiler
     IDENTIFY_COMPILER()
@@ -514,6 +611,8 @@ MACRO( SET_COMPILER_FLAGS )
         SET(CMAKE_CXX_FLAGS_DEBUG "-D_DEBUG /DEBUG /Od /EHsc /MDd /Z7" )
         SET(CMAKE_C_FLAGS_RELEASE   "/O2 /EHsc /MD" )
         SET(CMAKE_CXX_FLAGS_RELEASE "/O2 /EHsc /MD" )
+    ELSEIF ( USING_ICC )
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -fp-model precise -fp-model source")
     ELSE()
     ENDIF()
     # Set the behavior of GLIBCXX flags
@@ -560,11 +659,8 @@ MACRO( SET_COMPILER_FLAGS )
 ENDMACRO()
 
 
-# Macro to copy data file at build time
-MACRO( COPY_DATA_FILE SRC_FILE DST_FILE )
-    IF ( NOT TARGET copy-${PROJ}-Data )
-        ADD_CUSTOM_TARGET( copy-${PROJ}-Data ALL )
-    ENDIF()
+# Copy data file at build time
+FUNCTION( COPY_DATA_FILE SRC_FILE DST_FILE )
     STRING(REGEX REPLACE "${${PROJ}_SOURCE_DIR}/" "" COPY_TARGET "copy-${PROJ}-${CMAKE_CURRENT_SOURCE_DIR}" )
     STRING(REGEX REPLACE "-${${PROJ}_SOURCE_DIR}" "" COPY_TARGET "${COPY_TARGET}" )
     STRING(REGEX REPLACE "/" "-" COPY_TARGET ${COPY_TARGET} )
@@ -577,20 +673,20 @@ MACRO( COPY_DATA_FILE SRC_FILE DST_FILE )
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SRC_FILE}" "${DST_FILE}"
         DEPENDS "${SRC_FILE}"
     )
-ENDMACRO()
+ENDFUNCTION()
 
 
-# Macro to copy a data or input file
+# Copy a data or input file
 FUNCTION( COPY_TEST_FILE FILENAME ${ARGN} )
     SET( SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}" )
     SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/data" )
     SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/inputs" )
-    FOREACH( tmp ${ARGN} )
+    FOREACH ( tmp ${ARGN} )
         SET( SEARCH_PATHS ${SEARCH_PATHS} "${tmp}" )
         SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/${tmp}" )
     ENDFOREACH()
     SET( FILE_TO_COPY )
-    FOREACH( tmp ${SEARCH_PATHS} )
+    FOREACH ( tmp ${SEARCH_PATHS} )
         IF ( EXISTS "${tmp}/${FILENAME}" )
             SET( FILE_TO_COPY "${tmp}/${FILENAME}" )
         ENDIF()
@@ -600,7 +696,7 @@ FUNCTION( COPY_TEST_FILE FILENAME ${ARGN} )
         COPY_DATA_FILE( ${FILE_TO_COPY} ${DESTINATION_NAME} )
     ELSE()
         SET( MSG_STR "Cannot find file: ${FILENAME}, searched:\n" )
-        FOREACH( tmp ${SEARCH_PATHS} )
+        FOREACH ( tmp ${SEARCH_PATHS} )
             SET( MSG_STR "${MSG_STR}   ${tmp}\n" )
         ENDFOREACH()
         MESSAGE( WARNING "test ${MSG_STR}" )
@@ -608,17 +704,17 @@ FUNCTION( COPY_TEST_FILE FILENAME ${ARGN} )
 ENDFUNCTION()
 
 
-# Macro to copy a data file
+# Copy a data file
 FUNCTION( RENAME_TEST_FILE SRC_NAME DST_NAME ${ARGN} )
     SET( SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}" )
     SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/data" )
     SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/inputs" )
-    FOREACH( tmp ${ARGN} )
+    FOREACH ( tmp ${ARGN} )
         SET( SEARCH_PATHS ${SEARCH_PATHS} "${tmp}" )
         SET( SEARCH_PATHS ${SEARCH_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/${tmp}" )
     ENDFOREACH()
     SET( FILE_TO_COPY )
-    FOREACH( tmp ${SEARCH_PATHS} )
+    FOREACH ( tmp ${SEARCH_PATHS} )
         IF ( EXISTS "${tmp}/${SRC}" )
             SET( FILE_TO_COPY "${tmp}/${SRC_NAME}" )
         ENDIF()
@@ -628,7 +724,7 @@ FUNCTION( RENAME_TEST_FILE SRC_NAME DST_NAME ${ARGN} )
         COPY_DATA_FILE( ${FILE_TO_COPY} ${DESTINATION_NAME} )
     ELSE()
         SET( MSG_STR "Cannot find file: ${SRC_NAME}, searched:\n" )
-        FOREACH( tmp ${SEARCH_PATHS} )
+        FOREACH ( tmp ${SEARCH_PATHS} )
             SET( MSG_STR "${MSG_STR}   ${tmp}\n" )
         ENDFOREACH()
         MESSAGE( WARNING "test ${MSG_STR}" )
@@ -636,7 +732,7 @@ FUNCTION( RENAME_TEST_FILE SRC_NAME DST_NAME ${ARGN} )
 ENDFUNCTION()
 
 
-# Macro to copy a data file
+# Copy a data file
 FUNCTION( COPY_EXAMPLE_DATA_FILE FILENAME )
     SET( FILE_TO_COPY  ${CMAKE_CURRENT_SOURCE_DIR}/data/${FILENAME} )
     SET( DESTINATION1 ${CMAKE_CURRENT_BINARY_DIR}/${FILENAME} )
@@ -650,8 +746,8 @@ FUNCTION( COPY_EXAMPLE_DATA_FILE FILENAME )
 ENDFUNCTION()
 
 
-# Macro to copy a mesh file
-MACRO( COPY_MESH_FILE MESHNAME )
+# Copy a mesh file
+FUNCTION( COPY_MESH_FILE MESHNAME )
     # Check the local data directory
     FILE( GLOB MESHPATH "${CMAKE_CURRENT_SOURCE_DIR}/data/${MESHNAME}" )
     # Search all data paths
@@ -678,14 +774,14 @@ MACRO( COPY_MESH_FILE MESHNAME )
         MESSAGE( WARNING "Cannot find mesh: " ${MESHNAME} )
     ELSE ()
         SET( MESHPATH2 )
-        FOREACH( tmp ${MESHPATH} )
+        FOREACH ( tmp ${MESHPATH} )
             SET( MESHPATH2 "${tmp}" )
         ENDFOREACH()
         STRING(REGEX REPLACE "//${MESHNAME}" "" MESHPATH "${MESHPATH2}" )
         STRING(REGEX REPLACE "${MESHNAME}" "" MESHPATH "${MESHPATH}" )
         COPY_DATA_FILE( "${MESHPATH}/${MESHNAME}" "${CMAKE_CURRENT_BINARY_DIR}/${MESHNAME}" )
     ENDIF()
-ENDMACRO()
+ENDFUNCTION()
 
 
 # Link the libraries to the given target
@@ -726,10 +822,10 @@ FUNCTION( KEEP_BUILD_LIBRARIES VAR )
 ENDFUNCTION()
 
 
-# Macro to add the dependencies and libraries to an executable
+# Add the dependencies and libraries to an executable
 MACRO( ADD_PROJ_EXE_DEP EXE )
     # Add the package dependencies
-    IF( ${PROJ}_TEST_LIB_EXISTS )
+    IF ( ${PROJ}_TEST_LIB_EXISTS )
         ADD_DEPENDENCIES( ${EXE} ${PACKAGE_TEST_LIB} )
         TARGET_LINK_LIBRARIES( ${EXE} ${PACKAGE_TEST_LIB} )
     ENDIF()
@@ -762,15 +858,16 @@ MACRO( ADD_PROJ_EXE_DEP EXE )
     ELSE()
         SET_TARGET_PROPERTIES( ${EXE} PROPERTIES LINK_FLAGS "${LDFLAGS} ${LDFLAGS_EXTRA}" )
     ENDIF()
+    IF ( USE_CUDA )
+        SET_TARGET_PROPERTIES( ${EXE} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON )
+    ENDIF()
 ENDMACRO()
 
 
 # Check if we want to keep the test
 FUNCTION( KEEP_TEST RESULT )
     SET( ${RESULT} 1 PARENT_SCOPE )
-    IF ( NOT DEFINED ${PACKAGE_NAME}_ENABLE_TESTS )
-        SET( ${PACKAGE_NAME}_ENABLE_TESTS 1 )
-    ENDIF()
+    SET_DEFAULT( ${PACKAGE_NAME}_ENABLE_TESTS 1 )
     IF ( NOT ${PACKAGE_NAME}_ENABLE_TESTS )
         SET( ${RESULT} 0 PARENT_SCOPE )
     ENDIF()
@@ -781,7 +878,7 @@ ENDFUNCTION()
 
 
 # Add a provisional test
-FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE )
+FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE ${ARGN} )
     # Check if we actually want to add the test
     KEEP_TEST( RESULT )
     IF ( NOT RESULT )
@@ -795,13 +892,17 @@ FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE )
     IF ( NOT ${EXEFILE}-BINDIR )
         GLOBAL_SET( ${EXEFILE}-BINDIR "${CMAKE_CURRENT_BINARY_DIR}" )
         # The target has not been added
-        SET( CXXFILE ${EXEFILE} )
+        FIND_FILE(  NAMES "${EXEFILE}.*" NO_DEFAULT_PATH)
+        FILE( GLOB SOURCES "${EXEFILE}" "${EXEFILE}.*" )
+        FOREACH ( tmp ${ARGN} )
+            SET( SOURCES ${SOURCES} ${tmp} )
+        ENDFOREACH()
         SET( TESTS_SO_FAR ${TESTS_SO_FAR} ${EXEFILE} )
         # Check if we want to add the test to all
         IF ( NOT EXCLUDE_TESTS_FROM_ALL OR INCLUDE_${EXEFILE} )
-            ADD_EXECUTABLE( ${EXEFILE} ${CXXFILE} )
+            ADD_EXECUTABLE( ${EXEFILE} ${SOURCES} )
         ELSE()
-            ADD_EXECUTABLE( ${EXEFILE} EXCLUDE_FROM_ALL ${CXXFILE} )
+            ADD_EXECUTABLE( ${EXEFILE} EXCLUDE_FROM_ALL ${SOURCES} )
         ENDIF()
         ADD_PROJ_EXE_DEP( ${EXEFILE} )
         IF ( CURRENT_LIBRARY )
@@ -809,6 +910,20 @@ FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE )
                 ADD_CUSTOM_TARGET( ${CURRENT_LIBRARY}-test )
             ENDIF()
             ADD_DEPENDENCIES( ${CURRENT_LIBRARY}-test ${EXEFILE} )
+        ENDIF()
+        # If we are using CUDA and COMPILE_CXX_AS_CUDA is set, change the language
+        IF ( USE_CUDA AND COMPILE_CXX_AS_CUDA )
+            SET( OVERRIDE_LINKER FALSE )
+            FOREACH ( tmp ${SOURCES} )
+                GET_SOURCE_FILE_PROPERTY( lang "${tmp}" LANGUAGE ) 
+                IF ( lang STREQUAL "CXX" )
+                    SET( OVERRIDE_LINKER TRUE )
+                    SET_SOURCE_FILES_PROPERTIES( ${tmp} PROPERTIES LANGUAGE CUDA )
+                ENDIF()
+            ENDFOREACH()
+            IF ( OVERRIDE_LINKER )
+                SET_PROPERTY( TARGET ${EXEFILE} PROPERTY LINKER_LANGUAGE CXX )
+            ENDIF()
         ENDIF()
     ELSEIF ( NOT ${EXEFILE-BINDIR} STREQUAL ${CMAKE_CURRENT_BINARY_DIR} )
         # We are trying to add 2 different tests with the same name
@@ -818,97 +933,196 @@ FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE )
     ENDIF()
     SET( LAST_TEST ${EXEFILE} PARENT_SCOPE )
 ENDFUNCTION()
-FUNCTION( ADD_${PROJ}_PROVISIONAL_TEST EXEFILE )
-    ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
+FUNCTION( ADD_${PROJ}_PROVISIONAL_TEST EXEFILE ${ARGN} )
+    ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} ${ARGN} )
 ENDFUNCTION()
 
 
-# Macro to create the test name
-MACRO( CREATE_TEST_NAME TEST ${ARGN} )
-    IF ( PACKAGE )
-        SET( TESTNAME "${PACKAGE}::${TEST}" )
-    ELSE()
-        SET( TESTNAME "${TEST}" )
-    ENDIF()
-    FOREACH( tmp ${ARGN})
-        SET( TESTNAME "${TESTNAME}--${tmp}")
-    endforeach()
-    SET( LAST_TESTNAME ${TESTNAME} PARENT_SCOPE )
+# Parse test arguments
+MACRO( PARSE_TEST_ARGUMENTS )
+    # Parse the input arguments
+    SET( optionalArgs WEEKLY TESTBUILDER GPU RUN_SERIAL EXAMPLE MATLAB NO_RESOURCES )
+    SET( oneValueArgs TESTNAME PROCS THREADS TIMEOUT )
+    SET( multiValueArgs RESOURCES DEPENDS ARGS )
+    CMAKE_PARSE_ARGUMENTS( TEST "${optionalArgs}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    # Set default values for threads/procs/GPUs
+    SET_DEFAULT( TEST_THREADS 1 )
+    SET_DEFAULT( TEST_PROCS 1 )
+    SET_DEFAULT( TEST_GPU ${ASSUME_TEST_USE_GPU} )
+    SET_DEFAULT( TEST_ARGS ${TEST_UNPARSED_ARGUMENTS} )
+    SET_DEFAULT( NUMBER_OF_GPUS 0 )
+    MATH( EXPR TOT_PROCS "${TEST_PROCS} * ${TEST_THREADS}" )
 ENDMACRO()
 
 
-# Function to add the resource locks to an executable
-FUNCTION( ADD_RESOURCE TESTNAME RESOURCE )
-    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES RESOURCE_LOCK ${RESOURCE} )
-ENDFUNCTION()
-FUNCTION( ADD_RESOURCE_LOCKS TESTNAME EXEFILE ${ARGN} )
-    IF ( NOT DISABLE_RESOURCE_LOCK )
-        IF ( NOT ARGN )
-            ADD_RESOURCE( ${TESTNAME} ${EXEFILE} )
-        ELSE()
-            FOREACH( tmp ${ARGN} )
-                ADD_RESOURCE( ${TESTNAME} ${tmp} )
-            ENDFOREACH()
-        ENDIF()
+# Create the test name
+FUNCTION( CREATE_TEST_NAME EXEFILE )
+    PARSE_TEST_ARGUMENTS( ${ARGN} )
+    IF ( NOT DEFINED USE_NEW_TESTNAMES )
+        SET( USE_NEW_TESTNAMES FALSE )
     ENDIF()
+    IF ( TEST_TESTNAME )
+        # User provided test name
+        SET( TESTNAME ${TEST_TESTNAME} )
+    ELSEIF ( NOT USE_NEW_TESTNAMES )
+        # Use the old testname format
+        SET( TESTNAME ${EXEFILE} )
+        IF ( "${TEST_PROCS}" GREATER "1")
+            SET( TESTNAME ${TESTNAME}_${TEST_PROCS}procs )
+        ENDIF()
+        IF ( "${TEST_THREADS}" GREATER "1")
+            SET( TESTNAME ${TESTNAME}_${TEST_THREADS}threads )
+        ENDIF()
+        IF ( TEST_WEEKLY )
+            SET( TESTNAME ${TESTNAME}_WEEKLY )
+        ENDIF()
+        IF ( TEST_EXAMPLE )
+            SET( TESTNAME "example--${TESTNAME}" )
+        ENDIF()
+        IF ( TEST_MATLAB )
+            SET( TESTNAME "MATLAB--${TESTNAME}" )
+        ENDIF()
+        IF ( PACKAGE )
+            SET( TESTNAME "${PACKAGE}::${TESTNAME}" )
+        ENDIF()
+        FOREACH ( tmp ${TEST_ARGS} )
+            SET( TESTNAME "${TESTNAME}--${tmp}")
+        ENDFOREACH()
+    ELSE()
+        # Use the new test name format
+        STRING( REPLACE ";" " " TESTNAME "${EXEFILE} ${TEST_ARGS}" )
+        SET( ALTERATIONS )
+        IF ( ${TEST_PROCS} GREATER "1" )
+            SET( ALTERATIONS "${ALTERATIONS}, ${TEST_PROCS} procs" )
+        ENDIF()
+        IF ( ${TEST_THREADS} GREATER "1" )
+            SET( ALTERATIONS "${ALTERATIONS}, ${TEST_THREADS} threads" )
+        ENDIF()
+        IF ( TEST_WEEKLY )
+            SET( ALTERATIONS "${ALTERATIONS}, WEEKLY" )
+        ENDIF()
+        IF ( TEST_EXAMPLE )
+            SET( ALTERATIONS "${ALTERATIONS}, EXAMPLE" )
+        ENDIF()
+        IF ( TEST_MATLAB )
+            SET( ALTERATIONS "${ALTERATIONS}, MATLAB" )
+        ENDIF()
+        IF ( ALTERATIONS )
+            STRING( REGEX REPLACE "^, " "" ALTERATIONS "${ALTERATIONS}" )
+            SET( TESTNAME "${TESTNAME} (${ALTERATIONS})" )
+        ENDIF()
+        STRING( REPLACE "  " " " TESTNAME "${TESTNAME}" )
+    ENDIF()
+    SET( TESTNAME "${TESTNAME}" PARENT_SCOPE )
 ENDFUNCTION()
 
 
 # Function to add a test
-FUNCTION( CALL_ADD_TEST EXEFILE PROCS THREADS WEEKLY TESTBUILDER ${ARGN} )
+# Call should be of the form:
+#    CALL_ADD_TEST( exefile
+#                   TESTNAME testname
+#                   THREADS #
+#                   PROCS #
+#                   WEEKLY
+#                   TESTBUILDER
+#                   RESOURCES resources
+#                   GPU
+#                   TIMEOUT seconds
+#                   RUN_SERIAL
+#                   DEPENDS depends
+#                   ARGS arguments )
+FUNCTION( CALL_ADD_TEST EXEFILE )
+
     # Check if we actually want to add the test
     KEEP_TEST( RESULT )
     IF ( NOT RESULT )
         MESSAGE( "Discarding test: ${EXEFILE}" )
         RETURN()
     ENDIF()
+
+    # Create the testname
+    CREATE_TEST_NAME( ${EXEFILE} ${ARGN} )
+    SET( LAST_TESTNAME "${TESTNAME}" PARENT_SCOPE )
+
+    # Parse the input arguments
+    PARSE_TEST_ARGUMENTS( ${ARGN} )
+
     # Check if we are dealing with a TestBuilder test
-    IF ( ${TESTBUILDER} )
+    IF ( TEST_TESTBUILDER )
         # Add the test to the TestBuilder sources
         SET( TESTBUILDER_SOURCES ${TESTBUILDER_SOURCES} ${EXEFILE} PARENT_SCOPE )
     ELSE()
         # Add the provisional test
         ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
     ENDIF()
-    # Create the test name
-    SET( TESTNAME ${EXEFILE} )
-    #IF ( ${TESTBUILDER} )
-    #    SET( TESTNAME TB_${TESTNAME} )
-    #ENDIF()
-    IF ( "${PROCS}" GREATER "1")
-        SET( TESTNAME ${TESTNAME}_${PROCS}procs )
-    ENDIF()
-    IF ( "${THREADS}" GREATER "1")
-        SET( TESTNAME ${TESTNAME}_${THREADS}threads )
-    ENDIF()
-    IF ( ${WEEKLY} )
-        SET( TESTNAME ${TESTNAME}_WEEKLY )
-    ENDIF()
-    CREATE_TEST_NAME( ${TESTNAME} ${ARGN} )
+
     # Create the tests for ctest
-    MATH( EXPR TOT_PROCS "${PROCS} * ${THREADS}" )
     IF ( ${TOT_PROCS} EQUAL 0 )
         # Skip test (provisional)
+        RETURN()
+    ELSEIF ( USE_CUDA AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ) )
+        MESSAGE("Disabling test \"${TESTNAME}\" (exceeds maximum number of GPUs available ${NUMBER_OF_GPUS})")
+        RETURN()
     ELSEIF ( ${TOT_PROCS} GREATER ${TEST_MAX_PROCS} )
-        MESSAGE("Disabling test ${TESTNAME} (exceeds maximum number of processors ${TEST_MAX_PROCS})")
-    ELSEIF ( ( ${PROCS} STREQUAL "1" ) AND NOT USE_MPI_FOR_SERIAL_TESTS )
-        IF ( ${TESTBUILDER} )
-            ADD_TEST( NAME ${TESTNAME} COMMAND $<TARGET_FILE:${TB_TARGET}> ${EXEFILE} ${ARGN} )
+        MESSAGE("Disabling test \"${TESTNAME}\" (exceeds maximum number of processors ${TEST_MAX_PROCS})")
+        RETURN()
+    ELSEIF ( ( ${TEST_PROCS} STREQUAL "1" ) AND NOT USE_MPI_FOR_SERIAL_TESTS )
+        IF ( TEST_TESTBUILDER )
+            ADD_TEST( NAME ${TESTNAME} COMMAND $<TARGET_FILE:${TB_TARGET}> ${EXEFILE} ${TEST_ARGS} )
         ELSE()
-            ADD_TEST( NAME ${TESTNAME} COMMAND $<TARGET_FILE:${LAST_TEST}> ${ARGN} )
+            ADD_TEST( NAME ${TESTNAME} COMMAND $<TARGET_FILE:${LAST_TEST}> ${TEST_ARGS} )
         ENDIF()
-        SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
-        ADD_RESOURCE_LOCKS( ${TESTNAME} ${EXEFILE} ${ARGN} )
     ELSEIF ( USE_MPI OR USE_EXT_MPI )
-        IF ( ${TESTBUILDER} )
-            ADD_TEST( NAME ${TESTNAME} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} $<TARGET_FILE:${TB_TARGET}> ${EXEFILE} ${ARGN} )
+        IF ( TEST_TESTBUILDER )
+            ADD_TEST( NAME ${TESTNAME} COMMAND ${MPIEXEC} ${MPIEXEC_FLAGS} ${MPIEXEC_NUMPROC_FLAG} ${TEST_PROCS} $<TARGET_FILE:${TB_TARGET}> ${EXEFILE} ${TEST_ARGS} )
         ELSE()
-            ADD_TEST( NAME ${TESTNAME} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} $<TARGET_FILE:${LAST_TEST}> ${ARGN} )
+            ADD_TEST( NAME ${TESTNAME} COMMAND ${MPIEXEC} ${MPIEXEC_FLAGS} ${MPIEXEC_NUMPROC_FLAG} ${TEST_PROCS} $<TARGET_FILE:${LAST_TEST}> ${TEST_ARGS} )
         ENDIF()
-        SET_PROPERTY( TEST ${TESTNAME} APPEND PROPERTY ENVIRONMENT OMPI_MCA_hwloc_base_binding_policy=none )
-        SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
-        ADD_RESOURCE_LOCKS( ${TESTNAME} ${EXEFILE} ${ARGN} )
+        SET_PROPERTY( TEST ${TESTNAME} APPEND PROPERTY ENVIRONMENT "OMPI_MCA_hwloc_base_binding_policy=none" )
+    ELSE()
+        # Disable test
+        RETURN()
     ENDIF()
+    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
+    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES ENVIRONMENT "OMP_NUM_THREADS=${TEST_THREADS};OMP_WAIT_POLICY=passive" )
+
+    # Add resource locks
+    IF ( NOT TEST_NO_RESOURCES )
+        IF ( NOT TEST_RESOURCES )
+            SET( TEST_RESOURCES ${EXEFILE} ${TEST_ARGS} )
+        ENDIF()
+        SET_PROPERTY( TEST ${TESTNAME} PROPERTY RESOURCE_LOCK ${TEST_RESOURCES} )
+    ENDIF()
+    
+    # Add resource locks
+    IF ( USE_CUDA AND TEST_GPU )
+        SET( GPU_RESOURCE )
+        FOREACH ( tmp RANGE 1 ${TEST_PROCS} )
+            SET( GPU_RESOURCE "${GPU_RESOURCE},gpus:1" )
+        ENDFOREACH()
+        STRING( REGEX REPLACE "^," "" GPU_RESOURCE ${GPU_RESOURCE} )
+        SET_PROPERTY( TEST ${TESTNAME} PROPERTY RESOURCE_GROUPS ${GPU_RESOURCE} )
+    ENDIF()
+
+    # Add timeout
+    IF ( TEST_TIMEOUT )
+        SET_PROPERTY( TEST ${TESTNAME} PROPERTY TIMEOUT ${TEST_TIMEOUT} )
+    ENDIF()
+
+
+    # Run the test by itself
+    IF ( TEST_RUN_SERIAL )
+        SET_PROPERTY( TEST ${TESTNAME} PROPERTY RUN_SERIAL TRUE )
+    ENDIF()
+
+
+    # Add dependencies
+    IF ( TEST_DEPENDS )
+        SET_PROPERTY( TEST ${TESTNAME} APPEND PROPERTY DEPENDS ${TEST_DEPENDS} )
+    ENDIF()
+
+    # Print the call and compiled line for debugging purposes
+    # MESSAGE( "CALL_ADD_TEST( ${EXEFILE} TESTNAME ${TESTNAME} PROCS ${TOT_PROCS} WEEKLY ${WEEKLY} TESTBUILDER ${TESTBUILDER} RESOURCES ${TEST_RESOURCES} GPU ${GPU} DEPENDS ${TESTDEPENDS} ARGS ${ARGS}" )
 ENDFUNCTION()
 
 
@@ -977,12 +1191,21 @@ FUNCTION( FINALIZE_TESTBUILDER )
         ADD_DEPENDENCIES( ${CURRENT_LIBRARY}-test ${TB_TARGET} )
     ENDIF()
     SET( TB_TARGET ${TB_TARGET} PARENT_SCOPE )
+    # If we are using CUDA and COMPILE_CXX_AS_CUDA is set, change the language
+    IF ( USE_CUDA AND COMPILE_CXX_AS_CUDA )
+        FOREACH ( tmp ${TESTBUILDER_SOURCES} )
+            GET_SOURCE_FILE_PROPERTY( lang "${tmp}" LANGUAGE ) 
+            IF ( lang STREQUAL "CXX" )
+                SET_SOURCE_FILES_PROPERTIES( ${tmp} PROPERTIES LANGUAGE CUDA )
+            ENDIF()
+        ENDFOREACH()
+    ENDIF()
     # Finish generating TestBuilder.cpp
     SET( TB_FILE "${CMAKE_CURRENT_BINARY_DIR}/TestBuilder-tmp.cpp" )
     FILE( WRITE "${TB_FILE}" "// Auto generated file\n\n" )
     FILE( APPEND "${TB_FILE}" "#include <cstring>\n" )
     FILE( APPEND "${TB_FILE}" "#include <iostream>\n\n" )
-    FOREACH( tmp ${TESTBUILDER_SOURCES} )
+    FOREACH ( tmp ${TESTBUILDER_SOURCES} )
         FILE( APPEND "${TB_FILE}" "extern int ${tmp}( int argc, char *argv[] );\n" )
     ENDFOREACH()
     FILE( APPEND "${TB_FILE}" "\n\n// Main Program\n" )
@@ -994,7 +1217,7 @@ FUNCTION( FINALIZE_TESTBUILDER )
     FILE( APPEND "${TB_FILE}" "    }\n\n" )
     FILE( APPEND "${TB_FILE}" "    int rtn = 0;\n" )
     FILE( APPEND "${TB_FILE}" "    if ( strcmp( argv[1], \"NULL\" ) == 0 ) {\n" )
-    FOREACH( tmp ${TESTBUILDER_SOURCES} )
+    FOREACH ( tmp ${TESTBUILDER_SOURCES} )
         FILE( APPEND "${TB_FILE}" "    } else if ( strcmp( argv[1], \"${tmp}\" ) == 0 ) {\n" )
         FILE( APPEND "${TB_FILE}" "        rtn = ${tmp}( argc-1, &argv[1] );\n" )
     ENDFOREACH()
@@ -1008,51 +1231,36 @@ FUNCTION( FINALIZE_TESTBUILDER )
 ENDFUNCTION()
 
 
-# Convience functions to add a test
+# Convenience functions to add a test
+# Note: These should be mcaros so that LAST_TESTNAME is set properly
 MACRO( ADD_${PROJ}_TEST EXEFILE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 1 1 FALSE FALSE ${ARGN} )
-ENDMACRO()
-MACRO( ADD_${PROJ}_TEST_PARALLEL EXEFILE PROCS ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} ${PROCS} 1 FALSE FALSE ${ARGN} )
-ENDMACRO()
-MACRO( ADD_${PROJ}_WEEKLY_TEST EXEFILE PROCS ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} ${PROCS} 1 TRUE FALSE ${ARGN} )
-ENDMACRO()
-MACRO( ADD_${PROJ}_TEST_THREAD_MPI EXEFILE PROCS THREADS ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} ${PROCS} ${THREADS} FALSE FALSE ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} ${ARGN} )
 ENDMACRO()
 MACRO( ADD_${PROJ}_TEST_1_2_4 EXEFILE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 1 1 FALSE FALSE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 2 1 FALSE FALSE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 4 1 FALSE FALSE ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} PROCS 1 ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} PROCS 2 ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} PROCS 4 ${ARGN} )
 ENDMACRO()
-MACRO( ADD_TB_PROVISIONAL_TEST EXEFILE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 0 1 FALSE TRUE ${ARGN} )
+MACRO( ADD_TB_PROVISIONAL_TEST EXEFILE )
+    SET( TESTBUILDER_SOURCES ${TESTBUILDER_SOURCES} ${EXEFILE} PARENT_SCOPE )
 ENDMACRO()
 MACRO( ADD_TB_TEST EXEFILE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 1 1 FALSE TRUE ${ARGN} )
-ENDMACRO()
-MACRO( ADD_TB_TEST_PARALLEL EXEFILE PROCS ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} ${PROCS} 1 FALSE TRUE ${ARGN} )
-ENDMACRO()
-MACRO( ADD_TB_WEEKLY_TEST EXEFILE PROCS ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} ${PROCS} 1 TRUE TRUE ${ARGN} )
-ENDMACRO()
-MACRO( ADD_TB_TEST_THREAD_MPI EXEFILE PROCS THREADS ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} ${PROCS} ${THREADS} FALSE TRUE ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} PROCS 1 TESTBUILDER ${ARGN} )
 ENDMACRO()
 MACRO( ADD_TB_TEST_1_2_4 EXEFILE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 1 1 FALSE TRUE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 2 1 FALSE TRUE ${ARGN} )
-    CALL_ADD_TEST( ${EXEFILE} 4 1 FALSE TRUE ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} PROCS 1 TESTBUILDER ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} PROCS 2 TESTBUILDER ${ARGN} )
+    CALL_ADD_TEST( ${EXEFILE} PROCS 4 TESTBUILDER ${ARGN} )
 ENDMACRO()
 
 
 # Add a executable as an example
-FUNCTION( ADD_${PROJ}_EXAMPLE EXEFILE PROCS ${ARGN} )
+FUNCTION( ADD_${PROJ}_EXAMPLE EXEFILE )
+    # Parse input arguments
+    PARSE_TEST_ARGUMENTS( ${ARGN} )
     # Add the file to the example doxygen file
     SET( VALUE 0 )
-    FOREACH(_variableName ${EXAMPLE_LIST})
+    FOREACH (_variableName ${EXAMPLE_LIST})
         IF ( "${_variableName}" STREQUAL "${EXEFILE}" )
             SET( VALUE 1 )
         ENDIF()
@@ -1067,20 +1275,28 @@ FUNCTION( ADD_${PROJ}_EXAMPLE EXEFILE PROCS ${ARGN} )
     ENDIF()
     # Add the provisional test
     ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
+    IF ( ${TEST_PROCS} STREQUAL "0" )
+        RETURN()
+    ENDIF()
+    # Add the test command to ctest
     ADD_DEPENDENCIES( build-examples ${EXEFILE} )
     ADD_CUSTOM_COMMAND( TARGET ${EXEFILE} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${LAST_TEST}> "${EXAMPLE_INSTALL_DIR}/${EXEFILE}"
     )
-    IF( ${PROCS} STREQUAL "1" AND (NOT USE_MPI_FOR_SERIAL_TESTS) )
-        CREATE_TEST_NAME( "example--${EXEFILE}" ${ARGN} )
-        ADD_TEST( NAME ${TESTNAME} COMMAND $<TARGET_FILE:${LAST_TEST}> ${ARGN} )
-    ELSEIF ( USE_EXT_MPI AND NOT (${PROCS} GREATER ${TEST_MAX_PROCS}) )
-        CREATE_TEST_NAME( "example--${EXEFILE}_${PROCS}procs" ${ARGN} )
-        ADD_TEST( NAME ${TESTNAME} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} $<TARGET_FILE:${LAST_TEST}> ${ARGN} )
-        SET_PROPERTY( TEST ${TESTNAME} APPEND PROPERTY ENVIRONMENT OMPI_MCA_hwloc_base_binding_policy=none )
+    CREATE_TEST_NAME( ${EXEFILE} EXAMPLE ${ARGN} )
+    IF ( ${TEST_PROCS} STREQUAL "1" AND (NOT USE_MPI_FOR_SERIAL_TESTS) )
+        ADD_TEST( NAME ${TESTNAME} COMMAND $<TARGET_FILE:${LAST_TEST}> ${TEST_ARGS} )
+    ELSEIF ( USE_EXT_MPI AND NOT (${TOT_PROCS} GREATER ${TEST_MAX_PROCS}) )
+        ADD_TEST( NAME ${TESTNAME} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${TEST_PROCS} $<TARGET_FILE:${LAST_TEST}> ${TEST_ARGS} )
+        SET_PROPERTY( TEST ${TESTNAME} APPEND PROPERTY ENVIRONMENT "OMPI_MCA_hwloc_base_binding_policy=none" )
     ENDIF()
-    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${PROCS} )
-    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES RESOURCE_LOCK ${EXEFILE} )
+    SET( LAST_TESTNAME ${TESTNAME} PARENT_SCOPE )
+    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
+    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES ENVIRONMENT "OMP_NUM_THREADS=${TEST_THREADS};OMP_WAIT_POLICY=passive" )
+    IF ( NOT TEST_RESOURCES )
+        SET( TEST_RESOURCES ${EXEFILE} ${TEST_ARGS} )
+    ENDIF()
+    SET_PROPERTY( TEST ${TESTNAME} PROPERTY RESOURCE_LOCK ${TEST_RESOURCES} )
 ENDFUNCTION()
 
 
@@ -1104,24 +1320,8 @@ MACRO( INSTALL_${PROJ}_EXAMPLE PACKAGE )
 ENDMACRO()
 
 
-# Macro to check if a flag is enabled
-MACRO( CHECK_ENABLE_FLAG FLAG DEFAULT )
-    IF( NOT DEFINED ${FLAG} )
-        SET( ${FLAG} ${DEFAULT} )
-    ELSEIF( ${FLAG}  STREQUAL "" )
-        SET( ${FLAG} ${DEFAULT} )
-    ELSEIF( ( ${${FLAG}} STREQUAL "FALSE" ) OR ( ${${FLAG}} STREQUAL "false" ) OR ( ${${FLAG}} STREQUAL "0" ) OR ( ${${FLAG}} STREQUAL "OFF" ) )
-        SET( ${FLAG} 0 )
-    ELSEIF( ( ${${FLAG}} STREQUAL "TRUE" ) OR ( ${${FLAG}} STREQUAL "true" ) OR ( ${${FLAG}} STREQUAL "1" ) OR ( ${${FLAG}} STREQUAL "ON" ) )
-        SET( ${FLAG} 1 )
-    ELSE()
-        MESSAGE( "Bad value for ${FLAG} (${${FLAG}}); use true or false" )
-    ENDIF()
-ENDMACRO()
-
-
-# Macro to add a latex file to the build
-MACRO( ADD_LATEX_DOCS FILE )
+# Add a latex file to the build
+FUNCTION( ADD_LATEX_DOCS FILE )
     GET_FILENAME_COMPONENT(LATEX_TARGET ${FILE} NAME_WE)
     ADD_CUSTOM_TARGET( 
         ${LATEX_TARGET}_pdf 
@@ -1138,7 +1338,7 @@ MACRO( ADD_LATEX_DOCS FILE )
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
     ADD_DEPENDENCIES( latex_docs ${LATEX_TARGET}_pdf )
-ENDMACRO()
+ENDFUNCTION()
 
 
 # Add a matlab mex file
@@ -1163,12 +1363,13 @@ ENDFUNCTION()
 
 
 # Add a matlab test
-MACRO( ADD_MATLAB_TEST EXEFILE ${ARGN} )
+FUNCTION( ADD_MATLAB_TEST EXEFILE ${ARGN} )
     IF ( NOT MATLAB_EXE )
         MESSAGE( FATAL_ERROR "MATLAB_EXE not set, did you call CREATE_MATLAB_WRAPPER()" )
     ENDIF()
     CONFIGURE_FILE( ${EXEFILE}.m ${CMAKE_CURRENT_BINARY_DIR}/${EXEFILE}.m )
-    CREATE_TEST_NAME( MATLAB ${EXEFILE} ${ARGN} )
+    CREATE_TEST_NAME( ${EXEFILE} MATLAB ${ARGN} )
+    SET( LAST_TESTNAME ${TESTNAME} PARENT_SCOPE )
     IF ( USING_MSVC )
         SET( MATLAB_OPTIONS "-logfile" "log_${EXEFILE}" )
     ENDIF()
@@ -1181,7 +1382,7 @@ MACRO( ADD_MATLAB_TEST EXEFILE ${ARGN} )
     ADD_TEST( NAME ${TESTNAME} COMMAND "${MATLAB_EXE}" ${MATLAB_OPTIONS} -r "${MATLAB_COMMAND}" ${MATLAB_DEBUGGER_OPTIONS} )
     SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES PASS_REGULAR_EXPRESSION "ALL TESTS PASSED" FAIL_REGULAR_EXPRESSION "FAILED" )
     SET_PROPERTY(TEST ${TESTNAME} APPEND PROPERTY ENVIRONMENT RATES_DIRECTORY=${RATES_DIRECTORY} )
-ENDMACRO()
+ENDFUNCTION()
 
 
 # Create a script to start matlab preloading libraries
@@ -1218,41 +1419,9 @@ FUNCTION( CREATE_MATLAB_WRAPPER )
 ENDFUNCTION()
 
 
-# Macro to change the classification of a package
-MACRO( SET_PACKAGE_CLASSIFICATION  PACKAGE_LIST  PACKAGE_NAME  CLASS )
-    LIST(FIND ${PACKAGE_LIST} ${PACKAGE_NAME} PACKAGE_NAME_IDX)
-    IF (PACKAGE_NAME_IDX EQUAL -1)
-        MESSAGE(FATAL_ERROR "Package ${PACKAGE_NAME} not found in list of packages!")
-    ELSE()
-        MATH(EXPR PACKAGE_CLASSIFICATION_IDX "${PACKAGE_NAME_IDX}+2")
-        LIST(INSERT ${PACKAGE_LIST} ${PACKAGE_CLASSIFICATION_IDX} ${CLASS})
-        MATH(EXPR PACKAGE_CLASSIFICATION_IDX "${PACKAGE_CLASSIFICATION_IDX} + 1")
-        LIST(REMOVE_AT ${PACKAGE_LIST} ${PACKAGE_CLASSIFICATION_IDX})
-    ENDIF()
-ENDMACRO()
-
-
-# Macro to "disable" a package on the given platform (this mearly changes it to experimental)
-MACRO( PACKAGE_DISABLE_ON_PLATFORMS  PACKAGE_LIST  PACKAGE_NAME )
-    FOREACH(HOSTTYPE ${ARGN})
-        IF (${PROJECT_NAME}_HOSTTYPE STREQUAL ${HOSTTYPE})
-            SET_PACKAGE_CLASSIFICATION(${PACKAGE_LIST} ${PACKAGE_NAME} EX)
-            IF (${PROJECT_NAME}_ENABLE_${PACKAGE_NAME})
-                MESSAGE(
-                  "\n***"
-                  "\n*** WARNING: User has set ${PROJECT_NAME}_ENABLE_${PACKAGE_NAME}=ON but the"
-                  "\n*** package ${PACKAGE_NAME} is not supported on this platform type '${HOSTTYPE}'!"
-                  "\n***\n"
-               )
-            ENDIF()
-        ENDIF()
-    ENDFOREACH()
-ENDMACRO()
-
-
 # Append a list to a file
 FUNCTION( APPEND_LIST FILENAME VARS PREFIX POSTFIX )
-    FOREACH( tmp ${VARS} )
+    FOREACH ( tmp ${VARS} )
         FILE( APPEND "${FILENAME}" "${PREFIX}" )
         FILE( APPEND "${FILENAME}" "${tmp}" )
         FILE( APPEND "${FILENAME}" "${POSTFIX}" )
@@ -1262,8 +1431,9 @@ ENDFUNCTION()
 
 # add custom target distclean
 # cleans and removes cmake generated files etc.
-MACRO( ADD_DISTCLEAN ${ARGN} )
+FUNCTION( ADD_DISTCLEAN ${ARGN} )
     SET(DISTCLEANED
+        assembly
         cmake.depends
         cmake.check_depends
         CMakeCache.txt
@@ -1273,6 +1443,7 @@ MACRO( ADD_DISTCLEAN ${ARGN} )
         cmake.check_cache
         *.cmake
         compile.log
+        cppcheck-build
         Doxyfile
         Makefile
         core core.*
@@ -1297,6 +1468,7 @@ MACRO( ADD_DISTCLEAN ${ARGN} )
         cmake
         cppclean
         compile_commands.json
+        TPLs.h
         ${ARGN}
     )
     ADD_CUSTOM_TARGET(distclean @echo cleaning for source distribution)
@@ -1328,11 +1500,11 @@ MACRO( ADD_DISTCLEAN ${ARGN} )
             TARGET  distclean
         )
     ENDIF()
-ENDMACRO()
+ENDFUNCTION()
 
 
 # add custom target mex_clean
-MACRO( ADD_MEXCLEAN )
+FUNCTION( ADD_MEXCLEAN )
     IF (UNIX)
         ADD_CUSTOM_TARGET( mexclean 
             COMMENT "mex clean"
@@ -1340,7 +1512,7 @@ MACRO( ADD_MEXCLEAN )
             ARGS    -Rf libmatlab.* *.mex* test/*.mex*
         )
     ENDIF(UNIX)
-ENDMACRO()
+ENDFUNCTION()
 
 
 # Print the current repo version and create target to write to a file

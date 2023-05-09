@@ -105,8 +105,12 @@ size_t MemoryApp::getTotalMemoryUsage() noexcept
             if ( rtn != KERN_SUCCESS )
                 return 0;
             N_bytes = t_info.virtual_size;
+        #elif defined( HAVE_MALLINFO2 )
+            // Linux - mallinfo2
+            auto meminfo = mallinfo2();
+            N_bytes      = meminfo.hblkhd + meminfo.uordblks;
         #else
-            // Linux
+            // Linux - Deprecated mallinfo
             auto meminfo = mallinfo();
             size_t size_hblkhd   = static_cast<unsigned int>( meminfo.hblkhd );
             size_t size_uordblks = static_cast<unsigned int>( meminfo.uordblks );
