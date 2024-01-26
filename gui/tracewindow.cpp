@@ -190,7 +190,7 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ )
       selected_thread( -1 )
 {
     qApp->processEvents();
-    PROFILE_START( "TraceWindow" );
+    PROFILE( "TraceWindow" );
     QWidget::setWindowTitle( QString( "Trace results: " ).append( parent->windowTitle() ) );
     t_current = t_global;
     resize( 1200, 800 );
@@ -258,7 +258,6 @@ TraceWindow::TraceWindow( const TimerWindow *parent_ )
     reset();
 
     qApp->processEvents();
-    PROFILE_STOP( "TraceWindow" );
 }
 TraceWindow::~TraceWindow()
 {
@@ -278,23 +277,21 @@ void TraceWindow::closeEvent( QCloseEvent *event )
  ***********************************************************************/
 void TraceWindow::reset()
 {
-    PROFILE_START( "reset" );
+    PROFILE( "reset" );
     // Reset t_min and t_max
     t_current = t_global;
     // Reset the column widths
     timerGrid->setColumnWidth( { 60, 400 } );
     // Update the data
     updateDisplay( UpdateType::all );
-    PROFILE_STOP( "reset" );
 }
 void TraceWindow::resetZoom()
 {
-    PROFILE_START( "resetZoom" );
+    PROFILE( "resetZoom" );
     // Reset t_min and t_max
     t_current = t_global;
     // Update the data
     updateDisplay( UpdateType::all );
-    PROFILE_STOP( "resetZoom" );
 }
 
 
@@ -303,7 +300,7 @@ void TraceWindow::resetZoom()
  ***********************************************************************/
 void TraceWindow::updateDisplay( UpdateType update )
 {
-    PROFILE_START( "updateDisplay" );
+    PROFILE( "updateDisplay" );
     // Regenerate the global timeline if the processors changed
     if ( ( update & UpdateType::header ) != 0 )
         updateTimeline();
@@ -316,7 +313,6 @@ void TraceWindow::updateDisplay( UpdateType update )
     }
     // Start the resize timer to update plots
     resizeTimer.start( 10 );
-    PROFILE_STOP( "updateDisplay" );
 }
 
 
@@ -326,7 +322,7 @@ void TraceWindow::updateDisplay( UpdateType update )
 std::vector<std::unique_ptr<TimerTimeline>> TraceWindow::getTraceData(
     const std::array<double, 2> &t ) const
 {
-    PROFILE_START( "getTraceData" );
+    PROFILE( "getTraceData" );
     // Get the active timers/traces
     const auto &timers = parent->d_data.timers;
     // Create a timeline for the time of interest
@@ -374,7 +370,6 @@ std::vector<std::unique_ptr<TimerTimeline>> TraceWindow::getTraceData(
     // Sort the data by the total time spent in each routine
     std::sort(
         data.begin(), data.end(), []( const auto &a, const auto &b ) { return a->tot < b->tot; } );
-    PROFILE_STOP( "getTraceData" );
     return data;
 }
 
@@ -384,7 +379,7 @@ std::vector<std::unique_ptr<TimerTimeline>> TraceWindow::getTraceData(
  ***********************************************************************/
 void TraceWindow::updateTimeline()
 {
-    PROFILE_START( "updateTimeline" );
+    PROFILE( "updateTimeline" );
     const auto rgb0 = jet( -1 );
     // Get the data for the entire window
     auto data = TraceWindow::getTraceData( t_global );
@@ -457,7 +452,6 @@ void TraceWindow::updateTimeline()
     }
     timelinePixelMap.reset( new QPixmap( QPixmap::fromImage( *image ) ) );
     delete image;
-    PROFILE_STOP( "updateTimeline" );
 }
 
 
@@ -466,7 +460,7 @@ void TraceWindow::updateTimeline()
  ***********************************************************************/
 void TraceWindow::updateTimers()
 {
-    PROFILE_START( "updateTimers" );
+    PROFILE( "updateTimers" );
     // Get the data
     auto data = TraceWindow::getTraceData( t_current );
     std::vector<bool> rowVisible( timerGrid->numberRows(), false );
@@ -495,7 +489,6 @@ void TraceWindow::updateTimers()
         timerPlots[i]->setPixmap( QPixmap::fromImage( image ) );
     }
     timerGrid->setRowVisible( rowVisible );
-    PROFILE_STOP( "updateTimers" );
 }
 
 
@@ -504,10 +497,9 @@ void TraceWindow::updateTimers()
  ***********************************************************************/
 void TraceWindow::updateMemory()
 {
+    PROFILE( "updateMemory" );
     memory->setVisible( true );
-    PROFILE_START( "updateMemory" );
     dynamic_cast<MemoryPlot *>( memory )->plot( t_current, selected_rank );
-    PROFILE_STOP( "updateMemory" );
 }
 
 
@@ -521,7 +513,7 @@ void TraceWindow::resizeEvent( QResizeEvent *e )
 }
 void TraceWindow::resizeDone()
 {
-    PROFILE_START( "resizeDone" );
+    PROFILE( "resizeDone" );
     // Scale the timeline window
     int w = timeline->rect().width();
     int h = timeline->rect().height();
@@ -540,11 +532,10 @@ void TraceWindow::resizeDone()
     int w2  = timerGrid->geometry().width() - 2 * timerGrid->getHorizontalSpacing() - 30;
     timerGrid->setColumnWidth(
         { ( cw[0] * w2 ) / ( cw[0] + cw[1] ), ( cw[1] * w2 ) / ( cw[0] + cw[1] ) } );
-    PROFILE_STOP( "resizeDone" );
 }
 void TraceWindow::resizeMemory()
 {
-    PROFILE_START( "resizeMemory" );
+    PROFILE( "resizeMemory" );
     auto *memplot = dynamic_cast<MemoryPlot *>( memory );
     QRect pos     = timerGrid->getPosition( 0, 1 );
     int left      = pos.x();
@@ -554,7 +545,6 @@ void TraceWindow::resizeMemory()
         memplot->setFixedHeight( 45 );
     else
         memplot->setFixedHeight( centralWidget()->height() / 4 );
-    PROFILE_STOP( "resizeMemory" );
 }
 
 

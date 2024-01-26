@@ -177,7 +177,7 @@ TimerWindow::TimerWindow()
       backButton( nullptr ),
       processorButton( nullptr )
 {
-    PROFILE_START( "TimerWindow constructor" );
+    PROFILE( "TimerWindow constructor" );
     QWidget::setWindowTitle( QString( "load_timer" ) );
 
     // Create the timer table
@@ -236,7 +236,6 @@ TimerWindow::TimerWindow()
     reset();
     updateDisplay();
     qApp->processEvents();
-    PROFILE_STOP( "TimerWindow constructor" );
 }
 TimerWindow::~TimerWindow()
 {
@@ -333,7 +332,7 @@ void TimerWindow::open()
 }
 void TimerWindow::loadFile( std::string filename, bool showFailure )
 {
-    PROFILE_START( "loadFile" );
+    PROFILE( "loadFile" );
     if ( !filename.empty() ) {
         // Clear existing data
         close();
@@ -354,27 +353,24 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         }
         std::string title = file + " (" + path + ")";
         QWidget::setWindowTitle( title.c_str() );
-        try {
-            // Load the timer data
-            PROFILE_START( "ProfilerApp::load" );
-            d_data = ProfilerApp::load( filename, -1, global );
-            PROFILE_STOP( "ProfilerApp::load" );
-        } catch ( std::exception& e ) {
-            PROFILE_STOP2( "ProfilerApp::load" );
-            PROFILE_STOP2( "loadFile" );
-            if ( showFailure ) {
-                std::string msg = e.what();
-                QMessageBox::information( this, tr( "Error loading file" ), tr( msg.c_str() ) );
+        {
+            PROFILE( "ProfilerApp::load" );
+            try {
+                // Load the timer data
+                d_data = ProfilerApp::load( filename, -1, global );
+            } catch ( std::exception& e ) {
+                if ( showFailure ) {
+                    std::string msg = e.what();
+                    QMessageBox::information( this, tr( "Error loading file" ), tr( msg.c_str() ) );
+                }
+                return;
+            } catch ( ... ) {
+                if ( showFailure ) {
+                    QMessageBox::information(
+                        this, tr( "Error loading file" ), tr( "Caught unknown exception" ) );
+                }
+                return;
             }
-            return;
-        } catch ( ... ) {
-            PROFILE_STOP2( "ProfilerApp::load" );
-            PROFILE_STOP2( "loadFile" );
-            if ( showFailure ) {
-                QMessageBox::information(
-                    this, tr( "Error loading file" ), tr( "Caught unknown exception" ) );
-            }
-            return;
         }
         // Remove traces that don't have any calls
         for ( auto& timer : d_data.timers ) {
@@ -406,8 +402,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.id            = d_data.timers[i].id;
             timer.message       = d_data.timers[i].message;
             timer.file          = d_data.timers[i].file;
-            timer.start         = d_data.timers[i].start;
-            timer.stop          = d_data.timers[i].stop;
+            timer.line          = d_data.timers[i].line;
             timer.threads.clear();
             timer.N.resize( N_procs, 0 );
             timer.min.resize( N_procs, 1e30 );
@@ -499,7 +494,6 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
         }
         updateDisplay();
     }
-    PROFILE_STOP( "loadFile" );
 }
 
 
@@ -537,7 +531,7 @@ inline TYPE getTableData( const std::vector<TYPE>& x, int rank )
 }
 void TimerWindow::updateDisplay()
 {
-    PROFILE_START( "updateDisplay" );
+    PROFILE( "updateDisplay" );
     auto current_timers = getTimers();
     if ( d_data.timers.empty() ) {
         timerTable->hide();
@@ -547,7 +541,6 @@ void TimerWindow::updateDisplay()
         processorToolbar->setVisible( false );
         exclusiveToolbar->setVisible( false );
         subfunctionToolbar->setVisible( false );
-        PROFILE_STOP2( "updateDisplay" );
         return;
     }
     if ( N_procs > 1 )
@@ -590,8 +583,7 @@ void TimerWindow::updateDisplay()
                 << "Message"
                 << "Filename"
                 << "Thread"
-                << "Start Line"
-                << "Stop Line"
+                << "Line"
                 << "N calls"
                 << "min time"
                 << "max time"
@@ -607,11 +599,10 @@ void TimerWindow::updateDisplay()
     timerTable->setColumnWidth( 3, 80 );
     timerTable->setColumnWidth( 4, 80 );
     timerTable->setColumnWidth( 5, 80 );
-    timerTable->setColumnWidth( 6, 80 );
+    timerTable->setColumnWidth( 6, 95 );
     timerTable->setColumnWidth( 7, 95 );
     timerTable->setColumnWidth( 8, 95 );
-    timerTable->setColumnWidth( 9, 95 );
-    timerTable->setColumnWidth( 10, 85 );
+    timerTable->setColumnWidth( 9, 85 );
     timerTable->setHorizontalHeaderLabels( TableHeader );
     timerTable->verticalHeader()->setVisible( false );
     timerTable->setEditTriggers( QAbstractItemView::NoEditTriggers );
@@ -637,8 +628,7 @@ void TimerWindow::updateDisplay()
         auto message = new QTableWidgetItem( timer->message.c_str() );
         auto file    = new QTableWidgetItem( timer->file.c_str() );
         auto threads = new QTableWidgetItem( threadString( timer->threads ).c_str() );
-        auto start   = new TableValue( timer->start, "%i" );
-        auto stop    = new TableValue( timer->stop, "%i" );
+        auto line    = new TableValue( timer->line, "%i" );
         auto N       = new TableValue( N_data[i], "%i" );
         auto min     = new TableValue( min_data[i], "%0.3e" );
         auto max     = new TableValue( max_data[i], "%0.3e" );
@@ -648,8 +638,7 @@ void TimerWindow::updateDisplay()
         message->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
         file->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
         threads->setTextAlignment( Qt::AlignHCenter | Qt::AlignVCenter );
-        start->setTextAlignment( Qt::AlignHCenter | Qt::AlignVCenter );
-        stop->setTextAlignment( Qt::AlignHCenter | Qt::AlignVCenter );
+        line->setTextAlignment( Qt::AlignHCenter | Qt::AlignVCenter );
         N->setTextAlignment( Qt::AlignHCenter | Qt::AlignVCenter );
         min->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
         max->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
@@ -659,13 +648,12 @@ void TimerWindow::updateDisplay()
         timerTable->setItem( i, 1, message );
         timerTable->setItem( i, 2, file );
         timerTable->setItem( i, 3, threads );
-        timerTable->setItem( i, 4, start );
-        timerTable->setItem( i, 5, stop );
-        timerTable->setItem( i, 6, N );
-        timerTable->setItem( i, 7, min );
-        timerTable->setItem( i, 8, max );
-        timerTable->setItem( i, 9, total );
-        timerTable->setItem( i, 10, percent );
+        timerTable->setItem( i, 4, line );
+        timerTable->setItem( i, 5, N );
+        timerTable->setItem( i, 6, min );
+        timerTable->setItem( i, 7, max );
+        timerTable->setItem( i, 8, total );
+        timerTable->setItem( i, 9, percent );
     }
     timerTable->setSortingEnabled( true );
     timerTable->sortItems( 10, Qt::DescendingOrder );
@@ -687,7 +675,6 @@ void TimerWindow::updateDisplay()
     } else {
         loadBalance->hide();
     }
-    PROFILE_STOP( "updateDisplay" );
 }
 
 
@@ -696,7 +683,7 @@ void TimerWindow::updateDisplay()
  ***********************************************************************/
 std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
 {
-    PROFILE_START( "getTimers" );
+    PROFILE( "getTimers" );
     std::vector<std::unique_ptr<TimerSummary>> timers;
     timers.reserve( d_data.timers.size() );
     // Get the timers of interest
@@ -705,8 +692,7 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
         timer->id      = i.id;
         timer->message = i.message;
         timer->file    = i.file;
-        timer->start   = i.start;
-        timer->stop    = i.stop;
+        timer->line    = i.line;
         if ( callList.empty() ) {
             // Special case where we want all timers/trace results
             timer->trace = i.trace;
@@ -726,7 +712,7 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
     }
     // Keep only the traces that are directly inherited from the current call hierarchy
     if ( !includeSubfunctions ) {
-        PROFILE_START( "getTimers-hideSubfunctions", 1 );
+        PROFILE( "getTimers-hideSubfunctions", 1 );
         std::map<id_struct, int> id_map;
         for ( size_t i = 0; i < d_dataTimer.size(); i++ )
             id_map.insert( std::pair<id_struct, int>( d_dataTimer[i].id, (int) i ) );
@@ -758,7 +744,6 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
             }
         }
         timers.resize( k );
-        PROFILE_STOP( "getTimers-hideSubfunctions", 1 );
     }
     // Compute the timer statistics
     for ( auto& timer : timers ) {
@@ -780,7 +765,7 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
     }
     // Update the timers to remove the time from sub-timers if necessary
     if ( !inclusiveTime ) {
-        PROFILE_START( "getTimers-removeSubtimers", 1 );
+        PROFILE( "getTimers-removeSubtimers", 1 );
         constexpr uint64_t C = 0x61C8864680B583EBull;
         for ( size_t i1 = 0; i1 < timers.size(); i1++ ) {
             for ( size_t j1 = 0; j1 < timers[i1]->trace.size(); j1++ ) {
@@ -798,9 +783,7 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
                 }
             }
         }
-        PROFILE_STOP( "getTimers-removeSubtimers", 1 );
     }
-    PROFILE_STOP( "getTimers" );
     return timers;
 }
 

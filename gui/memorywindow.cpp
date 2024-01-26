@@ -49,8 +49,8 @@ MemoryWindow::MemoryWindow( const TimerWindow *parent_ )
       t_global( getGlobalTime( parent_->d_data.memory ) ),
       selected_rank( -1 )
 {
+    PROFILE( "MemoryWindow" );
     qApp->processEvents();
-    PROFILE_START( "MemoryWindow" );
     QWidget::setWindowTitle( QString( "Trace results: " ).append( parent->windowTitle() ) );
     t_current = t_global;
     resize( 1200, 800 );
@@ -79,7 +79,6 @@ MemoryWindow::MemoryWindow( const TimerWindow *parent_ )
     reset();
 
     qApp->processEvents();
-    PROFILE_STOP( "MemoryWindow" );
 }
 MemoryWindow::~MemoryWindow()
 {
@@ -98,21 +97,19 @@ void MemoryWindow::closeEvent( QCloseEvent *event )
  ***********************************************************************/
 void MemoryWindow::reset()
 {
-    PROFILE_START( "reset" );
+    PROFILE( "reset" );
     // Reset t_min and t_max
     t_current = t_global;
     // Update the data
     updateDisplay( UpdateType::all );
-    PROFILE_STOP( "reset" );
 }
 void MemoryWindow::resetZoom()
 {
-    PROFILE_START( "resetZoom" );
+    PROFILE( "resetZoom" );
     // Reset t_min and t_max
     t_current = t_global;
     // Update the data
     updateDisplay( UpdateType::all );
-    PROFILE_STOP( "resetZoom" );
 }
 
 
@@ -121,14 +118,13 @@ void MemoryWindow::resetZoom()
  ***********************************************************************/
 void MemoryWindow::updateDisplay( UpdateType update )
 {
-    PROFILE_START( "updateDisplay" );
+    PROFILE( "updateDisplay" );
     // Regerate the trace/memory plots if time or processors changed
     if ( ( update & UpdateType::time ) != 0 || ( update & UpdateType::proc ) != 0 ) {
         updateMemory();
     }
     // Start the resize timer to update plots
     resizeTimer.start( 10 );
-    PROFILE_STOP( "updateDisplay" );
 }
 
 
@@ -137,10 +133,9 @@ void MemoryWindow::updateDisplay( UpdateType update )
  ***********************************************************************/
 void MemoryWindow::updateMemory()
 {
+    PROFILE( "updateMemory" );
     memory->setVisible( true );
-    PROFILE_START( "updateMemory" );
     dynamic_cast<MemoryPlot *>( memory )->plot( t_current, selected_rank );
-    PROFILE_STOP( "updateMemory" );
 }
 
 
@@ -155,7 +150,7 @@ void MemoryWindow::resizeEvent( QResizeEvent *e )
 void MemoryWindow::resizeDone() {}
 void MemoryWindow::resizeMemory()
 {
-    PROFILE_START( "resizeMemory" );
+    PROFILE( "resizeMemory" );
     auto *memplot = dynamic_cast<MemoryPlot *>( memory );
     // int left      = 60;
     // int right     = left + 400;
@@ -164,7 +159,6 @@ void MemoryWindow::resizeMemory()
         memplot->setFixedHeight( 45 );
     else
         memplot->setFixedHeight( centralWidget()->height() / 4 );
-    PROFILE_STOP( "resizeMemory" );
 }
 
 

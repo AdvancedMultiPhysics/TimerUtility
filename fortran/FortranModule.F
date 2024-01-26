@@ -18,20 +18,20 @@
      &        file_name//C_NULL_CHAR, line, level )
         end subroutine
         ! Function to stop the timer
-        subroutine GLOBAL_PROFILE_STOP(timer_name,file_name,line,level)
+        subroutine GLOBAL_PROFILE_STOP(timer_name,file_name,level)
           character(*), intent(in), optional :: timer_name, file_name
-          integer, intent(in), optional :: line, level
+          integer, intent(in), optional :: level
           interface
             subroutine global_profiler_stop( timer_name,
-     &          file_name, line, level ) bind(C)
+     &          file_name, level ) bind(C)
               use iso_c_binding, only: C_CHAR, C_INT
               implicit none
-              integer(c_int), VALUE :: line, level
+              integer(c_int), VALUE :: level
               character(kind=c_char) :: timer_name(*), file_name(*)
             end subroutine global_profiler_stop
           end interface
           call global_profiler_stop( timer_name//C_NULL_CHAR, 
-     &        file_name//C_NULL_CHAR, line, level )
+     &        file_name//C_NULL_CHAR, level )
         end subroutine
         ! Function to save the results
         subroutine GLOBAL_PROFILE_SAVE( save_name, global )

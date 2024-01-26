@@ -143,10 +143,11 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
         }
         // Start/Stop the timer
         try {
+            auto id = ProfilerApp::generateID( file, name );
             if ( command == "START" )
-                global_profiler.start( name, file.c_str(), line, level );
+                global_profiler.start( id, name, file, line, level );
             else
-                global_profiler.stop( name, file.c_str(), line, level );
+                global_profiler.stop( id, level );
         } catch ( const std::exception &e ) {
             std::string msg2 = std::string( "Unable to start/stop timer:\n  " ) + e.what();
             mexErrMsgTxt( msg2.c_str() );

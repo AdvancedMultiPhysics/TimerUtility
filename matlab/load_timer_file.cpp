@@ -117,7 +117,7 @@ inline mxArray* save( const std::vector<std::vector<uint64_t>>& x )
  ************************************************************************/
 mxArray* mxCreateClassArray( mwSize ndim, const mwSize* dims, const char* classname )
 {
-    PROFILE_START( "mxCreateClassArray", 1 );
+    PROFILE( "mxCreateClassArray", 1 );
     // Create the arguments to feval
     size_t N = 1;
     for ( size_t i = 0; i < ndim; i++ )
@@ -148,7 +148,6 @@ mxArray* mxCreateClassArray( mwSize ndim, const mwSize* dims, const char* classn
     const std::string className( mxGetClassName( mx ) );
     if ( className != classname )
         mexErrMsgTxt( stringf( "Error creating class %s (2)", classname ).c_str() );
-    PROFILE_STOP( "mxCreateClassArray", 1 );
     return mx;
 }
 mxArray* mxCreateClassMatrix( mwSize n, mwSize m, const char* classname )
@@ -200,18 +199,17 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
     plhs[0] = save( data.N_procs );
 
     // Save the timer data
-    const char* fields[] = { "id", "message", "file", "path", "start", "stop", "trace" };
-    plhs[1]              = mxCreateStructMatrix( data.timers.size(), 1, 7, fields );
+    const char* fields[] = { "id", "message", "file", "path", "line", "trace" };
+    plhs[1]              = mxCreateStructMatrix( data.timers.size(), 1, 6, fields );
     for ( size_t i = 0; i < data.timers.size(); i++ ) {
         const TimerResults& timer = data.timers[i];
         mxSetFieldByNumber( plhs[1], i, 0, save( id_map[timer.id] + 1 ) );
         mxSetFieldByNumber( plhs[1], i, 1, save( timer.message ) );
         mxSetFieldByNumber( plhs[1], i, 2, save( timer.file ) );
         mxSetFieldByNumber( plhs[1], i, 3, save( timer.path ) );
-        mxSetFieldByNumber( plhs[1], i, 4, save( timer.start ) );
-        mxSetFieldByNumber( plhs[1], i, 5, save( timer.stop ) );
+        mxSetFieldByNumber( plhs[1], i, 4, save( timer.line ) );
         if ( timer.trace.empty() ) {
-            mxSetFieldByNumber( plhs[1], i, 6, mxCreateStructMatrix( 0, 1, 0, nullptr ) );
+            mxSetFieldByNumber( plhs[1], i, 5, mxCreateStructMatrix( 0, 1, 0, nullptr ) );
             continue;
         }
         // Get a list of all trace ids

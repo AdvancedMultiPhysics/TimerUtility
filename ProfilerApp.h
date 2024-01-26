@@ -14,12 +14,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "ProfilerDefinitions.h"
 
 
-class ScopedTimer;
+template<std::size_t id>
+class StaticTimer;
+class RecursiveTimer;
 
 
 /** \class uint16f
@@ -125,8 +128,7 @@ class TimerResults
 {
 public:
     id_struct id;                    //!<  Timer ID
-    int start;                       //!<  Timer start line (-1: never defined)
-    int stop;                        //!<  Timer stop line (-1: never defined)
+    int line;                        //!<  Timer line
     char message[64];                //!<  Timer message (null terminated string)
     char file[64];                   //!<  Timer file (null terminated string)
     char path[64];                   //!<  Timer file path (null terminated string)
@@ -198,17 +200,9 @@ struct TimerMemoryResults {
  * Additional details can be provided with set_store_trace which records the actual time (from startup)
  * for each start and stop call.  This method significantly increases the memory requirements.
  * Several preprocessor define statement are given for easy incorporation: \verbatim
- *    PROFILE_START(NAME) - Start profiling a block of code with the given name.
- *                          The name must be unique to the file and there must be a corresponding stop statement.
- *    PROFILE_STOP(NAME)  - Stop profiling a block of code with the given name.
- *                          The name must match the given start block, and there must only be one
- *                          PROFILE_STOP for each PROFILE_START. This records the current line
- *                          number as the final line number for the block of code.
- *    PROFILE_STOP2(NAME) - Stop profiling a block of code with the given name.
- *                          The name must match the given start block.  This is a special stop
- *                          that does not use the current line as the final line of the block,
- *                          but is provided for cases where there are multiple exit paths for
- *                          a given function or block of code.
+ *    PROFILE(NAME) - Start profiling a block of code with the given name.
+ *    PROFILE2(NAME) - Stop profiling a block of code with the given name.
+ *                          The name must match the given start block.
  *    PROFILE_SAVE(FILE)  - Save the results of profiling to a file.
  *    PROFILE_ENABLE(0)   - Enable the profiler with a default level of 0
  *    PROFILE_ENABLE(ln)  - Enable the profiler with the given level
@@ -234,24 +228,12 @@ struct TimerMemoryResults {
  * Note: The scoped timer (PROFILE_SCOPED) has very similar performance to START/STOP. <BR>
  * Example usage: \verbatim 
  *    void my_function(void *arg) {
- *       PROFILE_START("my function");
+ *       PROFILE("my function");
  *       int k;
  *       for (int i=0; i<10; i++) {
- *          PROFILE_START("sub call");
+ *          PROFILE("loop");
  *          // Do some work
- *          if ( special_case1 ) {
- *             PROFILE_STOP2("sub call");
- *             break;
- *          }
- *          if ( special_case2 ) {
- *             PROFILE_STOP2("sub call");
- *             PROFILE_STOP2("my function");
- *             return;
- *          }
- *          // Some more work
- *          PROFILE_STOP2("sub call");
  *       }
- *       PROFILE_STOP("my function");
  *    }
  *    // Some where at the end of the calculation
  *    PROFILE_SAVE("filename");
@@ -281,36 +263,37 @@ public:
     ~ProfilerApp();
 
     /*!
-     * \brief  Function to start profiling a block of code
+     * \brief  Function to start profiling a block of code (advanced interface)
      * \details  This function starts profiling a block of code until a corresponding stop
-     *   is called.  It is recommended to use PROFILE_START(message) to call this routine.
+     *   is called. It is recommended to use PROFILE_START(message) to call this routine.
      *   It will automatically fill in the file name and the line number.
+     *   Note: this is the advanced interface, we disable some error checking.
+     * @param[in] id        Timer id (see get_timer_id for more info)
      * @param[in] message   Message to uniquely identify the block of code being profiled.
      *                      It must be a unique message to all start called within the same file.
      * @param[in] filename  Name of the file containing the code
      * @param[in] line      Line number containing the start command
      * @param[in] level     Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level will be included.
+     *                      Only timers whose level is <= the level will be included.
      */
-    inline void start( const std::string& message, const char* filename, int line, int level = -1 )
+    inline void start( uint64_t id, std::string_view message = "", std::string_view filename = "",
+        int line = -1, int level = -1 )
     {
         if ( level == -1 )
             level = 0;
-        if ( level < 0 || level >= 128 )
-            throw std::logic_error( "level must be in the range 0-127" );
-        if ( level <= d_level ) {
-            uint32_t v1 = hashString( stripPath( filename ) );
-            uint32_t v2 = hashString( message.c_str() );
-            uint64_t id = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
-            start( id, message.c_str(), filename, line, level );
+        if ( level <= d_level && level >= 0 ) {
+            auto timer = getBlock( id, true, message, filename, line );
+            start( timer );
         }
     }
 
     /*!
-     * \brief  Function to stop profiling a block of code
+     * \brief  Function to stop profiling a block of code (advanced interface)
      * \details  This function stop profiling a block of code until a corresponding stop is called.
      *   It is recommended to use PROFILE_STOP(message) to call this routine.  It will
      *   automatically fill in the file name and the line number.
+     *   Note: this is the advanced interface, we disable some error checking.
+     * @param[in] id        Timer id (see get_timer_id for more info)
      * @param[in] message   Message to uniquely identify the block of code being profiled.
      *                      It must be a unique message to all start called within the same file.
      * @param[in] filename  Name of the file containing the code
@@ -322,18 +305,14 @@ public:
      *                       0: Disable trace data for this timer
      *                       1: Enable trace data for this timer
      */
-    inline void stop(
-        const std::string& message, const char* filename, int line, int level = -1, int trace = -1 )
+    inline void stop( uint64_t id, int level = -1, int trace = -1 )
     {
         if ( level == -1 )
             level = 0;
-        if ( level < 0 || level >= 128 )
-            throw std::logic_error( "level must be in the range 0-127" );
-        if ( level <= d_level ) {
-            uint32_t v1 = hashString( stripPath( filename ) );
-            uint32_t v2 = hashString( message.c_str() );
-            uint64_t id = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
-            stop( id, message.c_str(), filename, line, level, trace );
+        if ( level <= d_level && level >= 0 ) {
+            auto end_time = std::chrono::steady_clock::now();
+            auto timer    = getBlock( id, false );
+            stop( timer, end_time, trace );
         }
     }
 
@@ -409,7 +388,7 @@ public:
      */
     void enable( int level = 0 );
 
-    //! Function to enable the timers (all current timers will be deleted)
+    //! Function to disable the timers (all current timers will be deleted)
     void disable();
 
     /*!
@@ -494,72 +473,16 @@ public:
     size_t getMemoryUsed() const { return static_cast<size_t>( d_bytes ); }
 
 
-public: // Fast interface to start/stop
-    /*!
-     * \brief  Function to start profiling a block of code (advanced interface)
-     * \details  This function starts profiling a block of code until a corresponding stop
-     *   is called. It is recommended to use PROFILE_START(message) to call this routine.
-     *   It will automatically fill in the file name and the line number.
-     *   Note: this is the advanced interface, we disable some error checking.
-     * @param[in] id        Timer id (see get_timer_id for more info)
-     * @param[in] message   Message to uniquely identify the block of code being profiled.
-     *                      It must be a unique message to all start called within the same file.
-     * @param[in] filename  Name of the file containing the code
-     * @param[in] line      Line number containing the start command
-     * @param[in] level     Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level will be included.
-     */
-    inline void start( uint64_t id, const char* message, const char* filename, int line, int level )
+public: // Helper functions
+    constexpr static inline std::string_view stripPath( std::string_view filename );
+    constexpr static inline uint32_t hashString( std::string_view str );
+    constexpr static inline uint64_t generateID(
+        std::string_view filename, std::string_view message )
     {
-        if ( level == -1 )
-            level = 0;
-        if ( level <= d_level && level >= 0 ) {
-            auto timer = getBlock( id, true, message, filename, line, -1 );
-            start( timer );
-        }
+        uint32_t v1 = hashString( stripPath( filename ) );
+        uint32_t v2 = hashString( message );
+        return ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
     }
-
-    /*!
-     * \brief  Function to stop profiling a block of code (advanced interface)
-     * \details  This function stop profiling a block of code until a corresponding stop is called.
-     *   It is recommended to use PROFILE_STOP(message) to call this routine.  It will
-     *   automatically fill in the file name and the line number.
-     *   Note: this is the advanced interface, we disable some error checking.
-     * @param[in] id        Timer id (see get_timer_id for more info)
-     * @param[in] message   Message to uniquely identify the block of code being profiled.
-     *                      It must be a unique message to all start called within the same file.
-     * @param[in] filename  Name of the file containing the code
-     * @param[in] line      Line number containing the start command
-     * @param[in] level     Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level will be included.
-     * @param[in] trace     Store trace-level data for the timer:
-     *                      -1: Default, use the global trace flag
-     *                       0: Disable trace data for this timer
-     *                       1: Enable trace data for this timer
-     */
-    inline void stop( uint64_t id, const char* message, const char* filename, int line, int level,
-        int trace = -1 )
-    {
-        if ( level == -1 )
-            level = 0;
-        if ( level <= d_level && level >= 0 ) {
-            auto end_time = std::chrono::steady_clock::now();
-            auto timer    = getBlock( id, true, message, filename, -1, line );
-            stop( timer, end_time, trace );
-        }
-    }
-
-
-    // Helper functions
-    constexpr static inline const char* stripPath( const char* filename_in );
-    constexpr static inline uint32_t hashString( const char* str );
-    static inline uint32_t hashString( const std::string& str )
-    {
-        return hashString( str.c_str() );
-    }
-    static inline const char* getString( const std::string& str ) { return str.c_str(); }
-    constexpr static inline const char* getString( const char* str ) { return str; }
-
 
 public: // Constants to determine parameters that affect performance/memory
     // The maximum number of threads supported
@@ -569,7 +492,7 @@ public: // Constants to determine parameters that affect performance/memory
     constexpr static size_t TIMER_HASH_SIZE = 1024;
 
 
-private: // Member classes
+public: // Member classes
     //! Convience typedef for storing a point in time
     typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
@@ -630,12 +553,8 @@ private: // Member classes
     class StoreMemory
     {
     public:
-        StoreMemory() : d_capacity( 0 ), d_size( 0 ), d_time( nullptr ), d_bytes( nullptr ) {}
-        ~StoreMemory()
-        {
-            delete[] d_time;
-            delete[] d_bytes;
-        }
+        StoreMemory();
+        ~StoreMemory();
         inline StoreMemory( const StoreMemory& rhs )            = delete;
         inline StoreMemory& operator=( const StoreMemory& rhs ) = delete;
         inline void add(
@@ -663,49 +582,23 @@ private: // Member classes
         uint64_t max_time;   // Store the maximum time spent in the given block (nano-seconds)
         uint64_t total_time; // Store the total time spent in the given block (nano-seconds)
         StoreTimes times;    // Store when start/stop was called (nano-seconds from constructor)
-        // Constructor
-        store_trace()
-            : N_calls( 0 ),
-              next( nullptr ),
-              min_time( std::numeric_limits<uint64_t>::max() ),
-              max_time( 0 ),
-              total_time( 0 )
-        {
-        }
-        // Destructor
-        ~store_trace()
-        {
-            delete next;
-            next = nullptr;
-        }
+        store_trace();
+        ~store_trace();
         store_trace( const store_trace& rhs )            = delete;
         store_trace& operator=( const store_trace& rhs ) = delete;
     };
 
     // Structure to store the global timer information for a single block of code
     struct store_timer_data_info {
-        int start_line;                       // The starting line for the timer
-        int stop_line;                        // The ending line for the timer
+        int line;                             // The line number for the timer
         uint64_t id;                          // A unique id for each timer
         char message[64];                     // The message to identify the block of code
         char filename[64];                    // The file containing the block of code to be timed
         char path[64];                        // The path to the file (if availible)
         volatile store_timer_data_info* next; // Pointer to the next entry in the list
-        // Constructor used to initialize key values
-        store_timer_data_info()
-        {
-            memset( this, 0, sizeof( store_timer_data_info ) );
-            start_line = -1;
-            stop_line  = -1;
-        }
-        store_timer_data_info(
-            const char* msg, const char* filepath, uint64_t id, int start, int stop );
-        // Destructor
-        ~store_timer_data_info()
-        {
-            delete next;
-            next = nullptr;
-        }
+        store_timer_data_info();
+        store_timer_data_info( const char* msg, const char* filepath, uint64_t id, int start );
+        ~store_timer_data_info();
         store_timer_data_info( const store_timer_data_info& rhs )            = delete;
         store_timer_data_info& operator=( const store_timer_data_info& rhs ) = delete;
     };
@@ -720,36 +613,38 @@ private: // Member classes
         store_trace* trace_head;           // Head of the trace-log list
         store_timer* next;                 // Pointer to the next entry in the list
         store_timer_data_info* timer_data; // Pointer to the timer data
-
-        // Constructor used to initialize key values
-        store_timer()
-            : is_active( false ),
-              trace_index( 0 ),
-              id( 0 ),
-              start_time( 0 ),
-              trace_head( nullptr ),
-              next( nullptr ),
-              timer_data( nullptr )
-        {
-        }
-        // Destructor
-        ~store_timer()
-        {
-            delete trace_head;
-            delete next;
-        }
+        store_timer();
+        ~store_timer();
         store_timer( const store_timer& rhs )            = delete;
         store_timer& operator=( const store_timer& rhs ) = delete;
     };
 
+    // Structure to store thread specific data
+    struct ThreadData {
+        uint32_t N;
+        StoreActive active;
+        StoreMemory memory;
+        store_timer* timers[TIMER_HASH_SIZE];
+        ThreadData();
+        ~ThreadData();
+        ThreadData( const ThreadData& ) = delete;
+        void reset();
+    };
+
+public: // These really shouldn't be public but are required by StaticTimer and DynamicTimer
+    // Start/stop the timer
+    void start( store_timer* timer );
+    void stop( store_timer* timer, time_point end_time = std::chrono::steady_clock::now(),
+        int trace = -1 );
+
+    // Function to return the appropriate timer block
+    inline store_timer* getBlock( uint64_t id, bool create = false, std::string_view message = "",
+        std::string_view filename = "", const int line = -1 );
 
 private: // Member data
     // Store thread specific info
     static volatile std::atomic_uint32_t d_N_threads;
-    uint32_t d_N_timers[MAX_THREADS];
-    StoreActive d_active[MAX_THREADS];
-    StoreMemory d_memory[MAX_THREADS];
-    store_timer* d_head[MAX_THREADS][TIMER_HASH_SIZE];
+    ThreadData d_threadData[MAX_THREADS];
 
     // Store the global timer info in a hash table
     volatile store_timer_data_info* d_timer_table[TIMER_HASH_SIZE];
@@ -777,22 +672,11 @@ private: // Private member functions
     // Function to return a pointer to the global timer info (or create it if necessary)
     // Note: this function may block for thread safety
     store_timer_data_info* getTimerData(
-        uint64_t id, const char* message, const char* filename, int start, int stop );
-
-    // Function to return the appropriate timer block
-    inline store_timer* getBlock( uint64_t id, bool create = false, const char* message = nullptr,
-        const char* filename = nullptr, const int start = -1, const int stop = -1 );
+        uint64_t id, std::string_view message, std::string_view filename, int line );
 
     // Function to get the timer results
     inline void getTimerResultsID(
         uint64_t id, int rank, const time_point& end_time, TimerResults& results ) const;
-
-    // Start/stop the timer
-    void start( store_timer* timer );
-    void stop( store_timer* timer, time_point end_time = std::chrono::steady_clock::now(),
-        int trace = -1 );
-    void activeErrStart( store_timer* );
-    void activeErrStop( store_timer* );
 
     // Function to return the string of active timers
     static std::vector<id_struct> getActiveList(
@@ -813,9 +697,9 @@ private: // Private member functions
     static void addTimers( std::vector<TimerResults>& timers, std::vector<TimerResults>&& add );
     static void gatherMemory( std::vector<MemoryResults>& memory );
 
-
-protected: // Friends
-    friend ScopedTimer;
+    // Error checking
+    void activeErrStart( store_timer* );
+    void activeErrStop( store_timer* );
 };
 
 

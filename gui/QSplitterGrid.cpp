@@ -88,7 +88,7 @@ void QSplitterGrid::setHorizontalSpacing( int spacing )
  ***********************************************************************/
 void QSplitterGrid::tableSize( int N_rows, int N_columns )
 {
-    PROFILE_START( "tableSize" );
+    PROFILE( "tableSize" );
     reset();
     QSize box   = frame_widget->size();
     col_visible = std::vector<bool>( N_columns, true );
@@ -109,7 +109,6 @@ void QSplitterGrid::tableSize( int N_rows, int N_columns )
     for ( size_t i = 0; i < col_boundaries.size(); i++ )
         col_boundaries[i] =
             new QSplitterGridLineClass( Qt::SizeHorCursor, -( i + 1 ), frame_widget, this );
-    PROFILE_STOP( "tableSize" );
 }
 void QSplitterGrid::addWidget( QWidget* widget, int row, int col )
 {
@@ -200,9 +199,8 @@ void QSplitterGrid::resize( int w, int h )
 }
 void QSplitterGrid::resize2()
 {
-    PROFILE_START( "resize" );
+    PROFILE( "resize" );
     // Get the row and column heights
-    PROFILE_START( "resize-row_col" );
     std::array<int, 2> size = { 0, 0 };
     for ( size_t i = 0; i < col_size.size(); i++ ) {
         if ( row_visible[i] ) {
@@ -220,9 +218,7 @@ void QSplitterGrid::resize2()
             grid->setRowMinimumHeight( i, 0 );
         }
     }
-    PROFILE_STOP( "resize-row_col" );
     // Set visibility of objects
-    PROFILE_START( "resize-visible" );
     for ( size_t i = 0; i < row_size.size(); i++ ) {
         for ( size_t j = 0; j < col_size.size(); j++ ) {
             auto ptr = widget_map[std::pair<int, int>( i, j )];
@@ -230,9 +226,7 @@ void QSplitterGrid::resize2()
                 ptr->setVisible( row_visible[i] && col_visible[j] );
         }
     }
-    PROFILE_STOP( "resize-visible" );
     // Set position of boundaries
-    PROFILE_START( "resize-boundaries" );
     for ( int i = 0, pos = 0; i < (int) row_boundaries.size(); i++ ) {
         if ( row_visible[i] ) {
             pos += row_size[i];
@@ -251,17 +245,13 @@ void QSplitterGrid::resize2()
             col_boundaries[i]->setVisible( false );
         }
     }
-    PROFILE_STOP( "resize-boundaries" );
     // Resize frame
-    PROFILE_START( "resize-frame" );
     if ( old_size != size )
         frame_widget->resize( size[0], size[1] );
     old_size = size;
-    PROFILE_STOP( "resize-frame" );
     // Execute callbacks
     for ( auto fun : resizeCallBack )
         fun();
-    PROFILE_STOP( "resize" );
 }
 QRect QSplitterGrid::getPosition( int row, int col ) const
 {

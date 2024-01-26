@@ -1,7 +1,5 @@
 #include "Callgrind.h"
 
-#if CXX_STD == 11 || CXX_STD == 14
-
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -287,8 +285,7 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
         copy( function, timers[i].message, sizeof( timers[i].message ) );
         copy( file, timers[i].file, sizeof( timers[i].file ) );
         copy( path, timers[i].path, sizeof( timers[i].path ) );
-        timers[i].start = -1;
-        timers[i].stop  = -1;
+        timers[i].line = -1;
         index_map.insert( std::pair<id_struct, int>( timers[i].id, static_cast<int>( i ) ) );
     }
     if ( timers.size() != index_map.size() )
@@ -378,14 +375,3 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
     }
     return timers;
 }
-
-
-#else
-// Dummy implimentations for C++98
-callgrind_results loadCallgrind( const std::string& ) { return callgrind_results(); }
-// Convert callgrind results into timers
-std::vector<TimerResults> convertCallgrind( const callgrind_results& )
-{
-    return std::vector<TimerResults>();
-}
-#endif

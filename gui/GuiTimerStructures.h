@@ -43,15 +43,14 @@ struct TimerSummary {
     id_struct id;                           //!<  Timer ID
     std::string message;                    //!<  Timer message
     std::string file;                       //!<  Timer file
-    int start;                              //!<  Timer start line (-1: never defined)
-    int stop;                               //!<  Timer stop line (-1: never defined)
+    int line;                               //!<  Timer start line
     std::vector<int> threads;               //!<  Threads that are active for this timer
     std::vector<int> N;                     //!<  Number of calls
     std::vector<float> min;                 //!<  Minimum time
     std::vector<float> max;                 //!<  Maximum time
     std::vector<float> tot;                 //!<  Total time
     std::vector<const TraceSummary*> trace; //!< List of all active traces for the timer
-    TimerSummary() : start( -1 ), stop( -1 ) {}
+    TimerSummary() : line( -1 ) {}
     ~TimerSummary() {}
 };
 

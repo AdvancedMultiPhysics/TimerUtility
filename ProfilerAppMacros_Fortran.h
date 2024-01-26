@@ -16,21 +16,7 @@ c may call the timer.  Any other calls must use PROFILE_STOP2(X).
 c This call will automatically add the file and line number to the timer.
 c An optional argument specifying the level to enable may be included.
 #define PROFILE_STOP(NAME,LEVEL) \
-     call GLOBAL_PROFILE_STOP( NAME, __FILE__, __LINE__, LEVEL )
-
-
-c PROFILE_START2(NAME,LEVEL)
-c This is a call to start a timer without the line number.
-c An optional argument specifying the level to enable may be included.
-#define PROFILE_START2(NAME,LEVEL) \
-     call GLOBAL_PROFILE_START( NAME, __FILE__, -1, LEVEL )
-
-
-c PROFILE_STOP2(NAME,LEVEL)
-c This is a call to start a timer without the line number.
-c An optional argument specifying the level to enable may be included.
-#define PROFILE_STOP2(NAME,LEVEL) \
-    call GLOBAL_PROFILE_STOP( NAME, __FILE__, -1, LEVEL )
+     call GLOBAL_PROFILE_STOP( NAME, __FILE__, LEVEL )
 
 
 c PROFILE_SYNCHRONIZE()

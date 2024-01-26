@@ -10,7 +10,7 @@ extern void global_profiler_synchronize();
 extern void global_profiler_set_store_trace( int flag );
 extern void global_profiler_set_store_memory( int flag );
 extern void global_profiler_start( const char* name, const char* file, int line, int level );
-extern void global_profiler_stop( const char* name, const char* file, int line, int level );
+extern void global_profiler_stop( const char* name, const char* file, int level );
 extern void global_profiler_save( const char* name, int global );
 
 
@@ -20,10 +20,10 @@ extern void global_profiler_save( const char* name, int global );
         if ( ( (int) LEVEL ) <= global_profiler_get_level() ) \
             global_profiler_start( NAME, FILE, LINE, LEVEL ); \
     } while ( 0 )
-#define PROFILE_STOP_LEVEL( FILE, LINE, NAME, LEVEL, ... )   \
-    do {                                                     \
-        if ( LEVEL <= global_profiler_get_level() )          \
-            global_profiler_stop( NAME, FILE, LINE, LEVEL ); \
+#define PROFILE_STOP_LEVEL( FILE, LINE, NAME, LEVEL, ... ) \
+    do {                                                   \
+        if ( LEVEL <= global_profiler_get_level() )        \
+            global_profiler_stop( NAME, FILE, LEVEL );     \
     } while ( 0 )
 #define PROFILE_SAVE_GLOBAL( NAME, GLOB, ... ) global_profiler_save( NAME, GLOB )
 

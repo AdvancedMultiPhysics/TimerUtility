@@ -87,8 +87,8 @@ public:
  * Function to get the timmer for a particular block of code            *
  * Note: This function performs some blocking as necessary.             *
  ***********************************************************************/
-inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id, bool create,
-    const char* message, const char* filename, const int start, const int stop )
+inline ProfilerApp::store_timer* ProfilerApp::getBlock(
+    uint64_t id, bool create, std::string_view message, std::string_view filename, int line )
 {
     using std::to_string;
     uint32_t thread_id = getThreadID();
@@ -96,19 +96,19 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id, bool create
         return nullptr;
     // Search for the thread-specific timer and create it if necessary (does not need blocking)
     size_t key         = GET_TIMER_HASH( id ); // Get the hash index
-    store_timer* timer = d_head[thread_id][key];
+    store_timer* timer = d_threadData[thread_id].timers[key];
     if ( !timer ) {
         if ( !create )
             return nullptr;
         // The timer does not exist, create it
         auto new_timer = new store_timer;
         d_bytes.fetch_add( sizeof( store_timer ) );
-        new_timer->id          = id;
-        new_timer->is_active   = false;
-        new_timer->trace_index = d_N_timers[thread_id]++;
-        new_timer->timer_data  = getTimerData( id, message, filename, start, stop );
-        d_head[thread_id][key] = new_timer;
-        timer                  = new_timer;
+        new_timer->id                       = id;
+        new_timer->is_active                = false;
+        new_timer->trace_index              = d_threadData[thread_id].N++;
+        new_timer->timer_data               = getTimerData( id, message, filename, line );
+        d_threadData[thread_id].timers[key] = new_timer;
+        timer                               = new_timer;
     }
     while ( timer->id != id ) {
         // Check if there is another entry to check (and create one if necessary)
@@ -119,46 +119,12 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id, bool create
             d_bytes.fetch_add( sizeof( store_timer ) );
             new_timer->id          = id;
             new_timer->is_active   = false;
-            new_timer->trace_index = d_N_timers[thread_id]++;
-            new_timer->timer_data  = getTimerData( id, message, filename, start, stop );
+            new_timer->trace_index = d_threadData[thread_id].N++;
+            new_timer->timer_data  = getTimerData( id, message, filename, line );
             timer->next            = new_timer;
         }
         // Advance to the next entry
         timer = timer->next;
-    }
-    // Check the status of the timer
-    auto global_info = timer->timer_data;
-    int global_start = global_info->start_line;
-    int global_stop  = global_info->stop_line;
-    bool check = ( start != -1 && start != global_start ) || ( stop != -1 && stop != global_stop );
-    if ( check ) {
-        // Check if the timer is incomplete and modify accordingly
-        // Note:  Technically this should be a blocking call, however it
-        //        is possible to update the start/stop lines directly.
-        if ( start != -1 && global_start == -1 )
-            global_info->start_line = start;
-        if ( stop != -1 && global_stop == -1 )
-            global_info->stop_line = stop;
-        global_start = global_info->start_line;
-        global_stop  = global_info->stop_line;
-        // Check for multiple start lines
-        if ( start != -1 && global_start != start ) {
-            char msg[2048];
-            sprintf( msg,
-                "Multiple start calls with the same message are not allowed (%s in %s at lines %i, "
-                "%i)\n",
-                message, filename, start, global_info->start_line );
-            throw std::logic_error( msg );
-        }
-        // Check for multiple stop lines
-        if ( stop != -1 && global_stop != stop ) {
-            char msg[2048];
-            sprintf( msg,
-                "Multiple stop calls with the same message are not allowed (%s in %s at lines %i, "
-                "%i)\n",
-                message, filename, stop, global_info->stop_line );
-            throw std::logic_error( msg );
-        }
     }
     return timer;
 }
@@ -170,9 +136,9 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id, bool create
  * filename/message pair.  We want each process or thread to return the *
  * same id independent of the other calls.                              *
  ***********************************************************************/
-constexpr inline const char* ProfilerApp::stripPath( const char* filename )
+constexpr inline std::string_view ProfilerApp::stripPath( std::string_view filename )
 {
-    const char* s = filename;
+    const char* s = filename.data();
     while ( *s ) {
         if ( *s == 47 || *s == 92 )
             filename = s + 1;
@@ -180,8 +146,9 @@ constexpr inline const char* ProfilerApp::stripPath( const char* filename )
     }
     return filename;
 }
-constexpr inline uint32_t ProfilerApp::hashString( const char* s )
+constexpr inline uint32_t ProfilerApp::hashString( std::string_view str )
 {
+    const char* s = str.data();
     uint32_t c    = 0;
     uint32_t hash = 5381;
     while ( ( c = *s++ ) ) {

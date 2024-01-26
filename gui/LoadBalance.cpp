@@ -139,17 +139,15 @@ LoadBalance::~LoadBalance()
 
 void LoadBalance::plot( const std::vector<float>& time_ )
 {
-    PROFILE_START( "plot" );
+    PROFILE( "plot" );
     N_procs       = static_cast<int>( time_.size() );
     auto new_time = toQVector( time_ );
     if ( new_time == time ) {
         replot();
-        PROFILE_STOP2( "plot" );
         return;
     }
     std::swap( time, new_time );
     if ( time.empty() ) {
-        PROFILE_STOP2( "plot" );
         return;
     }
 
@@ -209,7 +207,6 @@ void LoadBalance::plot( const std::vector<float>& time_ )
         max_time = std::max( max_time, i );
     global_range = { { range[0], range[1], 0, 1.1 * max_time } };
     zoom( global_range );
-    PROFILE_STOP( "plot" );
 }
 void LoadBalance::zoom( const std::array<double, 4>& range )
 {

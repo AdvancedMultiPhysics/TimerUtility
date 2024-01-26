@@ -116,7 +116,7 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
 {
     if ( t_in == d_t && rank == d_last_rank )
         return;
-    PROFILE_START( "plot" );
+    PROFILE( "plot" );
     d_t         = t_in;
     d_last_rank = rank;
 
@@ -201,7 +201,6 @@ void MemoryPlot::plot( std::array<double, 2> t_in, int rank )
     }
     setAxisScale( QwtPlot::xTop, 0, 0 );
     replot();
-    PROFILE_STOP( "plot" );
 }
 
 

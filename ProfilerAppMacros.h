@@ -2,30 +2,16 @@
 #define included_ProfilerAppMacros
 
 // Define some helper functions
-#define PROFILE_START_LEVEL( FILE, LINE, NAME, LEVEL, ... )                                    \
-    do {                                                                                       \
-        if ( LEVEL <= global_profiler.getLevel() ) {                                           \
-            constexpr uint64_t v1 = ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ); \
-            static_assert( v1 != 0, "Invalid FILE hash" );                                     \
-            uint64_t v2 = ProfilerApp::hashString( NAME );                                     \
-            uint64_t id = ( v2 << 32 ) + ( v1 ^ v2 );                                          \
-            global_profiler.start( id, ProfilerApp::getString( NAME ), FILE, LINE, LEVEL );    \
-        }                                                                                      \
-    } while ( 0 )
-#define PROFILE_STOP_LEVEL( FILE, LINE, NAME, LEVEL, TRACE, ... )                                 \
-    do {                                                                                          \
-        if ( LEVEL <= global_profiler.getLevel() ) {                                              \
-            constexpr uint64_t v1 = ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) );    \
-            static_assert( v1 != 0, "Invalid FILE hash" );                                        \
-            uint64_t v2 = ProfilerApp::hashString( NAME );                                        \
-            uint64_t id = ( v2 << 32 ) + ( v1 ^ v2 );                                             \
-            global_profiler.stop( id, ProfilerApp::getString( NAME ), FILE, LINE, LEVEL, TRACE ); \
-        }                                                                                         \
-    } while ( 0 )
-#define PROFILE_SCOPED_LEVEL( FILE, LINE, OBJ, NAME, LEVEL, TRACE, ... )                    \
-    ScopedTimer OBJ( ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ),             \
-        ProfilerApp::hashString( NAME ), ProfilerApp::getString( NAME ), FILE, LINE, LEVEL, \
-        global_profiler, TRACE )
+#define CALL_STATIC_TIMER( VAR, ID, NAME, FILE, LINE, LEVEL, TRACE ) \
+    StaticTimer<ID> VAR( NAME, FILE, LINE, LEVEL, global_profiler, TRACE )
+#define PROFILE_LEVEL( FILE, LINE, NAME, LEVEL, TRACE, ... ) \
+    CALL_STATIC_TIMER(                                       \
+        profile_##LINE, ProfilerApp::generateID( FILE, NAME ), NAME, FILE, LINE, LEVEL, TRACE )
+#define PROFILE_LEVEL2( FILE, LINE, NAME, LEVEL, TRACE, ... ) \
+    RecursiveTimer profile_##LINE( NAME, FILE, LINE, LEVEL, global_profiler, TRACE )
+/*#define PROFILE_LEVEL2( FILE, LINE, NAME, LEVEL, TRACE, ... )                                 \
+    RecursiveTimer profile_##LINE( ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ), \
+        ProfilerApp::hashString( NAME ), NAME, FILE, LINE, LEVEL, global_profiler, TRACE ) */
 #define PROFILE_SAVE_GLOBAL( NAME, GLOB, ... ) global_profiler.save( NAME, GLOB )
 
 
@@ -43,44 +29,7 @@
  *  \param NAME     Name of the timer
  *  \param LEVEL    Optional level at which to enable the timer
  */
-#define PROFILE_START( ... ) PROFILE_START_LEVEL( __FILE__, __LINE__, __VA_ARGS__, -1, -1 )
-
-
-/*! \def PROFILE_STOP(NAME,LEVEL,TRACE)
- *  \brief Stop the profiler
- *  \details This is the primary call to stop a timer.  Only one call within a file
- *      may call the timer.  Any other calls must use PROFILE_STOP2(X).
- *      This call will automatically add the file and line number to the timer.
- *      An optional argument specifying the level to enable may be included.
- *      See  \ref ProfilerApp "ProfilerApp" for more info.
- *  \param NAME     Name of the timer
- *  \param LEVEL    Optional level at which to enable the timer
- *  \param TRACE    Optional flag to indicate if we want to store trace level data
- */
-#define PROFILE_STOP( ... ) PROFILE_STOP_LEVEL( __FILE__, __LINE__, __VA_ARGS__, -1, -1, -1 )
-
-
-/*! \def PROFILE_START2(NAME,LEVEL)
- *  \brief Start the profiler
- *  \details This is a call to start a timer without the line number.
- *      An optional argument specifying the level to enable may be included.
- *      See  \ref ProfilerApp "ProfilerApp" for more info.
- *  \param NAME     Name of the timer
- *  \param LEVEL    Level at which to enable the timer
- */
-#define PROFILE_START2( ... ) PROFILE_START_LEVEL( __FILE__, -1, __VA_ARGS__, -1, -1 )
-
-
-/*! \def PROFILE_STOP2(NAME,LEVEL,TRACE)
- *  \brief Start the profiler
- *  \details This is a call to start a timer without the line number.
- *      An optional argument specifying the level to enable may be included.
- *      See  \ref ProfilerApp "ProfilerApp" for more info.
- *  \param NAME     Name of the timer
- *  \param LEVEL    Optional level at which to enable the timer
- *  \param TRACE    Optional flag to indicate if we want to store trace level data
- */
-#define PROFILE_STOP2( ... ) PROFILE_STOP_LEVEL( __FILE__, -1, __VA_ARGS__, -1, -1, -1 )
+#define PROFILE( ... ) PROFILE_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0, 0 )
 
 
 /*! \def PROFILE_SCOPED(OBJ,NAME,LEVE,TRACEL)
@@ -93,7 +42,7 @@
  *  \param LEVEL    Optional level at which to enable the timer
  *  \param TRACE    Optional flag to indicate if we want to store trace level data
  */
-#define PROFILE_SCOPED( ... ) PROFILE_SCOPED_LEVEL( __FILE__, __LINE__, __VA_ARGS__, -1, -1, -1 )
+#define PROFILE2( ... ) PROFILE_LEVEL2( __FILE__, __LINE__, __VA_ARGS__, 0, 0, 0 )
 
 
 /*! \def PROFILE_MEMORY()
