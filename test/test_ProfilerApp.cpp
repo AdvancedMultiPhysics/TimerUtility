@@ -3,6 +3,7 @@
 #include "test_Helpers.h"
 
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <random>
 #include <string>
@@ -42,8 +43,7 @@ inline void MPI_Finalize() {}
 
 inline void printOverhead( const std::string &timer, int N_calls )
 {
-    size_t id    = global_profiler.getTimerId( timer.c_str(), __FILE__ );
-    auto results = global_profiler.getTimerResults( id );
+    auto results = global_profiler.getTimerResults( timer, __FILE__ );
     if ( results.trace.size() == 1 ) {
         uint64_t time = results.trace[0].tot;
         printf( "   %s: %i ns\n", timer.c_str(), int( time / N_calls ) );
@@ -66,19 +66,59 @@ std::string random_string( int N )
 }
 
 
-bool call_recursive_scope( int N, int i = 0 )
+void recursion( int N )
 {
-    char name[20];
+    PROFILE( "recursion" );
+    if ( N > 1 )
+        recursion( N - 1 );
+}
+void call_recursion( int );
+void recursion1( int N )
+{
+    PROFILE( "recursion1" );
+    call_recursion( N - 1 );
+}
+void recursion2( int N )
+{
+    PROFILE( "recursion2" );
+    call_recursion( N - 1 );
+}
+void recursion3( int N )
+{
+    PROFILE( "recursion3" );
+    call_recursion( N - 1 );
+}
+void recursion4( int N )
+{
+    PROFILE( "recursion4" );
+    call_recursion( N - 1 );
+}
+void recursion5( int N )
+{
+    PROFILE( "recursion5" );
+    call_recursion( N - 1 );
+}
+void call_recursion( int N )
+{
+    if ( N == 0 )
+        return;
+    int i = rand() % 5;
     if ( i == 0 )
-        sprintf( name, "scoped" );
+        recursion1( N );
+    else if ( i == 1 )
+        recursion2( N );
+    else if ( i == 2 )
+        recursion3( N );
+    else if ( i == 3 )
+        recursion4( N );
     else
-        sprintf( name, "scoped(%i)", i + 1 );
-    bool pass = !global_profiler.active( name, __FILE__ );
-    PROFILE2( "scoped" );
-    pass = pass && global_profiler.active( name, __FILE__ );
-    if ( N > 0 )
-        pass = pass && call_recursive_scope( --N, ++i );
-    return pass;
+        recursion5( N );
+}
+void test_recursion( int N )
+{
+    PROFILE( "test_recursion" );
+    recursion( N );
+    call_recursion( N );
 }
 
 
@@ -124,7 +164,7 @@ static inline int test_clock()
         NULL_USE( t2 );
     }
     auto stop = TYPE::now();
-    auto ns   = std::chrono::duration_cast<std::chrono::nanoseconds>( stop - start ).count();
+    auto ns   = diff_ns( stop, start );
     return ns / N;
 }
 template<typename TYPE>
@@ -135,10 +175,22 @@ static inline int get_clock_resolution()
         int ns  = 0;
         auto t0 = TYPE::now();
         while ( ns <= 0 )
-            ns = std::chrono::duration_cast<std::chrono::nanoseconds>( TYPE::now() - t0 ).count();
+            ns = diff_ns( TYPE::now(), t0 );
         resolution = std::min( resolution, ns );
     }
     return resolution;
+}
+static inline int test_diff_ns()
+{
+    int N       = 1000;
+    auto start  = std::chrono::steady_clock::now();
+    uint64_t ns = 0;
+    for ( int i = 0; i < N; i++ )
+        ns += diff_ns( std::chrono::steady_clock::now(), start );
+    NULL_USE( ns );
+    auto stop         = std::chrono::steady_clock::now();
+    int time_duration = diff_ns( stop, start ) - N * test_clock<std::chrono::steady_clock>();
+    return std::max( time_duration, 0 ) / N;
 }
 static inline int test_getMemoryUsage()
 {
@@ -149,7 +201,7 @@ static inline int test_getMemoryUsage()
         NULL_USE( bytes );
     }
     auto t2 = std::chrono::steady_clock::now();
-    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+    auto ns = diff_ns( t2, t1 );
     return ns / N;
 }
 static inline int test_getTotalMemoryUsage()
@@ -161,7 +213,7 @@ static inline int test_getTotalMemoryUsage()
         NULL_USE( bytes );
     }
     auto t2 = std::chrono::steady_clock::now();
-    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+    auto ns = diff_ns( t2, t1 );
     return ns / N;
 }
 
@@ -183,26 +235,14 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     const int rank     = getRank();
     const int N_proc   = getSize();
 
-    // Check that "MAIN" is active and "NULL" is not
-    bool test1 = global_profiler.active( "MAIN", __FILE__ );
-    bool test2 = global_profiler.active( "NULL", __FILE__ );
-    if ( !test1 || test2 ) {
-        std::cout << "Correct timers are not active\n";
-        N_errors++;
-    }
-
     // Sleep for 1 second
     {
         PROFILE( "sleep" );
         sleep( 1 );
     }
 
-    // Test the scoped timer
-    bool pass = call_recursive_scope( 50 );
-    if ( !pass ) {
-        std::cout << "Scoped timer fails\n";
-        N_errors++;
-    }
+    // Test recursion
+    test_recursion( 1000 );
 
     // Get a list of timer names
     std::vector<std::string> names( N_timers );
@@ -215,7 +255,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         names[i]  = std::string( tmp );
         names2[i] = std::string( tmp ) + "_";
         names3[i] = std::string( tmp ) + "_s";
-        ids[i]    = ProfilerApp::getTimerId( names[i].c_str(), __FILE__ );
+        ids[i]    = ProfilerApp::getTimerId( names[i].c_str(), __FILE__, 0 );
     }
 
     // Test a timer with many special characters
@@ -236,7 +276,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         {
             PROFILE( "static" );
             for ( int j = 0; j < N_timers; j++ ) {
-                global_profiler.start( ids[j], names[j].c_str(), __FILE__, __LINE__, 0 );
+                global_profiler.start( ids[j], names[j].data(), __FILE__, __LINE__, 0 );
                 global_profiler.stop( ids[j] );
             }
         }
@@ -248,42 +288,33 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         {
             PROFILE( "level 0" );
             for ( int j = 0; j < N_timers; j++ ) {
-                global_profiler.start( ids[j], names[j].c_str(), __FILE__, -1, 0 );
+                global_profiler.start( ids[j], names[j].data(), __FILE__, -1, 0 );
                 global_profiler.stop( ids[j], 0 );
             }
         }
         {
-            PROFILE( "level 1 (1)" );
+            PROFILE( "level 1" );
             for ( int j = 0; j < N_timers; j++ ) {
-                global_profiler.start( ids[j], names[j].c_str(), __FILE__, -1, 1 );
+                global_profiler.start( ids[j], names[j].data(), __FILE__, -1, 1 );
                 global_profiler.stop( ids[j], 1 );
             }
         }
         {
-            PROFILE( "level 1 (2)" );
+            PROFILE( "level 1 (single)" );
             for ( int j = 0; j < N_timers; j++ )
                 PROFILE( "static_name", 1 );
         }
         {
-            PROFILE( "level 1 (3)" );
-            for ( int j = 0; j < N_timers; j++ )
-                PROFILE( "Test", 1 );
+            PROFILE( "level 1 (static)" );
+            for ( int j = 0; j < N_timers; j++ ) {
+                global_profiler.start( ids[j], names[j].data(), __FILE__, __LINE__, 1 );
+                global_profiler.stop( ids[j], 1 );
+            }
         }
         {
             PROFILE( "level 1 (dynamic)" );
             for ( int j = 0; j < N_timers; j++ )
-                PROFILE2( "Test", 1 );
-        }
-        // Test the two forms of active
-        {
-            PROFILE( "active 1" );
-            for ( int j = 0; j < N_timers; j++ )
-                global_profiler.active( names[j], __FILE__ );
-        }
-        {
-            PROFILE( "active 2" );
-            for ( int j = 0; j < N_timers; j++ )
-                global_profiler.active( ids[j] );
+                PROFILE2( names2[j], 1 );
         }
         // Test the memory around allocations
         {
@@ -309,12 +340,10 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         printOverhead( "static", N_it * N_timers );
         printOverhead( "dynamic", N_it * N_timers );
         printOverhead( "level 0", N_it * N_timers );
-        printOverhead( "level 1 (1)", N_it * N_timers );
-        printOverhead( "level 1 (2)", N_it * N_timers );
-        printOverhead( "level 1 (3)", N_it * N_timers );
+        printOverhead( "level 1", N_it * N_timers );
+        printOverhead( "level 1 (single)", N_it * N_timers );
+        printOverhead( "level 1 (static)", N_it * N_timers );
         printOverhead( "level 1 (dynamic)", N_it * N_timers );
-        printOverhead( "active 1", N_it * N_timers );
-        printOverhead( "active 2", N_it * N_timers );
         printf( "\n" );
     }
 
@@ -323,8 +352,8 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     std::string long_file     = "Long filename - " + random_string( 128 );
     std::string long_path     = "Long pathname - " + random_string( 128 );
     std::string long_filename = long_path + "/" + long_file;
-    auto long_id              = ProfilerApp::generateID( long_filename, long_msg );
-    global_profiler.start( long_id, long_msg, long_filename, __LINE__ );
+    auto long_id              = ProfilerApp::getTimerId( long_msg.data(), long_filename.data(), 0 );
+    global_profiler.start( long_id, long_msg.data(), long_filename.data(), 0 );
     global_profiler.stop( long_id );
 
     // Profile the save
@@ -355,7 +384,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     quicksort( id1, data1 );
 
     // Load the data from the file (sorting based on the timer ids)
-    auto id = ProfilerApp::generateID( __FILE__, "LOAD" );
+    auto id = ProfilerApp::getTimerId( "LOAD", __FILE__, 0 );
     global_profiler.start( id, "LOAD", __FILE__, __LINE__ );
     auto load_results = ProfilerApp::load( save_name, rank );
     auto &data2       = load_results.timers;
@@ -388,6 +417,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         N_errors++;
     }
     if ( enable_trace && trace != nullptr ) {
+        bool pass      = true;
         uint64_t start = trace->times[0];
         if ( start > 100e9 )
             pass = false;
@@ -492,6 +522,7 @@ int main( int argc, char *argv[] )
         printf( "  system_clock: %i\n", test_clock<std::chrono::system_clock>() );
         printf( "  steady_clock: %i\n", test_clock<std::chrono::steady_clock>() );
         printf( "  high_resolution_clock: %i\n", test_clock<std::chrono::high_resolution_clock>() );
+        printf( "  diff_ns: %i\n", test_diff_ns() );
         printf( "\n" );
         // Test how long it takes to get memory usage
         printf( "getMemoryUsage: %i\n", test_getMemoryUsage() );

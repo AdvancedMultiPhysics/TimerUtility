@@ -7,10 +7,6 @@
 #include <stdexcept>
 
 
-// Use the hashing function 2^64*0.5*(sqrt(5)-1)
-#define GET_TIMER_HASH( id ) ( ( ( id * 0x9E3779B97F4A7C15 ) >> 48 ) % TIMER_HASH_SIZE )
-
-
 /***********************************************************************
  * uint16f                                                              *
  ***********************************************************************/
@@ -84,18 +80,50 @@ public:
 
 
 /***********************************************************************
+ * Integer log2                                                         *
+ ***********************************************************************/
+constexpr int log2int( uint64_t x )
+{
+    int r = 0;
+    while ( x > 1 ) {
+        r++;
+        x = x >> 1;
+    }
+    return r;
+}
+
+
+/***********************************************************************
+ * Get the time elapsed in ns                                           *
+ * Note we implement this because duration_cast takes too long in debug *
+ ***********************************************************************/
+template<class TYPE>
+constexpr int64_t diff_ns( std::chrono::time_point<TYPE> t2, std::chrono::time_point<TYPE> t1 )
+{
+    using PERIOD = typename std::chrono::time_point<TYPE>::period;
+    if constexpr ( std::ratio_equal_v<PERIOD, std::nano> &&
+                   sizeof( std::chrono::time_point<TYPE> ) == 8 ) {
+        return *reinterpret_cast<const int64_t*>( &t2 ) - *reinterpret_cast<const int64_t*>( &t1 );
+    } else {
+        return std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count();
+    }
+}
+
+
+/***********************************************************************
  * Function to get the timmer for a particular block of code            *
  * Note: This function performs some blocking as necessary.             *
  ***********************************************************************/
 inline ProfilerApp::store_timer* ProfilerApp::getBlock(
-    uint64_t id, bool create, std::string_view message, std::string_view filename, int line )
+    uint64_t id, bool create, const char* message, const char* filename, int line )
 {
-    using std::to_string;
     uint32_t thread_id = getThreadID();
     if ( thread_id >= MAX_THREADS )
         return nullptr;
     // Search for the thread-specific timer and create it if necessary (does not need blocking)
-    size_t key         = GET_TIMER_HASH( id ); // Get the hash index
+    constexpr uint64_t mask = ( (uint64_t) 0x1 << log2int( TIMER_HASH_SIZE ) ) - 1;
+    static_assert( mask + 1 == TIMER_HASH_SIZE );
+    uint64_t key       = id & mask; // Get the hash index
     store_timer* timer = d_threadData[thread_id].timers[key];
     if ( !timer ) {
         if ( !create )
@@ -104,8 +132,6 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock(
         auto new_timer = new store_timer;
         d_bytes.fetch_add( sizeof( store_timer ) );
         new_timer->id                       = id;
-        new_timer->is_active                = false;
-        new_timer->trace_index              = d_threadData[thread_id].N++;
         new_timer->timer_data               = getTimerData( id, message, filename, line );
         d_threadData[thread_id].timers[key] = new_timer;
         timer                               = new_timer;
@@ -117,11 +143,9 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock(
                 return nullptr;
             auto new_timer = new store_timer;
             d_bytes.fetch_add( sizeof( store_timer ) );
-            new_timer->id          = id;
-            new_timer->is_active   = false;
-            new_timer->trace_index = d_threadData[thread_id].N++;
-            new_timer->timer_data  = getTimerData( id, message, filename, line );
-            timer->next            = new_timer;
+            new_timer->id         = id;
+            new_timer->timer_data = getTimerData( id, message, filename, line );
+            timer->next           = new_timer;
         }
         // Advance to the next entry
         timer = timer->next;
@@ -138,6 +162,8 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock(
  ***********************************************************************/
 constexpr inline std::string_view ProfilerApp::stripPath( std::string_view filename )
 {
+    if ( filename.empty() )
+        return std::string_view();
     const char* s = filename.data();
     while ( *s ) {
         if ( *s == 47 || *s == 92 )
@@ -148,6 +174,8 @@ constexpr inline std::string_view ProfilerApp::stripPath( std::string_view filen
 }
 constexpr inline uint32_t ProfilerApp::hashString( std::string_view str )
 {
+    if ( str.empty() )
+        return 0;
     const char* s = str.data();
     uint32_t c    = 0;
     uint32_t hash = 5381;
@@ -157,12 +185,13 @@ constexpr inline uint32_t ProfilerApp::hashString( std::string_view str )
     }
     return hash;
 }
-constexpr inline uint64_t ProfilerApp::getTimerId( const char* message, const char* filename )
+constexpr inline uint64_t ProfilerApp::getTimerId(
+    const char* message, const char* filename, int line )
 {
-    uint32_t v1  = hashString( stripPath( filename ) );
-    uint32_t v2  = hashString( message );
-    uint64_t key = ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
-    return key;
+    uint64_t v1 = static_cast<uint64_t>( hashString( stripPath( filename ) ) ) << 32;
+    uint64_t v2 = hashString( message );
+    uint64_t v3 = 0x9E3779B97F4A7C15 * line;
+    return v1 ^ v2 ^ v3;
 }
 
 

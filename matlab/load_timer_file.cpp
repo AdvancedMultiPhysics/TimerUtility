@@ -48,22 +48,6 @@ inline std::string loadMexString( const mxArray* ptr )
 }
 
 
-// Get a std::vector<int> for the active ids
-inline std::vector<int> getActive(
-    const std::map<id_struct, int>& id_map, const TraceResults& trace )
-{
-    std::vector<int> active( trace.N_active );
-    for ( size_t i = 0; i < active.size(); i++ ) {
-        auto it = id_map.find( trace.active[i] );
-        if ( it == id_map.end() )
-            mexErrMsgTxt( "Active id not found" );
-        else
-            active[i] = it->second;
-    }
-    return active;
-}
-
-
 // Load variables
 std::string loadString( const mxArray* ptr )
 {
@@ -79,7 +63,8 @@ std::string loadString( const mxArray* ptr )
 
 
 // Save variables
-inline mxArray* save( const std::string& str ) { return mxCreateString( str.c_str() ); }
+inline mxArray* save( const std::string& str ) { return mxCreateString( str.data() ); }
+inline mxArray* save( const id_struct& id ) { return mxCreateString( id.str().data() ); }
 inline mxArray* save( uint64_t x )
 {
     auto mx = mxCreateNumericMatrix( 1, 1, mxUINT64_CLASS, mxREAL );
@@ -188,13 +173,6 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
             N_threads = std::max<int>( N_threads, data.timers[i].trace[j].thread + 1 );
     }
 
-    // Create a map of all timer ids to int
-    std::map<id_struct, int> id_map;
-    for ( size_t i = 0; i < data.timers.size(); i++ ) {
-        if ( id_map.find( data.timers[i].id ) == id_map.end() )
-            id_map.insert( std::pair<id_struct, int>( data.timers[i].id, id_map.size() ) );
-    }
-
     // Save N_procs
     plhs[0] = save( data.N_procs );
 
@@ -202,8 +180,8 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
     const char* fields[] = { "id", "message", "file", "path", "line", "trace" };
     plhs[1]              = mxCreateStructMatrix( data.timers.size(), 1, 6, fields );
     for ( size_t i = 0; i < data.timers.size(); i++ ) {
-        const TimerResults& timer = data.timers[i];
-        mxSetFieldByNumber( plhs[1], i, 0, save( id_map[timer.id] + 1 ) );
+        auto& timer = data.timers[i];
+        mxSetFieldByNumber( plhs[1], i, 0, save( timer.id ) );
         mxSetFieldByNumber( plhs[1], i, 1, save( timer.message ) );
         mxSetFieldByNumber( plhs[1], i, 2, save( timer.file ) );
         mxSetFieldByNumber( plhs[1], i, 3, save( timer.path ) );
@@ -212,71 +190,26 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
             mxSetFieldByNumber( plhs[1], i, 5, mxCreateStructMatrix( 0, 1, 0, nullptr ) );
             continue;
         }
-        // Get a list of all trace ids
-        std::map<std::vector<int>, int> active_map;
-        for ( size_t j = 0; j < timer.trace.size(); j++ ) {
-            ASSERT( timer.trace[j].id == timer.id );
-            auto active = getActive( id_map, timer.trace[j] );
-            active_map.insert( std::pair<std::vector<int>, int>( active, active_map.size() ) );
-        }
-        auto it = active_map.begin();
-        for ( size_t j = 0; j < active_map.size(); ++j, ++it )
-            it->second = j;
-        // Allocate N, min, max, tot, start, stop
-        size_t Nt = active_map.size();
-        std::vector<std::vector<uint64_t>> N( Nt );
-        std::vector<std::vector<float>> min( Nt ), max( Nt ), tot( Nt );
-        std::vector<std::vector<std::vector<uint64_t>>> start( Nt ), stop( Nt );
-        for ( size_t j = 0; j < Nt; j++ ) {
-            N[j].resize( data.N_procs * N_threads, 0 );
-            min[j].resize( data.N_procs * N_threads, 0 );
-            max[j].resize( data.N_procs * N_threads, 0 );
-            tot[j].resize( data.N_procs * N_threads, 0 );
-            start[j].resize( data.N_procs * N_threads );
-            stop[j].resize( data.N_procs * N_threads );
-        }
-        // Fill N, min, max, tot, start, stop
-        for ( const auto& trace : timer.trace ) {
-            auto active   = getActive( id_map, trace );
-            int k         = active_map[active];
-            int index     = trace.thread + trace.rank * N_threads;
-            N[k][index]   = trace.N;
-            min[k][index] = trace.min;
-            max[k][index] = trace.max;
-            tot[k][index] = trace.tot;
-            if ( trace.N_trace > 0 ) {
-                start[k][index].reserve( trace.N_trace );
-                stop[k][index].reserve( trace.N_trace );
-                uint64_t last = 0;
-                for ( size_t m = 0; m < trace.N_trace; m++ ) {
-                    uint64_t t1 = last + trace.times[2 * m + 0];
-                    uint64_t t2 = t1 + trace.times[2 * m + 1];
-                    last        = t2;
-                    if ( t1 == t2 )
-                        continue;
-                    start[k][index].push_back( t1 );
-                    stop[k][index].push_back( t2 );
-                }
-            }
-        }
         // Create the TraceClass
-        auto trace_ptr = mxCreateClassMatrix( active_map.size(), 1, "TraceClass" );
+        auto trace_ptr = mxCreateClassMatrix( timer.trace.size(), 1, "TraceClass" );
         mxSetFieldByNumber( plhs[1], i, 6, trace_ptr );
-        it = active_map.begin();
-        for ( size_t j = 0; j < active_map.size(); ++j, ++it ) {
-            mxSetProperty( trace_ptr, j, "id", save( id_map[timer.id] + 1 ) );
-            mxSetProperty( trace_ptr, j, "N", save( N[j] ) );
-            mxSetProperty( trace_ptr, j, "min", save( min[j] ) );
-            mxSetProperty( trace_ptr, j, "max", save( max[j] ) );
-            mxSetProperty( trace_ptr, j, "tot", save( tot[j] ) );
-            mxSetProperty( trace_ptr, j, "start", save( start[j] ) );
-            mxSetProperty( trace_ptr, j, "stop", save( stop[j] ) );
-            const auto active   = it->first;
-            mxArray* active_ptr = mxCreateDoubleMatrix( 1, active.size(), mxREAL );
-            double* active2     = mxGetPr( active_ptr );
-            for ( size_t k = 0; k < active.size(); k++ )
-                active2[k] = active[k] + 1;
-            mxSetProperty( trace_ptr, j, "active", active_ptr );
+        for ( size_t j = 0; j < timer.trace.size(); ++j ) {
+            auto& trace    = timer.trace[i];
+            size_t N_trace = trace.N_trace;
+            std::vector<uint64_t> start( N_trace, 0 ), stop( N_trace, 0 );
+            for ( size_t k = 0; k < N_trace; k++ ) {
+                start[k] = static_cast<uint64_t>( trace.times[2 * k + 0] );
+                stop[k]  = static_cast<uint64_t>( trace.times[2 * k + 1] );
+            }
+            mxSetProperty( trace_ptr, j, "id", save( timer.id ) );
+            mxSetProperty( trace_ptr, j, "N", save( trace.N ) );
+            mxSetProperty( trace_ptr, j, "min", save( trace.min ) );
+            mxSetProperty( trace_ptr, j, "max", save( trace.max ) );
+            mxSetProperty( trace_ptr, j, "tot", save( trace.tot ) );
+            mxSetProperty( trace_ptr, j, "stack", save( trace.stack ) );
+            mxSetProperty( trace_ptr, j, "stack2", save( trace.stack2 ) );
+            mxSetProperty( trace_ptr, j, "start", save( start ) );
+            mxSetProperty( trace_ptr, j, "stop", save( stop ) );
         }
     }
     // Save the memory data

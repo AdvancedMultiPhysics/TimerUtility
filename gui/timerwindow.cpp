@@ -29,6 +29,26 @@ extern "C" {
 }
 
 
+// Function to add an action (with connection) to a menu
+#define ADD_MENU_ACTION( menu, string, arg )                                   \
+    do {                                                                       \
+        QAction* action = new QAction( string, this );                         \
+        connect( action, SIGNAL( triggered() ), signalMapper, SLOT( map() ) ); \
+        signalMapper->setMapping( action, arg );                               \
+        menu->addAction( action );                                             \
+    } while ( 0 )
+
+
+#define ASSERT( EXP )                                                                     \
+    do {                                                                                  \
+        if ( !( EXP ) ) {                                                                 \
+            std::stringstream stream;                                                     \
+            stream << "Failed assertion: " << #EXP << " " << __FILE__ << " " << __LINE__; \
+            throw std::logic_error( stream.str() );                                       \
+        }                                                                                 \
+    } while ( 0 )
+
+
 // Function to convert the thread list to a string
 std::string threadString( const std::vector<int>& x )
 {
@@ -53,17 +73,6 @@ static const TimerResults& findTimer( const std::vector<TimerResults>& timers, i
     printf( "timer not found\n" );
     static TimerResults null_timer;
     return null_timer;
-}
-
-
-// Get a list of active traces
-inline std::vector<id_struct> getActive( const TraceResults& trace )
-{
-    std::vector<id_struct> active( trace.N_active );
-    for ( size_t i = 0; i < active.size(); i++ )
-        active[i] = trace.active[i];
-    std::sort( active.begin(), active.end() );
-    return active;
 }
 
 
@@ -131,26 +140,6 @@ double mean( const std::vector<TYPE>& x )
 {
     return static_cast<double>( sum( x ) ) / static_cast<double>( x.size() );
 }
-
-
-// Function to add an action (with connection) to a menu
-#define ADD_MENU_ACTION( menu, string, arg )                                   \
-    do {                                                                       \
-        QAction* action = new QAction( string, this );                         \
-        connect( action, SIGNAL( triggered() ), signalMapper, SLOT( map() ) ); \
-        signalMapper->setMapping( action, arg );                               \
-        menu->addAction( action );                                             \
-    } while ( 0 )
-
-
-#define ASSERT( EXP )                                                                     \
-    do {                                                                                  \
-        if ( !( EXP ) ) {                                                                 \
-            std::stringstream stream;                                                     \
-            stream << "Failed assertion: " << #EXP << " " << __FILE__ << " " << __LINE__; \
-            throw std::logic_error( stream.str() );                                       \
-        }                                                                                 \
-    } while ( 0 )
 
 
 /***********************************************************************
@@ -392,6 +381,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             for ( auto& j : timer.trace )
                 N_threads = std::max<int>( N_threads, j.thread + 1 );
         }
+        // Build the stack map
+        auto stackMap = ProfilerApp::buildActiveMap( d_data.timers );
         // Get the global summary data
         d_dataTimer.clear();
         d_dataTimer.resize( d_data.timers.size() );
@@ -411,7 +402,7 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.trace.clear();
             for ( auto& t0 : d_data.timers[i].trace ) {
                 int index   = -1;
-                auto active = getActive( t0 );
+                auto active = stackMap[t0.stack];
                 for ( size_t k = 0; k < timer.trace.size(); k++ ) {
                     if ( timer.trace[k]->active == active ) {
                         index = static_cast<int>( k );
@@ -582,8 +573,8 @@ void TimerWindow::updateDisplay()
     TableHeader << "id"
                 << "Message"
                 << "Filename"
-                << "Thread"
                 << "Line"
+                << "Thread"
                 << "N calls"
                 << "min time"
                 << "max time"
@@ -592,7 +583,7 @@ void TimerWindow::updateDisplay()
     timerTable->clear();
     timerTable->setRowCount( 0 );
     timerTable->setRowCount( current_timers.size() );
-    timerTable->setColumnCount( 11 );
+    timerTable->setColumnCount( 10 );
     timerTable->QTableView::setColumnHidden( 0, true );
     timerTable->setColumnWidth( 1, 200 );
     timerTable->setColumnWidth( 2, 200 );
@@ -627,8 +618,8 @@ void TimerWindow::updateDisplay()
         auto id      = new QTableWidgetItem( timer->id.string().c_str() );
         auto message = new QTableWidgetItem( timer->message.c_str() );
         auto file    = new QTableWidgetItem( timer->file.c_str() );
-        auto threads = new QTableWidgetItem( threadString( timer->threads ).c_str() );
         auto line    = new TableValue( timer->line, "%i" );
+        auto threads = new QTableWidgetItem( threadString( timer->threads ).c_str() );
         auto N       = new TableValue( N_data[i], "%i" );
         auto min     = new TableValue( min_data[i], "%0.3e" );
         auto max     = new TableValue( max_data[i], "%0.3e" );
@@ -647,8 +638,8 @@ void TimerWindow::updateDisplay()
         timerTable->setItem( i, 0, id );
         timerTable->setItem( i, 1, message );
         timerTable->setItem( i, 2, file );
-        timerTable->setItem( i, 3, threads );
-        timerTable->setItem( i, 4, line );
+        timerTable->setItem( i, 3, line );
+        timerTable->setItem( i, 4, threads );
         timerTable->setItem( i, 5, N );
         timerTable->setItem( i, 6, min );
         timerTable->setItem( i, 7, max );

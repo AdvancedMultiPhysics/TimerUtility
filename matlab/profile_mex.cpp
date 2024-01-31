@@ -143,9 +143,9 @@ void mexFunction( int nlhs, mxArray *[], int nrhs, const mxArray *prhs[] )
         }
         // Start/Stop the timer
         try {
-            auto id = ProfilerApp::generateID( file, name );
+            auto id = ProfilerApp::getTimerId( name.data(), file.data(), 0 );
             if ( command == "START" )
-                global_profiler.start( id, name, file, line, level );
+                global_profiler.start( id, name.data(), file.data(), line, level );
             else
                 global_profiler.stop( id, level );
         } catch ( const std::exception &e ) {

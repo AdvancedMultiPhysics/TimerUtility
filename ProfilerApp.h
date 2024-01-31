@@ -59,17 +59,19 @@ class id_struct
 {
 public:
     // Constructors
-    id_struct() : data( 0 ) {}
-    explicit id_struct( uint64_t id );
+    constexpr id_struct() : data( 0 ) {}
+    constexpr explicit id_struct( uint32_t id ) : data( id ) {}
+    constexpr explicit id_struct( uint64_t id ) : data( ( id * 0x9E3779B97F4A7C15 ) >> 34 ) {}
     explicit id_struct( const std::string& rhs );
+    explicit id_struct( std::string_view rhs );
     explicit id_struct( const char* rhs );
     // Comparison operators
-    inline bool operator==( const id_struct& rhs ) const { return data == rhs.data; }
-    inline bool operator!=( const id_struct& rhs ) const { return data != rhs.data; }
-    inline bool operator>=( const id_struct& rhs ) const { return data >= rhs.data; }
-    inline bool operator>( const id_struct& rhs ) const { return data > rhs.data; }
-    inline bool operator<( const id_struct& rhs ) const { return data < rhs.data; }
-    inline bool operator<=( const id_struct& rhs ) const { return data <= rhs.data; }
+    constexpr inline bool operator==( const id_struct& rhs ) const { return data == rhs.data; }
+    constexpr inline bool operator!=( const id_struct& rhs ) const { return data != rhs.data; }
+    constexpr inline bool operator>=( const id_struct& rhs ) const { return data >= rhs.data; }
+    constexpr inline bool operator>( const id_struct& rhs ) const { return data > rhs.data; }
+    constexpr inline bool operator<( const id_struct& rhs ) const { return data < rhs.data; }
+    constexpr inline bool operator<=( const id_struct& rhs ) const { return data <= rhs.data; }
     // Return null terminated string stored in a std::array
     std::array<char, 6> str() const;
     // Return a std::string
@@ -91,17 +93,17 @@ private:
 class TraceResults
 {
 public:
-    id_struct id;      //!<  ID of parent timer
-    uint16_t N_active; //!<  Number of active timers
-    uint16_t thread;   //!<  Active thread
-    uint32_t rank;     //!<  Rank
-    uint32_t N_trace;  //!<  Number of calls that we trace
-    float min;         //!<  Minimum call time (ns)
-    float max;         //!<  Maximum call time (ns)
-    float tot;         //!<  Total call time (ns)
-    uint64_t N;        //!<  Total number of calls
-    id_struct* active; //!<  List of active timers (N_active)
-    uint16f* times;    //!<  Start/stop times for each call (N_trace)
+    id_struct id;     //!<  ID of parent timer
+    uint16_t thread;  //!<  Active thread
+    uint32_t rank;    //!<  Rank
+    uint32_t N_trace; //!<  Number of calls that we trace
+    float min;        //!<  Minimum call time (ns)
+    float max;        //!<  Maximum call time (ns)
+    float tot;        //!<  Total call time (ns)
+    uint64_t N;       //!<  Total number of calls
+    uint32_t stack;   //!<  Hash value of the stack trace
+    uint32_t stack2;  //!<  Hash value of the stack trace (including this call)
+    uint16f* times;   //!<  Start/stop times for each call (N_trace)
 public:
     // Constructors/destructor
     TraceResults();
@@ -276,11 +278,9 @@ public:
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whose level is <= the level will be included.
      */
-    inline void start( uint64_t id, std::string_view message = "", std::string_view filename = "",
-        int line = -1, int level = -1 )
+    inline void start( uint64_t id, const char* message = "", const char* filename = "",
+        int line = 0, int level = 0 )
     {
-        if ( level == -1 )
-            level = 0;
         if ( level <= d_level && level >= 0 ) {
             auto timer = getBlock( id, true, message, filename, line );
             start( timer );
@@ -305,10 +305,8 @@ public:
      *                       0: Disable trace data for this timer
      *                       1: Enable trace data for this timer
      */
-    inline void stop( uint64_t id, int level = -1, int trace = -1 )
+    inline void stop( uint64_t id, int level = 0, int trace = -1 )
     {
-        if ( level == -1 )
-            level = 0;
         if ( level <= d_level && level >= 0 ) {
             auto end_time = std::chrono::steady_clock::now();
             auto timer    = getBlock( id, false );
@@ -322,31 +320,6 @@ public:
      *    assuming memory trace is enabled.
      */
     void memory();
-
-    /*!
-     * \brief  Function to check if a timer is active
-     * \details  This function checks if a given timer is active on the current thread.
-     * @param[in] message   Message to uniquely identify the block of code being profiled.
-     *                      It must match a start call.
-     * @param[in] filename  Name of the file containing the code
-     */
-    inline bool active( const std::string& message, const char* filename )
-    {
-        uint64_t id = getTimerId( message.c_str(), filename );
-        auto timer  = getBlock( id );
-        return !timer ? false : timer->is_active;
-    }
-
-    /*!
-     * \brief  Function to check if a timer is active
-     * \details  This function checks if a given timer is active on the current thread.
-     * @param[in] id        ID of the timer we want
-     */
-    inline bool active( uint64_t id )
-    {
-        auto timer = getBlock( id );
-        return !timer ? false : timer->is_active;
-    }
 
     /*!
      * \brief  Function to save the profiling info
@@ -437,12 +410,14 @@ public:
      * \brief  Function to get the timer id
      * \details  This function returns the timer id given the message and filename.
      *     Internally all timers are stored using this id for faster searching.
-     *     Many routines can take the timer id directly to imrove performance by
+     *     Many routines can take the timer id directly to improve performance by
      *     avoiding the hashing function.
      * @param[in] message   The timer message
      * @param[in] filename  The filename
+     * @param[in] line      The line number
      */
-    constexpr static inline uint64_t getTimerId( const char* message, const char* filename );
+    constexpr static inline uint64_t getTimerId(
+        const char* message, const char* filename, int line );
 
     /*!
      * \brief  Function to return the current timer results
@@ -460,6 +435,15 @@ public:
     TimerResults getTimerResults( uint64_t id ) const;
 
     /*!
+     * \brief  Function to return the current timer results
+     * \details  This function will return a vector containing the
+     *      current timing results for all threads.
+     * @param[in] message   The timer message
+     * @param[in] filename  The filename
+     */
+    TimerResults getTimerResults( std::string_view message, std::string_view file ) const;
+
+    /*!
      * \brief  Function to return the memory usage as a function of time
      * \details  This function will return a vector containing the
      *   memory usage as a function of time
@@ -472,54 +456,30 @@ public:
      */
     size_t getMemoryUsed() const { return static_cast<size_t>( d_bytes ); }
 
+    //! Build active timer map
+    static std::tuple<std::vector<uint32_t>, std::vector<std::vector<uint32_t>>> buildStackMap(
+        const std::vector<TimerResults>& timers );
+
+    //! Build active timer map
+    static std::map<uint32_t, std::vector<id_struct>> buildActiveMap(
+        const std::vector<TimerResults>& timers );
+
 
 public: // Helper functions
     constexpr static inline std::string_view stripPath( std::string_view filename );
     constexpr static inline uint32_t hashString( std::string_view str );
-    constexpr static inline uint64_t generateID(
-        std::string_view filename, std::string_view message )
-    {
-        uint32_t v1 = hashString( stripPath( filename ) );
-        uint32_t v2 = hashString( message );
-        return ( static_cast<uint64_t>( v2 ) << 32 ) + static_cast<uint64_t>( v1 ^ v2 );
-    }
 
 public: // Constants to determine parameters that affect performance/memory
     // The maximum number of threads supported
     constexpr static size_t MAX_THREADS = 1024;
 
-    // The size of the hash table to store the timers
+    // The size of the hash table to store the timers (must be a power of 2)
     constexpr static size_t TIMER_HASH_SIZE = 1024;
 
 
 public: // Member classes
     //! Convience typedef for storing a point in time
     typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
-
-    // Structure to store the active trace data
-    class StoreActive
-    {
-    public:
-        StoreActive() { memset( this, 0, sizeof( *this ) ); }
-        inline StoreActive( const StoreActive& rhs ) = default;
-        inline StoreActive& operator=( const StoreActive& rhs );
-        inline StoreActive& operator&=( const StoreActive& rhs );
-        inline void set( size_t index );
-        inline void unset( size_t index );
-        inline bool operator==( const StoreActive& rhs ) { return hash == rhs.hash; }
-        inline uint64_t id() const { return hash; }
-        std::vector<uint32_t> getSet() const;
-
-    private:
-        // The maximum number of timers that will be checked for the trace logs
-        // The actual number of timers is 64*TRACE_SIZE
-        // Note: this only affects the trace logs, the number of timers is unlimited
-        constexpr static size_t TRACE_SIZE = 64;
-        // Store a hash id for fast access
-        uint64_t hash;
-        // Store the active trace
-        uint64_t trace[TRACE_SIZE];
-    };
 
     // Structure to store a sorted list of times (future work: unsigned LEB128)
     class StoreTimes
@@ -575,14 +535,17 @@ public: // Member classes
 
     // Structure to store the info for a trace log
     struct store_trace {
-        size_t N_calls;      // Number of calls to this block
-        StoreActive trace;   // Store the trace
-        store_trace* next;   // Pointer to the next entry in the list
+        uint64_t start;      // Store when start was called for the given block
+        uint64_t stack;      // Store the calling stack hash
+        uint64_t stack2;     // Store stack including self
+        uint64_t N_calls;    // Number of calls to this block
         uint64_t min_time;   // Store the minimum time spent in the given block (nano-seconds)
         uint64_t max_time;   // Store the maximum time spent in the given block (nano-seconds)
         uint64_t total_time; // Store the total time spent in the given block (nano-seconds)
         StoreTimes times;    // Store when start/stop was called (nano-seconds from constructor)
-        store_trace();
+        store_trace* next;   // Store the next trace
+        constexpr static uint64_t nullStart = static_cast<uint64_t>( (int64_t) -1 );
+        store_trace( uint64_t stack = 0 );
         ~store_trace();
         store_trace( const store_trace& rhs )            = delete;
         store_trace& operator=( const store_trace& rhs ) = delete;
@@ -601,16 +564,14 @@ public: // Member classes
         ~store_timer_data_info();
         store_timer_data_info( const store_timer_data_info& rhs )            = delete;
         store_timer_data_info& operator=( const store_timer_data_info& rhs ) = delete;
+        bool compare(
+            const store_timer_data_info& rhs ) const; // True if message and filename match
     };
 
     // Structure to store the timing information for a single block of code
     struct store_timer {
-        bool is_active;                    // Are we currently running a timer
-        uint32_t trace_index;              // The index of the current timer in the trace
         uint64_t id;                       // A unique id for each timer
-        uint64_t start_time;               // Store when start was called for the given block
-        StoreActive trace;                 // Store the active trace
-        store_trace* trace_head;           // Head of the trace-log list
+        store_trace* trace_head;           // Pointer to the first trace
         store_timer* next;                 // Pointer to the next entry in the list
         store_timer_data_info* timer_data; // Pointer to the timer data
         store_timer();
@@ -622,24 +583,27 @@ public: // Member classes
     // Structure to store thread specific data
     struct ThreadData {
         uint32_t N;
-        StoreActive active;
-        StoreMemory memory;
+        uint32_t depth;
+        uint64_t stack;
         store_timer* timers[TIMER_HASH_SIZE];
+        StoreMemory memory;
         ThreadData();
         ~ThreadData();
         ThreadData( const ThreadData& ) = delete;
         void reset();
     };
 
-public: // These really shouldn't be public but are required by StaticTimer and DynamicTimer
+public: // These really shouldn't be public but are required by ProfilerAppTimer<id>
     // Start/stop the timer
-    void start( store_timer* timer );
+    store_trace* start( store_timer* timer );
     void stop( store_timer* timer, time_point end_time = std::chrono::steady_clock::now(),
-        int trace = -1 );
+        int enableTrace = -1 );
+    void stop( store_trace* trace, time_point end_time = std::chrono::steady_clock::now(),
+        int enableTrace = -1 );
 
     // Function to return the appropriate timer block
-    inline store_timer* getBlock( uint64_t id, bool create = false, std::string_view message = "",
-        std::string_view filename = "", const int line = -1 );
+    inline store_timer* getBlock( uint64_t id, bool create = false, const char* message = "",
+        const char* filename = "", const int line = -1 );
 
 private: // Member data
     // Store thread specific info
@@ -678,10 +642,6 @@ private: // Private member functions
     inline void getTimerResultsID(
         uint64_t id, int rank, const time_point& end_time, TimerResults& results ) const;
 
-    // Function to return the string of active timers
-    static std::vector<id_struct> getActiveList(
-        const StoreActive& active, unsigned int myIndex, store_timer* const* head );
-
     // Function to get the current memory usage
     static inline size_t getMemoryUsage();
 
@@ -697,9 +657,8 @@ private: // Private member functions
     static void addTimers( std::vector<TimerResults>& timers, std::vector<TimerResults>&& add );
     static void gatherMemory( std::vector<MemoryResults>& memory );
 
-    // Error checking
-    void activeErrStart( store_timer* );
-    void activeErrStop( store_timer* );
+    // Error processing
+    void error( std::string message, ThreadData* thread, store_timer* timer );
 };
 
 

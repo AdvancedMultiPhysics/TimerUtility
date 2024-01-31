@@ -303,9 +303,9 @@ MACRO( CONFIGURE_TIMER )
     # Check if we want to enable the traps for new/delete
     CHECK_ENABLE_FLAG( OVERLOAD_NEW 1 )
     IF ( NOT OVERLOAD_NEW OR DISABLE_NEW_OVERLOAD )
-        FILE(APPEND "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_DISABLE_NEW_OVERLOAD\n" )
+        FILE(WRITE "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_DISABLE_NEW_OVERLOAD\n" )
     ELSE()
-        FILE(APPEND "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_ENABLE_NEW_OVERLOAD\n" )
+        FILE(WRITE "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_ENABLE_NEW_OVERLOAD\n" )
     ENDIF()
     # Add flags for MATLAB
     IF ( USE_MATLAB )

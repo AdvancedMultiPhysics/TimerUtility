@@ -1,17 +1,26 @@
 #ifndef included_ProfilerAppMacros
 #define included_ProfilerAppMacros
 
+#define OVERLOADED_MACRO( M, ... ) _OVR( M, _COUNT_ARGS( __VA_ARGS__ ) )( __VA_ARGS__ )
+#define _OVR( macroName, number_of_args ) _OVR_EXPAND( macroName, number_of_args )
+#define _OVR_EXPAND( macroName, number_of_args ) macroName##number_of_args
+#define _COUNT_ARGS( ... ) _ARG_PATTERN_MATCH( __VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1 )
+#define _ARG_PATTERN_MATCH( _1, _2, _3, _4, _5, _6, _7, _8, _9, N, ... ) N
+
 // Define some helper functions
-#define CALL_STATIC_TIMER( VAR, ID, NAME, FILE, LINE, LEVEL, TRACE ) \
-    StaticTimer<ID> VAR( NAME, FILE, LINE, LEVEL, global_profiler, TRACE )
-#define PROFILE_LEVEL( FILE, LINE, NAME, LEVEL, TRACE, ... ) \
-    CALL_STATIC_TIMER(                                       \
-        profile_##LINE, ProfilerApp::generateID( FILE, NAME ), NAME, FILE, LINE, LEVEL, TRACE )
-#define PROFILE_LEVEL2( FILE, LINE, NAME, LEVEL, TRACE, ... ) \
-    RecursiveTimer profile_##LINE( NAME, FILE, LINE, LEVEL, global_profiler, TRACE )
-/*#define PROFILE_LEVEL2( FILE, LINE, NAME, LEVEL, TRACE, ... )                                 \
-    RecursiveTimer profile_##LINE( ProfilerApp::hashString( ProfilerApp::stripPath( FILE ) ), \
-        ProfilerApp::hashString( NAME ), NAME, FILE, LINE, LEVEL, global_profiler, TRACE ) */
+#define PROFILE_ID( NAME ) ProfilerApp::getTimerId( NAME, __FILE__, __LINE__ )
+#define CALL_STATIC_TIMER_VAR( VAR, ID, FIXED, NAME, LEVEL, TRACE ) \
+    ProfilerAppTimer<ID, FIXED> VAR( NAME, __FILE__, __LINE__, LEVEL, TRACE )
+#define CALL_STATIC_TIMER( ID_NAME, FIXED, NAME, LINE, LEVEL, TRACE ) \
+    CALL_STATIC_TIMER_VAR( profile_##LINE, PROFILE_ID( ID_NAME ), FIXED, NAME, LEVEL, TRACE )
+#define PROFILE_2( NAME, LINE ) CALL_STATIC_TIMER( NAME, true, NAME, LINE, 0, -1 )
+#define PROFILE_3( NAME, LEVEL, LINE ) CALL_STATIC_TIMER( NAME, true, NAME, LINE, LEVEL, -1 )
+#define PROFILE_4( NAME, LEVEL, TRACE, LINE ) \
+    CALL_STATIC_TIMER( NAME, true, NAME, LINE, LEVEL, TRACE )
+#define PROFILE2_2( NAME, LINE ) CALL_STATIC_TIMER( "", false, NAME, LINE, 0, -1 )
+#define PROFILE2_3( NAME, LEVEL, LINE ) CALL_STATIC_TIMER( "", false, NAME, LINE, LEVEL, -1 )
+#define PROFILE2_4( NAME, LEVEL, TRACE, LINE ) \
+    CALL_STATIC_TIMER( "", false, NAME, LINE, LEVEL, TRACE )
 #define PROFILE_SAVE_GLOBAL( NAME, GLOB, ... ) global_profiler.save( NAME, GLOB )
 
 
@@ -20,7 +29,7 @@
  */
 
 
-/*! \def PROFILE_START(NAME,LEVEL)
+/*! \def PROFILE_START(NAME,LEVEL,TRACE)
  *  \brief Start the profiler
  *  \details This is the primary call to start a timer.  Only one call within a file
  *      may call the timer.  Any other calls must use PROFILE_START2(X).
@@ -28,11 +37,12 @@
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  *  \param NAME     Name of the timer
  *  \param LEVEL    Optional level at which to enable the timer
+ *  \param TRACE    Optional flag to indicate if we want to store trace level data
  */
-#define PROFILE( ... ) PROFILE_LEVEL( __FILE__, __LINE__, __VA_ARGS__, 0, 0, 0 )
+#define PROFILE( ... ) OVERLOADED_MACRO( PROFILE_, __VA_ARGS__, __LINE__ )
 
 
-/*! \def PROFILE_SCOPED(OBJ,NAME,LEVE,TRACEL)
+/*! \def PROFILE_SCOPED(OBJ,NAME,LEVEL,TRACE)
  *  \brief Create and start a scoped timer
  *  \details This create and start a ScopedTimer
  *      See  \ref ProfilerApp "ProfilerApp" and
@@ -42,7 +52,7 @@
  *  \param LEVEL    Optional level at which to enable the timer
  *  \param TRACE    Optional flag to indicate if we want to store trace level data
  */
-#define PROFILE2( ... ) PROFILE_LEVEL2( __FILE__, __LINE__, __VA_ARGS__, 0, 0, 0 )
+#define PROFILE2( ... ) OVERLOADED_MACRO( PROFILE2_, __VA_ARGS__, __LINE__ )
 
 
 /*! \def PROFILE_MEMORY()
