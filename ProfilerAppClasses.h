@@ -16,7 +16,7 @@
  *    }
  */
 template<std::size_t id, bool fixedMessage = true>
-class ProfilerAppTimer
+class ProfilerAppTimer final
 {
 public:
     /**
@@ -40,10 +40,15 @@ public:
     explicit ProfilerAppTimer( const char* msg, const char* file, int line, int level, int trace )
         : d_level( level ), d_traceFlag( trace ), d_trace( nullptr )
     {
-        static_assert( fixedMessage, "char* interface intended for static names only" );
         if ( level >= 0 && level <= global_profiler.getLevel() ) {
-            auto timer = global_profiler.getBlock( id, true, msg, file, line );
-            d_trace    = global_profiler.start( timer );
+            if constexpr ( fixedMessage ) {
+                auto timer = global_profiler.getBlock( id, msg, file, line );
+                d_trace    = global_profiler.start( timer );
+            } else {
+                auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
+                auto timer = global_profiler.getBlock( id2, msg, file, line );
+                d_trace    = global_profiler.start( timer );
+            }
         }
     }
     explicit ProfilerAppTimer(
@@ -53,7 +58,7 @@ public:
         static_assert( !fixedMessage, "string interface intended for dynamic names only" );
         if ( level >= 0 && level <= global_profiler.getLevel() ) {
             auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
-            auto timer = global_profiler.getBlock( id2, true, msg.data(), file, line );
+            auto timer = global_profiler.getBlock( id2, msg.data(), file, line );
             d_trace    = global_profiler.start( timer );
         }
     }

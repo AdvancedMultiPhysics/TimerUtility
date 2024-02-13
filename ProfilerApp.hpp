@@ -111,24 +111,38 @@ constexpr int64_t diff_ns( std::chrono::time_point<TYPE> t2, std::chrono::time_p
 
 
 /***********************************************************************
- * Function to get the timmer for a particular block of code            *
+ * Function to get the timer for a particular block of code             *
  * Note: This function performs some blocking as necessary.             *
  ***********************************************************************/
-inline ProfilerApp::store_timer* ProfilerApp::getBlock(
-    uint64_t id, bool create, const char* message, const char* filename, int line )
+inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id )
 {
     uint32_t thread_id = getThreadID();
     if ( thread_id >= MAX_THREADS )
         return nullptr;
-    // Search for the thread-specific timer and create it if necessary (does not need blocking)
+    constexpr uint64_t mask = ( (uint64_t) 0x1 << log2int( TIMER_HASH_SIZE ) ) - 1;
+    static_assert( mask + 1 == TIMER_HASH_SIZE );
+    uint64_t key       = id & mask; // Get the hash index
+    store_timer* timer = d_threadData[thread_id].timers[key];
+    if ( !timer )
+        return nullptr;
+    while ( timer->id != id ) {
+        if ( timer->next == nullptr )
+            return nullptr;
+        timer = timer->next;
+    }
+    return timer;
+}
+inline ProfilerApp::store_timer* ProfilerApp::getBlock(
+    uint64_t id, const char* message, const char* filename, int line )
+{
+    uint32_t thread_id = getThreadID();
+    if ( thread_id >= MAX_THREADS )
+        return nullptr;
     constexpr uint64_t mask = ( (uint64_t) 0x1 << log2int( TIMER_HASH_SIZE ) ) - 1;
     static_assert( mask + 1 == TIMER_HASH_SIZE );
     uint64_t key       = id & mask; // Get the hash index
     store_timer* timer = d_threadData[thread_id].timers[key];
     if ( !timer ) {
-        if ( !create )
-            return nullptr;
-        // The timer does not exist, create it
         auto new_timer = new store_timer;
         d_bytes.fetch_add( sizeof( store_timer ) );
         new_timer->id                       = id;
@@ -137,17 +151,13 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock(
         timer                               = new_timer;
     }
     while ( timer->id != id ) {
-        // Check if there is another entry to check (and create one if necessary)
         if ( timer->next == nullptr ) {
-            if ( !create )
-                return nullptr;
             auto new_timer = new store_timer;
             d_bytes.fetch_add( sizeof( store_timer ) );
             new_timer->id         = id;
             new_timer->timer_data = getTimerData( id, message, filename, line );
             timer->next           = new_timer;
         }
-        // Advance to the next entry
         timer = timer->next;
     }
     return timer;
@@ -172,13 +182,13 @@ constexpr inline std::string_view ProfilerApp::stripPath( std::string_view filen
     }
     return filename;
 }
-constexpr inline uint32_t ProfilerApp::hashString( std::string_view str )
+constexpr inline uint64_t ProfilerApp::hashString( std::string_view str )
 {
     if ( str.empty() )
         return 0;
     const char* s = str.data();
-    uint32_t c    = 0;
-    uint32_t hash = 5381;
+    uint64_t c    = 0;
+    uint64_t hash = 5381;
     while ( ( c = *s++ ) ) {
         // hash = hash * 33 ^ c
         hash = ( ( hash << 5 ) + hash ) ^ c;

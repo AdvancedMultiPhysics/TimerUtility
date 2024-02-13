@@ -63,5 +63,6 @@ int main( int argc, char *argv[] )
         PROFILE_SAVE( "load_timer" );
         MemoryApp::print( std::cout );
     }
+    PROFILE_DISABLE();
     return rtn;
 }

@@ -20,11 +20,6 @@
 #include "ProfilerDefinitions.h"
 
 
-template<std::size_t id>
-class StaticTimer;
-class RecursiveTimer;
-
-
 /** \class uint16f
  *
  * Class to store an unsigned integer as a half precision floating type.
@@ -60,8 +55,7 @@ class id_struct
 public:
     // Constructors
     constexpr id_struct() : data( 0 ) {}
-    constexpr explicit id_struct( uint32_t id ) : data( id ) {}
-    constexpr explicit id_struct( uint64_t id ) : data( ( id * 0x9E3779B97F4A7C15 ) >> 34 ) {}
+    constexpr explicit id_struct( uint64_t id ) : data( id ) {}
     explicit id_struct( const std::string& rhs );
     explicit id_struct( std::string_view rhs );
     explicit id_struct( const char* rhs );
@@ -73,14 +67,14 @@ public:
     constexpr inline bool operator<( const id_struct& rhs ) const { return data < rhs.data; }
     constexpr inline bool operator<=( const id_struct& rhs ) const { return data <= rhs.data; }
     // Return null terminated string stored in a std::array
-    std::array<char, 6> str() const;
+    std::array<char, 12> str() const;
     // Return a std::string
     inline std::string string() const { return std::string( str().data() ); }
     // Overload typecast
-    inline constexpr operator uint32_t() const { return data; }
+    inline constexpr operator uint64_t() const { return data; }
 
 private:
-    uint32_t data;
+    uint64_t data;
 };
 
 
@@ -101,8 +95,8 @@ public:
     float max;        //!<  Maximum call time (ns)
     float tot;        //!<  Total call time (ns)
     uint64_t N;       //!<  Total number of calls
-    uint32_t stack;   //!<  Hash value of the stack trace
-    uint32_t stack2;  //!<  Hash value of the stack trace (including this call)
+    uint64_t stack;   //!<  Hash value of the stack trace
+    uint64_t stack2;  //!<  Hash value of the stack trace (including this call)
     uint16f* times;   //!<  Start/stop times for each call (N_trace)
 public:
     // Constructors/destructor
@@ -264,13 +258,19 @@ public:
     //! Destructor
     ~ProfilerApp();
 
+    // Deprecated functions to enable the old PROFILE_START/PROFILE_STOP macros
+    [[deprecated( "Use PROFILE(...) or PROFILE2(...) instead" )]] void start(
+        const char* file, int line, std::string_view message, int level = 0 );
+    [[deprecated( "Use PROFILE(...) or PROFILE2(...) instead" )]] void stop(
+        const char* file, std::string_view message, int level = 0 );
+
     /*!
      * \brief  Function to start profiling a block of code (advanced interface)
      * \details  This function starts profiling a block of code until a corresponding stop
      *   is called. It is recommended to use PROFILE_START(message) to call this routine.
      *   It will automatically fill in the file name and the line number.
      *   Note: this is the advanced interface, we disable some error checking.
-     * @param[in] id        Timer id (see get_timer_id for more info)
+     * @param[in] id        Timer id (see getTimerId for more info)
      * @param[in] message   Message to uniquely identify the block of code being profiled.
      *                      It must be a unique message to all start called within the same file.
      * @param[in] filename  Name of the file containing the code
@@ -282,7 +282,7 @@ public:
         int line = 0, int level = 0 )
     {
         if ( level <= d_level && level >= 0 ) {
-            auto timer = getBlock( id, true, message, filename, line );
+            auto timer = getBlock( id, message, filename, line );
             start( timer );
         }
     }
@@ -293,7 +293,7 @@ public:
      *   It is recommended to use PROFILE_STOP(message) to call this routine.  It will
      *   automatically fill in the file name and the line number.
      *   Note: this is the advanced interface, we disable some error checking.
-     * @param[in] id        Timer id (see get_timer_id for more info)
+     * @param[in] id        Timer id (see getTimerId for more info)
      * @param[in] message   Message to uniquely identify the block of code being profiled.
      *                      It must be a unique message to all start called within the same file.
      * @param[in] filename  Name of the file containing the code
@@ -309,7 +309,7 @@ public:
     {
         if ( level <= d_level && level >= 0 ) {
             auto end_time = std::chrono::steady_clock::now();
-            auto timer    = getBlock( id, false );
+            auto timer    = getBlock( id );
             stop( timer, end_time, trace );
         }
     }
@@ -456,18 +456,14 @@ public:
      */
     size_t getMemoryUsed() const { return static_cast<size_t>( d_bytes ); }
 
-    //! Build active timer map
-    static std::tuple<std::vector<uint32_t>, std::vector<std::vector<uint32_t>>> buildStackMap(
-        const std::vector<TimerResults>& timers );
-
-    //! Build active timer map
-    static std::map<uint32_t, std::vector<id_struct>> buildActiveMap(
+    //! Build active stack map
+    static std::tuple<std::vector<uint64_t>, std::vector<std::vector<uint64_t>>> buildStackMap(
         const std::vector<TimerResults>& timers );
 
 
 public: // Helper functions
     constexpr static inline std::string_view stripPath( std::string_view filename );
-    constexpr static inline uint32_t hashString( std::string_view str );
+    constexpr static inline uint64_t hashString( std::string_view str );
 
 public: // Constants to determine parameters that affect performance/memory
     // The maximum number of threads supported
@@ -486,11 +482,9 @@ public: // Member classes
     {
     public:
         StoreTimes();
-        ~StoreTimes() { delete[] d_data; }
-        StoreTimes( const StoreTimes& rhs ) = delete;
-        StoreTimes( StoreTimes&& rhs );
+        ~StoreTimes();
+        StoreTimes( const StoreTimes& rhs )            = delete;
         StoreTimes& operator=( const StoreTimes& rhs ) = delete;
-        StoreTimes& operator=( StoreTimes&& rhs );
         explicit StoreTimes( const StoreTimes& rhs, uint64_t shift );
         inline void reserve( size_t N );
         inline size_t size() const { return d_size; }
@@ -602,8 +596,9 @@ public: // These really shouldn't be public but are required by ProfilerAppTimer
         int enableTrace = -1 );
 
     // Function to return the appropriate timer block
-    inline store_timer* getBlock( uint64_t id, bool create = false, const char* message = "",
-        const char* filename = "", const int line = -1 );
+    inline store_timer* getBlock( uint64_t id );
+    inline store_timer* getBlock(
+        uint64_t id, const char* message, const char* filename, const int line );
 
 private: // Member data
     // Store thread specific info

@@ -49,6 +49,33 @@ extern "C" {
     } while ( 0 )
 
 
+// Binary search
+template<class T>
+static inline int binarySearch( const std::vector<T>& x_, T v )
+{
+    size_t n = x_.size();
+    auto x   = x_.data();
+    if ( n == 0 )
+        return -1;
+    if ( x[0] == v )
+        return 0;
+    if ( n == 1 )
+        return -1;
+    size_t lower = 0;
+    size_t upper = n - 1;
+    while ( ( upper - lower ) != 1 ) {
+        size_t index = ( upper + lower ) / 2;
+        if ( x[index] >= v )
+            upper = index;
+        else
+            lower = index;
+    }
+    if ( x[upper] != v )
+        return -1;
+    return upper;
+}
+
+
 // Function to convert the thread list to a string
 std::string threadString( const std::vector<int>& x )
 {
@@ -77,27 +104,28 @@ static const TimerResults& findTimer( const std::vector<TimerResults>& timers, i
 
 
 // Do we want to keep the trace
-inline bool keepTrace( const TraceSummary& trace, const std::vector<id_struct>& callList,
+inline bool keepTrace( const TraceSummary& trace, const std::vector<uint64_t>& callStack,
+    const std::tuple<std::vector<uint64_t>, std::vector<std::vector<uint64_t>>>& stackMap,
     const bool keep_subfunctions )
 {
-    bool keep = true;
-    for ( const auto& id : callList ) {
-        bool found = trace.id == id;
-        for ( const auto& id2 : trace.active )
-            found = found || id == id2;
-        keep = keep && found;
+    // Look for all traces that are a direct call from the desired stack
+    for ( auto id : callStack ) {
+        if ( trace.stack == id || trace.stack2 == id )
+            return true;
     }
-    if ( keep && !keep_subfunctions ) {
-        keep = keep && trace.active.size() <= callList.size();
-        if ( trace.active.size() == callList.size() ) {
-            // We should not find id in the call list
-            bool found = false;
-            for ( const auto& i : callList )
-                found = found || trace.id == i;
-            keep = keep && !found;
+    // Check for additional sub-functions if desired
+    if ( keep_subfunctions ) {
+        int k = binarySearch( std::get<0>( stackMap ), trace.stack );
+        ASSERT( k != -1 );
+        auto& list = std::get<1>( stackMap )[k];
+        for ( auto id : callStack ) {
+            for ( auto id2 : list ) {
+                if ( id == id2 )
+                    return true;
+            }
         }
     }
-    return keep;
+    return false;
 }
 
 
@@ -140,19 +168,6 @@ double mean( const std::vector<TYPE>& x )
 {
     return static_cast<double>( sum( x ) ) / static_cast<double>( x.size() );
 }
-
-
-/***********************************************************************
- * ActiveStruct                                                         *
- ***********************************************************************/
-ActiveStruct::ActiveStruct() : hash( 0 ) {}
-ActiveStruct::ActiveStruct( const std::vector<id_struct>& ids ) : hash( 0 ), active( ids )
-{
-    constexpr uint64_t C = 0x61C8864680B583EBull;
-    for ( auto id : ids )
-        hash ^= C * static_cast<uint32_t>( id );
-}
-bool ActiveStruct::operator==( const ActiveStruct& rhs ) const { return hash == rhs.hash; }
 
 
 /***********************************************************************
@@ -274,7 +289,8 @@ void TimerWindow::reset()
 {
     if ( loadBalance != nullptr )
         loadBalance->plot( std::vector<float>() );
-    callList.clear();
+    d_callLine.clear();
+    d_callStack.clear();
     inclusiveTime       = true;
     includeSubfunctions = true;
     traceToolbar->setVisible( false );
@@ -361,6 +377,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                 return;
             }
         }
+        // Get the call stack
+        d_stackMap = ProfilerApp::buildStackMap( d_data.timers );
         // Remove traces that don't have any calls
         for ( auto& timer : d_data.timers ) {
             std::vector<TraceResults>& trace = timer.trace;
@@ -381,8 +399,6 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             for ( auto& j : timer.trace )
                 N_threads = std::max<int>( N_threads, j.thread + 1 );
         }
-        // Build the stack map
-        auto stackMap = ProfilerApp::buildActiveMap( d_data.timers );
         // Get the global summary data
         d_dataTimer.clear();
         d_dataTimer.resize( d_data.timers.size() );
@@ -401,10 +417,9 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
             timer.tot.resize( N_procs, 0 );
             timer.trace.clear();
             for ( auto& t0 : d_data.timers[i].trace ) {
-                int index   = -1;
-                auto active = stackMap[t0.stack];
+                int index = -1;
                 for ( size_t k = 0; k < timer.trace.size(); k++ ) {
-                    if ( timer.trace[k]->active == active ) {
+                    if ( timer.trace[k]->stack == t0.stack ) {
                         index = static_cast<int>( k );
                         break;
                     }
@@ -414,7 +429,8 @@ void TimerWindow::loadFile( std::string filename, bool showFailure )
                     size_t k = d_dataTrace.size();
                     d_dataTrace.emplace_back( std::make_unique<TraceSummary>() );
                     d_dataTrace[k]->id     = t0.id;
-                    d_dataTrace[k]->active = active;
+                    d_dataTrace[k]->stack  = t0.stack;
+                    d_dataTrace[k]->stack2 = t0.stack2;
                     d_dataTrace[k]->N.resize( N_procs, 0 );
                     d_dataTrace[k]->min.resize( N_procs, 1e30 );
                     d_dataTrace[k]->max.resize( N_procs, 0 );
@@ -553,11 +569,11 @@ void TimerWindow::updateDisplay()
         exclusiveButton->setFlat( true );
     }
     // Set the call line
-    if ( !callList.empty() ) {
-        const auto& timer      = findTimer( d_data.timers, callList[0] );
+    if ( !d_callStack.empty() ) {
+        const auto& timer      = findTimer( d_data.timers, d_callLine[0] );
         std::string call_stack = timer.message;
-        for ( size_t i = 1; i < callList.size(); i++ ) {
-            const auto& timer2 = findTimer( d_data.timers, callList[i] );
+        for ( size_t i = 1; i < d_callStack.size(); i++ ) {
+            const auto& timer2 = findTimer( d_data.timers, d_callLine[i] );
             call_stack += " -> " + std::string( timer2.message );
         }
         callLineText->setText( call_stack.c_str() );
@@ -607,7 +623,7 @@ void TimerWindow::updateDisplay()
         tot_data[i] = getTableData( current_timers[i]->tot, selected_rank );
     }
     double tot_max = d_data.walltime;
-    if ( !callList.empty() )
+    if ( !d_callStack.empty() )
         tot_max = max( tot_data );
     std::vector<double> ratio( N_timers, 0 );
     for ( size_t i = 0; i < N_timers; i++ )
@@ -678,63 +694,27 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
     std::vector<std::unique_ptr<TimerSummary>> timers;
     timers.reserve( d_data.timers.size() );
     // Get the timers of interest
-    for ( const auto& i : d_dataTimer ) {
+    for ( const auto& tmp : d_dataTimer ) {
         auto timer     = std::make_unique<TimerSummary>();
-        timer->id      = i.id;
-        timer->message = i.message;
-        timer->file    = i.file;
-        timer->line    = i.line;
-        if ( callList.empty() ) {
+        timer->id      = tmp.id;
+        timer->message = tmp.message;
+        timer->file    = tmp.file;
+        timer->line    = tmp.line;
+        if ( d_callStack.empty() ) {
             // Special case where we want all timers/trace results
-            timer->trace = i.trace;
+            timer->trace = tmp.trace;
         } else {
             // Get the timers that have all of the call hierarchy
             timer->trace.resize( 0 );
-            timer->trace.reserve( i.trace.size() );
-            for ( auto j : i.trace ) {
-                const TraceSummary* trace = j;
+            timer->trace.reserve( tmp.trace.size() );
+            for ( auto trace : tmp.trace ) {
                 ASSERT( trace != nullptr );
-                if ( keepTrace( *trace, callList, true ) )
-                    timer->trace.push_back( j );
+                if ( keepTrace( *trace, d_callStack.back(), d_stackMap, includeSubfunctions ) )
+                    timer->trace.push_back( trace );
             }
         }
         if ( !timer->trace.empty() )
             timers.push_back( std::move( timer ) );
-    }
-    // Keep only the traces that are directly inherited from the current call hierarchy
-    if ( !includeSubfunctions ) {
-        PROFILE( "getTimers-hideSubfunctions", 1 );
-        std::map<id_struct, int> id_map;
-        for ( size_t i = 0; i < d_dataTimer.size(); i++ )
-            id_map.insert( std::pair<id_struct, int>( d_dataTimer[i].id, (int) i ) );
-        std::vector<bool> tmp0( id_map.size(), 0 );
-        for ( size_t i = 0; i < timers.size(); i++ )
-            tmp0[id_map[timers[i]->id]] = true;
-        std::vector<bool> keep( timers.size(), false );
-        for ( size_t i = 0; i < timers.size(); i++ ) {
-            auto timer  = timers[i].get();
-            auto trace2 = timer->trace;
-            timer->trace.resize( 0 );
-            for ( auto& t : trace2 ) {
-                int tmp2 = 0;
-                for ( const auto& k : t->active ) {
-                    if ( tmp0[id_map[k]] )
-                        tmp2++;
-                }
-                if ( tmp2 <= 1 ) {
-                    keep[i] = true;
-                    timer->trace.push_back( t );
-                }
-            }
-        }
-        size_t k = 0;
-        for ( size_t i = 0; i < timers.size(); i++ ) {
-            if ( keep[i] ) {
-                std::swap( timers[k], timers[i] );
-                k++;
-            }
-        }
-        timers.resize( k );
     }
     // Compute the timer statistics
     for ( auto& timer : timers ) {
@@ -757,18 +737,18 @@ std::vector<std::unique_ptr<TimerSummary>> TimerWindow::getTimers() const
     // Update the timers to remove the time from sub-timers if necessary
     if ( !inclusiveTime ) {
         PROFILE( "getTimers-removeSubtimers", 1 );
-        constexpr uint64_t C = 0x61C8864680B583EBull;
-        for ( size_t i1 = 0; i1 < timers.size(); i1++ ) {
-            for ( size_t j1 = 0; j1 < timers[i1]->trace.size(); j1++ ) {
-                auto h1 = timers[i1]->trace[j1]->active.getHash();
-                h1 ^= C * static_cast<uint32_t>( timers[i1]->id );
-                for ( size_t i2 = 0; i2 < timers.size(); i2++ ) {
-                    for ( size_t j2 = 0; j2 < timers[i2]->trace.size(); j2++ ) {
-                        auto h2 = timers[i2]->trace[j2]->active.getHash();
-                        if ( h1 == h2 ) {
-                            const auto& tot = timers[i2]->trace[j2]->tot;
-                            for ( int k = 0; k < N_procs; k++ )
-                                timers[i1]->tot[k] -= tot[k];
+        for ( auto& timer2 : timers ) {
+            for ( auto& trace2 : timer2->trace ) {
+                int k = binarySearch( std::get<0>( d_stackMap ), trace2->stack );
+                ASSERT( k != -1 );
+                auto& list = std::get<1>( d_stackMap )[k];
+                for ( auto& timer1 : timers ) {
+                    for ( auto& trace1 : timer1->trace ) {
+                        for ( auto id : list ) {
+                            if ( id == trace1->stack2 ) {
+                                for ( int k = 0; k < N_procs; k++ )
+                                    timer1->tot[k] -= trace2->tot[k];
+                            }
                         }
                     }
                 }
@@ -787,11 +767,22 @@ void TimerWindow::cellSelected( int row, int col )
     if ( col != 1 )
         return;
     id_struct id( timerTable->item( row, 0 )->text().toStdString() );
-    bool found = false;
-    for ( auto& i : callList )
-        found = found || i == id;
-    if ( !found )
-        callList.push_back( id );
+    std::vector<uint64_t> stack;
+    for ( auto& timer : d_dataTimer ) {
+        if ( timer.id != id )
+            continue;
+        if ( d_callStack.empty() ) {
+            for ( auto& trace : timer.trace )
+                stack.push_back( trace->stack2 );
+        } else {
+            for ( auto& trace : timer.trace ) {
+                if ( keepTrace( *trace, d_callStack.back(), d_stackMap, includeSubfunctions ) )
+                    stack.push_back( trace->stack2 );
+            }
+        }
+    }
+    d_callLine.push_back( id );
+    d_callStack.push_back( stack );
     updateDisplay();
 }
 
@@ -801,9 +792,10 @@ void TimerWindow::cellSelected( int row, int col )
  ***********************************************************************/
 void TimerWindow::backButtonPressed()
 {
-    if ( callList.empty() )
+    if ( d_callStack.empty() )
         return;
-    callList.pop_back();
+    d_callLine.pop_back();
+    d_callStack.pop_back();
     updateDisplay();
 }
 

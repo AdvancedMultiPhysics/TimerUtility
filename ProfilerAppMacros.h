@@ -159,4 +159,13 @@
 
 /*! @} */
 
+
+// Old macros (deprecated)
+#define PROFILE_START( ... ) global_profiler.start( __FILE__, __LINE__, __VA_ARGS__ )
+#define PROFILE_START2( ... ) global_profiler.start( __FILE__, __LINE__, __VA_ARGS__ )
+#define PROFILE_STOP( ... ) global_profiler.stop( __FILE__, __VA_ARGS__ )
+#define PROFILE_STOP2( ... ) global_profiler.stop( __FILE__, __VA_ARGS__ )
+#define PROFILE_SCOPED( TIMER, ... ) PROFILE2( __VA_ARGS__ )
+
+
 #endif

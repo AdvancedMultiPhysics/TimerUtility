@@ -262,6 +262,7 @@ ProfilerApp::StoreTimes::StoreTimes( const StoreTimes& rhs, uint64_t shift )
         d_offset = rhs.d_offset + shift;
     }
 }
+ProfilerApp::StoreTimes::~StoreTimes() { delete[] d_data; }
 inline void ProfilerApp::StoreTimes::reserve( size_t N )
 {
     if ( d_capacity < N ) {
@@ -555,21 +556,18 @@ static constexpr inline uint8_t to_int( char x )
         y = 63; // $ (63)
     return y;
 }
-static inline uint32_t str_to_hash( std::string_view str )
+static inline uint64_t str_to_hash( std::string_view str )
 {
-    uint32_t key = 0;
+    uint64_t key = 0;
     int N        = str.size();
     for ( int i = 0; i < N; i++ )
         key = ( key << 6 ) + to_int( str[N - i - 1] );
     return key;
 }
-static inline std::array<char, 6> hash_to_str( uint32_t key )
+static inline std::array<char, 12> hash_to_str( uint64_t key )
 {
     // We will store the id use the 64 character set { 0-9 a-z A-Z & $ }
-    // We can represent 2^30 values with 5 characters
-    ASSERT( key < 0x40000000 );
-    // Convert the key to a string
-    std::array<char, 6> id = { 0, 0, 0, 0, 0, 0 };
+    std::array<char, 12> id = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     for ( int i = 0; key > 0; i++ ) {
         id[i] = to_char( key & 0x3F );
         key >>= 6;
@@ -591,14 +589,14 @@ static constexpr bool check_char_conversion()
  * The probability of a collision is ~N^2/2^N_bits                      *
  *   (N is the number of timers, we have 30 bits)                       *
  ***********************************************************************/
-static_assert( sizeof( id_struct ) == 4, "Unexpected size for id_struct" );
-static_assert( static_cast<uint32_t>( id_struct() ) == 0 );
+static_assert( sizeof( id_struct ) == 8, "Unexpected size for id_struct" );
+static_assert( static_cast<uint64_t>( id_struct() ) == 0 );
 static_assert( check_char_conversion(), "Internal error" );
 // static_assert( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
 id_struct::id_struct( const std::string& rhs ) { data = str_to_hash( rhs ); }
 id_struct::id_struct( const std::string_view rhs ) { data = str_to_hash( rhs ); }
 id_struct::id_struct( const char* rhs ) { data = str_to_hash( rhs ); }
-std::array<char, 6> id_struct::str() const { return hash_to_str( data ); }
+std::array<char, 12> id_struct::str() const { return hash_to_str( data ); }
 
 
 /***********************************************************************
@@ -974,6 +972,23 @@ void ProfilerApp::error( std::string message, ThreadData* thread, store_timer* t
 /***********************************************************************
  * Function to start profiling a block of code                          *
  ***********************************************************************/
+void ProfilerApp::start( const char* file, int line, std::string_view message, int level )
+{
+    if ( level <= d_level && level >= 0 ) {
+        auto id    = ProfilerApp::getTimerId( message.data(), file, 0 );
+        auto timer = getBlock( id, message.data(), file, line );
+        start( timer );
+    }
+}
+void ProfilerApp::stop( const char* file, std::string_view message, int level )
+{
+    if ( level <= d_level && level >= 0 ) {
+        auto end_time = std::chrono::steady_clock::now();
+        auto id       = ProfilerApp::getTimerId( message.data(), file, 0 );
+        auto timer    = getBlock( id );
+        stop( timer, end_time, -1 );
+    }
+}
 ProfilerApp::store_trace* ProfilerApp::start( store_timer* timer )
 {
     auto& thread = d_threadData[getThreadID()];
@@ -1938,8 +1953,10 @@ void ProfilerApp::loadTrace( const std::string& filename, std::vector<TimerResul
     while ( true ) {
         // Read the header
         auto line = readLine( fid );
-        if ( line.empty() )
+        if ( line.empty() ) {
+            fclose( fid );
             return;
+        }
         if ( line[0] == '\1' )
             continue;
         // Get the id and find the appropriate timer
@@ -2046,8 +2063,10 @@ void ProfilerApp::loadMemory( const std::string& filename, std::vector<MemoryRes
     while ( true ) {
         // Read the header
         auto line = readLine( fid );
-        if ( line.empty() )
+        if ( line.empty() ) {
+            fclose( fid );
             return;
+        }
         if ( line[0] == '\1' )
             continue;
         data.resize( data.size() + 1 );
@@ -2246,8 +2265,10 @@ static inline int binarySearch( const std::vector<T>& x_, T v )
     auto x   = x_.data();
     if ( n == 0 )
         return -1;
+    if ( x[0] == v )
+        return 0;
     if ( n == 1 )
-        return x[0] == v ? 0 : -1;
+        return -1;
     size_t lower = 0;
     size_t upper = n - 1;
     while ( ( upper - lower ) != 1 ) {
@@ -2261,35 +2282,35 @@ static inline int binarySearch( const std::vector<T>& x_, T v )
         return -1;
     return upper;
 }
-std::tuple<std::vector<uint32_t>, std::vector<std::vector<uint32_t>>> ProfilerApp::buildStackMap(
+std::tuple<std::vector<uint64_t>, std::vector<std::vector<uint64_t>>> ProfilerApp::buildStackMap(
     const std::vector<TimerResults>& timers )
 {
     // Get a map with the stack key and the final trace in the stack
-    std::vector<uint32_t> stacks;
-    std::vector<uint32_t> stack2;
-    std::vector<uint32_t> prev;
+    std::vector<uint64_t> stacks;
+    std::vector<uint64_t> stack2;
+    std::vector<uint64_t> prev;
     stacks.push_back( 0 );
     for ( const auto& timer : timers ) {
         for ( const auto& trace : timer.trace )
-            stacks.push_back( static_cast<uint32_t>( trace.stack ) );
+            stacks.push_back( static_cast<uint64_t>( trace.stack ) );
     }
     quicksort( stacks );
     stack2.reserve( stacks.size() );
     prev.reserve( stacks.size() );
     for ( const auto& timer : timers ) {
         for ( const auto& trace : timer.trace ) {
-            if ( binarySearch( stacks, static_cast<uint32_t>( trace.stack2 ) ) != -1 ) {
-                stack2.push_back( static_cast<uint32_t>( trace.stack2 ) );
-                prev.push_back( static_cast<uint32_t>( trace.stack ) );
+            if ( binarySearch( stacks, static_cast<uint64_t>( trace.stack2 ) ) != -1 ) {
+                stack2.push_back( static_cast<uint64_t>( trace.stack2 ) );
+                prev.push_back( static_cast<uint64_t>( trace.stack ) );
             }
         }
     }
     quicksort( stack2, prev );
     // Build the map
-    std::vector<std::vector<uint32_t>> lists( stacks.size() );
+    std::vector<std::vector<uint64_t>> lists( stacks.size() );
     for ( size_t i = 0; i < stacks.size(); i++ ) {
         auto& list   = lists[i];
-        uint32_t key = stacks[i];
+        uint64_t key = stacks[i];
         while ( key != 0 ) {
             int j = binarySearch( stack2, key );
             key   = prev[j];
@@ -2298,35 +2319,6 @@ std::tuple<std::vector<uint32_t>, std::vector<std::vector<uint32_t>>> ProfilerAp
         quicksort( list );
     }
     return std::tie( stacks, lists );
-}
-std::map<uint32_t, std::vector<id_struct>> ProfilerApp::buildActiveMap(
-    const std::vector<TimerResults>& timers )
-{
-    // Get the stack map
-    auto [stacks, lists] = buildStackMap( timers );
-    // Get the mapping from the stack item to the last timer
-    std::vector<id_struct> ids( stacks.size() );
-    for ( const auto& timer : timers ) {
-        for ( const auto& trace : timer.trace ) {
-            int i = binarySearch( stacks, static_cast<uint32_t>( trace.stack2 ) );
-            if ( i != -1 )
-                ids[i] = trace.id;
-        }
-    }
-    // Build the map
-    std::map<uint32_t, std::vector<id_struct>> map;
-    for ( size_t i = 0; i < stacks.size(); i++ ) {
-        auto stack = stacks[i];
-        auto& list = lists[i];
-        std::vector<id_struct> id_list( list.size() );
-        for ( size_t j = 0; j < list.size(); j++ ) {
-            int k = binarySearch( stacks, list[j] );
-            ASSERT( k != -1 );
-            id_list[j] = ids[k];
-        }
-        map[stack] = std::move( id_list );
-    }
-    return map;
 }
 
 

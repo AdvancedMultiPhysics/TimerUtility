@@ -114,7 +114,9 @@ protected:
     TimerMemoryResults d_data;
     std::vector<TimerSummary> d_dataTimer;
     std::vector<std::unique_ptr<TraceSummary>> d_dataTrace;
-    std::vector<id_struct> callList;
+    std::vector<id_struct> d_callLine;
+    std::vector<std::vector<uint64_t>> d_callStack;
+    std::tuple<std::vector<uint64_t>, std::vector<std::vector<uint64_t>>> d_stackMap;
     int N_procs;
     int N_threads;
     int selected_rank;
