@@ -131,44 +131,35 @@ static inline double comm_max_reduce( const double val )
     return result;
 }
 template<class TYPE>
-inline MPI_Datatype getType();
-template<>
-inline MPI_Datatype getType<char>()
+static constexpr MPI_Datatype getType()
 {
-    return MPI_CHAR;
-}
-template<>
-inline MPI_Datatype getType<unsigned char>()
-{
-    return MPI_UNSIGNED_CHAR;
-}
-template<>
-inline MPI_Datatype getType<int32_t>()
-{
-    return MPI_INT;
-}
-template<>
-inline MPI_Datatype getType<uint32_t>()
-{
-    static_assert( sizeof( unsigned int ) == sizeof( uint32_t ), "Unexpected size" );
-    return MPI_UNSIGNED;
-}
-template<>
-inline MPI_Datatype getType<int64_t>()
-{
-    static_assert( sizeof( long long ) == sizeof( int64_t ), "Unexpected size" );
-    return MPI_LONG_LONG;
-}
-template<>
-inline MPI_Datatype getType<uint64_t>()
-{
-    static_assert( sizeof( unsigned long long ) == sizeof( int64_t ), "Unexpected size" );
-    return MPI_UNSIGNED_LONG_LONG;
-}
-template<>
-inline MPI_Datatype getType<double>()
-{
-    return MPI_DOUBLE;
+    if constexpr ( std::is_same_v<TYPE, std::byte> ) {
+        return MPI_BYTE;
+    } else if constexpr ( std::is_same_v<TYPE, char> ) {
+        return MPI_CHAR;
+    } else if constexpr ( std::is_same_v<TYPE, uint8_t> ) {
+        return MPI_UINT8_T;
+    } else if constexpr ( std::is_same_v<TYPE, int8_t> ) {
+        return MPI_INT8_T;
+    } else if constexpr ( std::is_same_v<TYPE, uint16_t> ) {
+        return MPI_UINT16_T;
+    } else if constexpr ( std::is_same_v<TYPE, int16_t> ) {
+        return MPI_INT16_T;
+    } else if constexpr ( std::is_same_v<TYPE, uint32_t> ) {
+        return MPI_UINT32_T;
+    } else if constexpr ( std::is_same_v<TYPE, int32_t> ) {
+        return MPI_INT32_T;
+    } else if constexpr ( std::is_same_v<TYPE, uint64_t> ) {
+        return MPI_UINT64_T;
+    } else if constexpr ( std::is_same_v<TYPE, int64_t> ) {
+        return MPI_INT64_T;
+    } else if constexpr ( std::is_same_v<TYPE, float> ) {
+        return MPI_FLOAT;
+    } else if constexpr ( std::is_same_v<TYPE, double> ) {
+        return MPI_DOUBLE;
+    } else {
+        static_assert( !std::is_same_v<TYPE, TYPE> );
+    }
 }
 template<class TYPE>
 static inline void comm_send1( const TYPE* buf, size_t size, int dest, int tag )
