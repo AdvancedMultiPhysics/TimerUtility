@@ -56,6 +56,8 @@ static inline void quicksort( std::vector<A>& a );
 template<class A, class B>
 static inline void quicksort( std::vector<A>& a, std::vector<B>& b );
 template<class T>
+void unique( std::vector<T>& x );
+template<class T>
 static inline int binarySearch( const std::vector<T>& x, T v );
 
 
@@ -407,13 +409,28 @@ void ProfilerApp::StoreMemory::get(
 /***********************************************************************
  * store_timer_data_info                                                *
  ***********************************************************************/
+static inline void copyMessage( char* out, std::string_view in, size_t N )
+{
+    if ( in.size() + 1 < N ) {
+        for ( size_t i = 0; i < in.size(); i++ )
+            out[i] = in[i];
+        out[in.size()] = 0;
+    } else {
+        for ( size_t i = 0; i < N - 4; i++ )
+            out[i] = in[i];
+        out[N - 4] = '.';
+        out[N - 3] = '.';
+        out[N - 2] = '.';
+        out[N - 1] = 0;
+    }
+}
 ProfilerApp::store_timer_data_info::store_timer_data_info()
 {
     memset( this, 0, sizeof( store_timer_data_info ) );
     line = -1;
 }
 ProfilerApp::store_timer_data_info::store_timer_data_info(
-    const char* msg, const char* filepath, uint64_t id0, int start )
+    std::string_view msg, std::string_view filepath, uint64_t id0, int start )
 {
     // Zero all data
     memset( this, 0, sizeof( store_timer_data_info ) );
@@ -421,36 +438,15 @@ ProfilerApp::store_timer_data_info::store_timer_data_info(
     line = start;
     id   = id0;
     next = nullptr;
-    // Fill the message
-    static_assert( sizeof( message ) == 64, "Size changed" );
-    int N = 0;
-    for ( N = 0; N < 63 && msg[N] != 0; N++ )
-        message[N] = msg[N];
-    if ( N == 63 )
-        message[60] = message[61] = message[62] = '.';
-    // filename, path
-    static_assert( sizeof( filename ) == 64, "Size changed" );
-    static_assert( sizeof( path ) == 64, "Size changed" );
-    const char* file = filepath;
-    N                = 0;
-    while ( filepath[N] != 0 ) {
-        if ( filepath[N] == 47 || filepath[N] == 92 )
-            file = &filepath[N + 1];
-        N++;
-    }
-    int Nf = file == filepath ? 0 : ( file - filepath - 1 );
-    if ( Nf < 64 ) {
-        memcpy( path, filepath, Nf );
+    // Copy the message, filename, path
+    copyMessage( message, msg, sizeof( message ) );
+    constexpr char split[2] = { 47, 92 };
+    auto i                  = filepath.find_last_of( split );
+    if ( i == std::string::npos ) {
+        copyMessage( filename, filepath, sizeof( filename ) );
     } else {
-        memcpy( path, filepath, 60 );
-        path[60] = path[61] = path[62] = '.';
-    }
-    N = N - ( file - filepath );
-    if ( N < 64 ) {
-        memcpy( filename, file, N );
-    } else {
-        memcpy( filename, file, 60 );
-        filename[60] = filename[61] = filename[62] = '.';
+        copyMessage( filename, filepath.substr( i + 1 ), sizeof( filename ) );
+        copyMessage( path, filepath.substr( 0, i ), sizeof( path ) );
     }
 }
 ProfilerApp::store_timer_data_info::~store_timer_data_info()
@@ -556,7 +552,7 @@ static constexpr inline uint8_t to_int( char x )
         y = 63; // $ (63)
     return y;
 }
-static inline uint64_t str_to_hash( std::string_view str )
+static constexpr uint64_t str_to_hash( std::string_view str )
 {
     uint64_t key = 0;
     int N        = str.size();
@@ -564,7 +560,7 @@ static inline uint64_t str_to_hash( std::string_view str )
         key = ( key << 6 ) + to_int( str[N - i - 1] );
     return key;
 }
-static inline std::array<char, 12> hash_to_str( uint64_t key )
+static constexpr std::array<char, 12> hash_to_str( uint64_t key )
 {
     // We will store the id use the 64 character set { 0-9 a-z A-Z & $ }
     std::array<char, 12> id = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -592,7 +588,9 @@ static constexpr bool check_char_conversion()
 static_assert( sizeof( id_struct ) == 8, "Unexpected size for id_struct" );
 static_assert( static_cast<uint64_t>( id_struct() ) == 0 );
 static_assert( check_char_conversion(), "Internal error" );
-// static_assert( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
+static_assert( check_char_conversion(), "Internal error" );
+static_assert( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
+static_assert( str_to_hash( hash_to_str( 0x35a5b6b25e9eb68f ).data() ) == 0x35a5b6b25e9eb68f );
 id_struct::id_struct( const std::string& rhs ) { data = str_to_hash( rhs ); }
 id_struct::id_struct( const std::string_view rhs ) { data = str_to_hash( rhs ); }
 id_struct::id_struct( const char* rhs ) { data = str_to_hash( rhs ); }
@@ -610,6 +608,8 @@ TraceResults::TraceResults()
       max( 0 ),
       tot( 0 ),
       N( 0 ),
+      stack( 0 ),
+      stack2( 0 ),
       times( nullptr )
 {
     static_assert( sizeof( id_struct ) <= sizeof( uint64_t ), "Unexpected size for id_struct" );
@@ -922,7 +922,8 @@ bool TimerMemoryResults::operator==( const TimerMemoryResults& rhs ) const
 /***********************************************************************
  * Constructor/Destructor                                               *
  ***********************************************************************/
-ProfilerApp::ProfilerApp() : d_construct_time( std::chrono::steady_clock::now() )
+ProfilerApp::ProfilerApp()
+    : d_timer_table{ nullptr }, d_construct_time( std::chrono::steady_clock::now() )
 {
     for ( auto& tmp : d_timer_table )
         tmp = nullptr;
@@ -955,7 +956,7 @@ void ProfilerApp::synchronize()
 /***********************************************************************
  * Function to handle any errors                                        *
  ***********************************************************************/
-void ProfilerApp::error( std::string message, ThreadData* thread, store_timer* timer )
+void ProfilerApp::error( const std::string& message, ThreadData* thread, store_timer* timer )
 {
     std::cerr << "Internal error in Profiler:\n" << message << std::endl;
     if ( thread )
@@ -1380,6 +1381,49 @@ MemoryResults ProfilerApp::getMemoryResults() const
 
 
 /***********************************************************************
+ * Function to create stack ids for the timer file                      *
+ ***********************************************************************/
+namespace {
+class StackLabels
+{
+public:
+    StackLabels( const std::vector<TimerResults>& timers, bool global )
+    {
+        stack.reserve( timers.size() + 1 );
+        stack.push_back( 0 );
+        for ( auto& timer : timers ) {
+            stack.reserve( stack.size() + timer.trace.size() );
+            for ( auto& trace : timer.trace )
+                stack.push_back( trace.stack2 );
+        }
+        unique( stack );
+        labels.resize( stack.size() );
+        if ( global ) {
+            // We are dealing with a global writer, we can relabel to reduce id size
+            for ( uint64_t i = 0; i < stack.size(); i++ )
+                labels[i] = hash_to_str( i );
+        } else {
+            // We are dealing with individual writers, we must use the full stack hash
+            // to ensure we have consistent stacks across all ranks
+            for ( uint64_t i = 0; i < stack.size(); i++ )
+                labels[i] = hash_to_str( stack[i] );
+        }
+    }
+    char* operator[]( uint64_t id )
+    {
+        int k = binarySearch( stack, id );
+        ASSERT( k != -1 );
+        return labels[k].data();
+    }
+
+private:
+    std::vector<uint64_t> stack;
+    std::vector<std::array<char, 12>> labels;
+};
+} // namespace
+
+
+/***********************************************************************
  * Function to save the profiling info                                  *
  ***********************************************************************/
 void ProfilerApp::save( const std::string& filename, bool global ) const
@@ -1437,6 +1481,8 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 total_time[i] = std::max<double>( total_time[i], time_thread[j] );
         }
         quicksort( total_time, id_order );
+        // Create the stack labels
+        ::StackLabels stackLabels( results, global );
         // Open the file(s) for writing
         FILE* timerFile = fopen( filename_timer, "wb" );
         if ( timerFile == nullptr ) {
@@ -1506,24 +1552,24 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             size_t i = id_order[ii];
             // Store the basic timer info
             const char e = 0x0E; // Escape character for printing strings
-            fprintf( timerFile, "<timer:id=%s,message=%c%s%c,file=%c%s%c,path=%c%s%c,start=%i>\n",
+            fprintf( timerFile, "<timer:id=%s,message=%c%s%c,file=%c%s%c,path=%c%s%c,line=%i>\n",
                 results[i].id.str().data(), e, results[i].message, e, e, results[i].file, e, e,
                 results[i].path, e, results[i].line );
             // Store the trace data
             for ( const auto& trace : results[i].trace ) {
                 unsigned long N = trace.N;
                 fprintf( timerFile,
-                    "<trace:id=%s,thread=%u,rank=%u,N=%lu,min=%e,max=%e,tot=%e,stack=%s,stack2=%s>"
+                    "<trace:id=%s,thread=%u,rank=%u,N=%lu,min=%e,max=%e,tot=%e,stack=[%s;%s]>"
                     "\n",
                     trace.id.str().data(), trace.thread, trace.rank, N, 1e-9 * trace.min,
-                    1e-9 * trace.max, 1e-9 * trace.tot, id_struct( trace.stack ).str().data(),
-                    id_struct( trace.stack2 ).str().data() );
+                    1e-9 * trace.max, 1e-9 * trace.tot, stackLabels[trace.stack],
+                    stackLabels[trace.stack2] );
                 // Save the detailed trace results (this is a binary file)
                 if ( trace.N_trace > 0 ) {
                     unsigned long Nt = trace.N_trace;
                     fprintf( traceFile, "<id=%s,thread=%u,rank=%u,stack=%s,N=%lu,format=uint16f>\n",
-                        trace.id.str().data(), trace.thread, trace.rank,
-                        id_struct( trace.stack ).str().data(), Nt );
+                        trace.id.str().data(), trace.thread, trace.rank, stackLabels[trace.stack],
+                        Nt );
                     fwrite( trace.times, sizeof( uint16f ), 2 * Nt, traceFile );
                     fprintf( traceFile, "\n" );
                 }
@@ -1638,43 +1684,57 @@ static inline bool isField( std::string_view line, std::string_view name )
 template<class T>
 static inline T convert( std::string_view field )
 {
-    if constexpr ( std::numeric_limits<T>::is_integer ) {
+    if constexpr ( std::is_integral_v<T> ) {
         char* end = const_cast<char*>( field.data() + field.size() );
         if constexpr ( std::numeric_limits<T>::is_signed )
             return strtoll( field.data(), &end, 10 );
         else
             return strtoull( field.data(), &end, 10 );
+    } else if constexpr ( std::is_floating_point_v<T> ) {
+        char* end = const_cast<char*>( field.data() + field.size() );
+        return strtod( field.data(), &end );
     } else {
-        static_assert( ~std::is_same_v<T, T> );
+        static_assert( !std::is_same_v<T, T> );
     }
 }
-static inline char* getFieldArray( char* line, std::vector<std::pair<char*, char*>>& data )
+static size_t getFieldArray(
+    const char* line0, std::vector<std::pair<std::string_view, std::string_view>>& data )
 {
     // This function parses a line of the form <field=value,field=value>
     const char e = 0x0E; // Escape character for printing strings
-    ASSERT( *line == '<' );
-    data.clear();
-    line++;
-    while ( *line >= 32 ) {
-        int j1, j2;
-        for ( j1 = 0; line[j1] != '='; j1++ ) {}
-        line[j1] = 0;
-        j1++;
-        if ( line[j1] == e ) {
-            line[j1] = 0;
-            j1++;
-            for ( j2 = j1; line[j2] != e; j2++ ) {}
-            line[j2]     = 0;
-            line[j2 + 1] = 0;
-            j2++;
-        } else {
-            for ( j2 = j1; line[j2] != '>' && line[j2] != ','; j2++ ) {}
-            line[j2] = 0;
-        }
-        data.emplace_back( line, &line[j1] );
-        line += j2 + 1;
+    // Find the line of interest
+    ASSERT( line0[0] == '<' );
+    int count = 0;
+    size_t i0 = 0;
+    while ( ( line0[i0] != '>' || count % 2 == 1 ) && line0[i0] != 0 ) {
+        if ( line0[i0] == e )
+            count++;
+        i0++;
     }
-    return line + 1;
+    ASSERT( line0[i0] == '>' );
+    std::string_view line( &line0[1], i0 - 1 );
+    data.clear();
+    while ( true ) {
+        auto i = line.find( '=' );
+        ASSERT( i != std::string::npos );
+        auto key = line.substr( 0, i );
+        std::string_view value;
+        size_t j = 0;
+        if ( line[i + 1] == e ) {
+            j = line.find( e, i + 2 );
+            ASSERT( j != std::string::npos );
+            value = line.substr( i + 2, j - i - 2 );
+            j     = std::min( line.find( ',', j ), line.size() );
+        } else {
+            j     = std::min( line.find( ',', i + 1 ), line.size() );
+            value = line.substr( i + 1, j - i - 1 );
+        }
+        data.emplace_back( key, value );
+        if ( j + 1 >= line.size() )
+            break;
+        line = line.substr( j + 1 );
+    }
+    return i0 + 1;
 }
 static std::vector<id_struct> getActiveIds( std::string_view str )
 {
@@ -1701,7 +1761,7 @@ static std::tuple<id_struct, id_struct> loadActive( std::string_view str, id_str
         stack = stack ^ static_cast<uint64_t>( ids[i] );
     id_struct stack1( stack );
     id_struct stack2( stack ^ static_cast<uint64_t>( id ) );
-    return std::tie( stack1, stack2 );
+    return std::make_tuple( stack1, stack2 );
 }
 int ProfilerApp::loadFiles( const std::string& filename, int index, TimerMemoryResults& data )
 {
@@ -1730,6 +1790,11 @@ inline void keepRank( std::vector<TYPE>& data, int rank )
         }
     }
     data.resize( i2 );
+}
+static inline void copyText( char* out, std::string_view in, size_t N )
+{
+    memset( out, 0, N );
+    strncpy( out, in.data(), std::min( N - 1, in.size() ) );
 }
 TimerMemoryResults ProfilerApp::load( const std::string& filename, int rank, bool global )
 {
@@ -1796,7 +1861,7 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
     trace_data  = false;
     memory_data = false;
     date        = std::string();
-    std::vector<std::pair<char*, char*>> fields;
+    std::vector<std::pair<std::string_view, std::string_view>> fields;
     std::vector<id_struct> active;
     char* line = buffer;
     while ( line < buffer + file_length ) {
@@ -1809,34 +1874,33 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
             continue;
         }
         // Read the next line and split the fields
-        line = getFieldArray( line, fields );
-        if ( strcmp( fields[0].first, "N_procs" ) == 0 ) {
+        line += getFieldArray( line, fields );
+        if ( fields[0].first == "N_procs" ) {
             // We are loading the header
-            N_procs = atoi( fields[0].second );
+            N_procs = convert<int>( fields[0].second );
             // Load the remaining fields
             for ( size_t i = 1; i < fields.size(); i++ ) {
-                if ( strcmp( fields[i].first, "id" ) == 0 ||
-                     strcmp( fields[i].first, "rank" ) == 0 ) {
+                if ( fields[i].first == "id" || fields[i].first == "rank" ) {
                     // Load the id/rank
-                    rank = atoi( fields[i].second );
-                } else if ( strcmp( fields[i].first, "store_trace" ) == 0 ) {
+                    rank = convert<int>( fields[i].second );
+                } else if ( fields[i].first == "store_trace" ) {
                     // Check if we stored the trace file
-                    trace_data = atoi( fields[i].second ) == 1;
-                } else if ( strcmp( fields[i].first, "store_memory" ) == 0 ) {
+                    trace_data = convert<int>( fields[i].second ) == 1;
+                } else if ( fields[i].first == "store_memory" ) {
                     // Check if we stored the memory file (optional)
-                    memory_data = atoi( fields[i].second ) == 1;
-                } else if ( strcmp( fields[i].first, "walltime" ) == 0 ) {
+                    memory_data = convert<int>( fields[i].second ) == 1;
+                } else if ( fields[i].first == "walltime" ) {
                     // Check if we stored the total wallclock time
-                    walltime = atof( fields[i].second );
-                } else if ( strcmp( fields[i].first, "date" ) == 0 ) {
+                    walltime = convert<double>( fields[i].second );
+                } else if ( fields[i].first == "date" ) {
                     // Load the date (optional)
                     date = std::string( fields[i].second );
                 } else {
                     throw std::logic_error(
-                        std::string( "Unknown field (header): " ) + fields[i].first );
+                        "Unknown field (header): " + std::string( fields[i].first ) );
                 }
             }
-        } else if ( strcmp( fields[0].first, "timer:id" ) == 0 ) {
+        } else if ( fields[0].first == "timer:id" ) {
             // We are loading a timer field
             id_struct id( fields[0].second );
             // Find the timer
@@ -1850,36 +1914,31 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
                 timer.id            = id;
                 // Load the remaining fields
                 for ( size_t i = 1; i < fields.size(); i++ ) {
-                    if ( strcmp( fields[i].first, "message" ) == 0 ) {
+                    if ( fields[i].first == "message" ) {
                         // Load the message
-                        memset( timer.message, 0, sizeof( timer.message ) );
-                        strncpy( timer.message, fields[i].second, sizeof( timer.message ) - 1 );
-                    } else if ( strcmp( fields[i].first, "file" ) == 0 ) {
+                        copyText( timer.message, fields[i].second, sizeof( timer.message ) );
+                    } else if ( fields[i].first == "file" ) {
                         // Load the filename
-                        memset( timer.file, 0, sizeof( timer.file ) );
-                        strncpy( timer.file, fields[i].second, sizeof( timer.file ) - 1 );
-                    } else if ( strcmp( fields[i].first, "path" ) == 0 ) {
+                        copyText( timer.file, fields[i].second, sizeof( timer.file ) - 1 );
+                    } else if ( fields[i].first == "path" ) {
                         // Load the path
-                        memset( timer.path, 0, sizeof( timer.path ) );
-                        strncpy( timer.path, fields[i].second, sizeof( timer.path ) - 1 );
-                    } else if ( strcmp( fields[i].first, "start" ) == 0 ) {
+                        copyText( timer.path, fields[i].second, sizeof( timer.path ) - 1 );
+                    } else if ( fields[i].first == "start" || fields[i].first == "line" ) {
                         // Load the start line
-                        timer.line = atoi( fields[i].second );
-                    } else if ( strcmp( fields[i].first, "stop" ) == 0 ) {
+                        timer.line = convert<int>( fields[i].second );
+                    } else if ( fields[i].first == "stop" ) {
                         // Load the stop line (obsolete)
-                    } else if ( strcmp( fields[i].first, "thread" ) == 0 ||
-                                strcmp( fields[i].first, "N" ) == 0 ||
-                                strcmp( fields[i].first, "min" ) == 0 ||
-                                strcmp( fields[i].first, "max" ) == 0 ||
-                                strcmp( fields[i].first, "tot" ) == 0 ) {
+                    } else if ( fields[i].first == "thread" || fields[i].first == "N" ||
+                                fields[i].first == "min" || fields[i].first == "max" ||
+                                fields[i].first == "tot" ) {
                         // Obsolete fields
                     } else {
                         throw std::logic_error(
-                            std::string( "Unknown field (timer): " ) + fields[i].first );
+                            "Unknown field (timer): " + std::string( fields[i].first ) );
                     }
                 }
             }
-        } else if ( strcmp( fields[0].first, "trace:id" ) == 0 ) {
+        } else if ( fields[0].first, "trace:id" ) {
             // We are loading a trace field
             id_struct id( fields[0].second );
             // Find the trace
@@ -1894,40 +1953,48 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
             trace.rank          = rank;
             // Load the remaining fields
             for ( size_t i = 1; i < fields.size(); i++ ) {
-                if ( strcmp( fields[i].first, "thread" ) == 0 ) {
+                if ( fields[i].first == "thread" ) {
                     // Load the thread id
-                    trace.thread = atoi( fields[i].second );
-                } else if ( strcmp( fields[i].first, "rank" ) == 0 ) {
+                    trace.thread = convert<int>( fields[i].second );
+                } else if ( fields[i].first == "rank" ) {
                     // Load the rank id
-                    trace.rank = atoi( fields[i].second );
-                } else if ( strcmp( fields[i].first, "N" ) == 0 ) {
+                    trace.rank = convert<int>( fields[i].second );
+                } else if ( fields[i].first == "N" ) {
                     // Load N
-                    trace.N = atoi( fields[i].second );
-                } else if ( strcmp( fields[i].first, "min" ) == 0 ) {
+                    trace.N = convert<int>( fields[i].second );
+                } else if ( fields[i].first == "min" ) {
                     // Load min
-                    trace.min = 1e9 * atof( fields[i].second );
-                } else if ( strcmp( fields[i].first, "max" ) == 0 ) {
+                    trace.min = 1e9 * convert<double>( fields[i].second );
+                } else if ( fields[i].first == "max" ) {
                     // Load max
-                    trace.max = 1e9 * atof( fields[i].second );
-                } else if ( strcmp( fields[i].first, "tot" ) == 0 ) {
+                    trace.max = 1e9 * convert<double>( fields[i].second );
+                } else if ( fields[i].first == "tot" ) {
                     // Load tot
-                    trace.tot = 1e9 * atof( fields[i].second );
-                } else if ( strcmp( fields[i].first, "stack" ) == 0 ) {
-                    // Load tot
-                    trace.stack = id_struct( fields[i].second );
-                } else if ( strcmp( fields[i].first, "stack2" ) == 0 ) {
-                    // Load tot
-                    trace.stack2 = id_struct( fields[i].second );
-                } else if ( strcmp( fields[i].first, "active" ) == 0 ) {
+                    trace.tot = 1e9 * convert<double>( fields[i].second );
+                } else if ( fields[i].first == "stack" ) {
+                    // Load stack
+                    std::string_view tmp( fields[i].second );
+                    auto i1 = fields[i].second.find( '[' );
+                    auto i2 = fields[i].second.find( ';' );
+                    auto i3 = fields[i].second.find( ']' );
+                    ASSERT(
+                        i1 == 0 && i2 != std::string::npos && i3 == fields[i].second.size() - 1 );
+                    auto s1      = fields[i].second.substr( i1 + 1, i2 - i1 - 1 );
+                    auto s2      = fields[i].second.substr( i2 + 1, i3 - i2 - 1 );
+                    trace.stack  = str_to_hash( s1 );
+                    trace.stack2 = str_to_hash( s2 );
+                    ASSERT( s1 == std::string_view( hash_to_str( trace.stack ).data() ) );
+                    ASSERT( s2 == std::string_view( hash_to_str( trace.stack2 ).data() ) );
+                } else if ( fields[i].first == "active" ) {
                     // Load the active timers
                     std::tie( trace.stack, trace.stack2 ) = loadActive( fields[i].second, id );
                 } else {
                     throw std::logic_error(
-                        std::string( "Unknown field (trace): " ) + fields[i].first );
+                        "Unknown field (trace): " + std::string( fields[i].first ) );
                 }
             }
         } else {
-            throw std::logic_error( std::string( "Unknown data field: " ) + fields[0].first );
+            throw std::logic_error( "Unknown data field: " + std::string( fields[0].first ) );
         }
     }
     // Fill walltime with largest timer (if it does not exist for backward compatibility)
@@ -1974,10 +2041,10 @@ void ProfilerApp::loadTrace( const std::string& filename, std::vector<TimerResul
         field       = getField( line, "rank=" );
         ASSERT( !field.empty() );
         auto rank = convert<unsigned int>( field );
-        id_struct stack;
+        uint64_t stack;
         if ( isField( line, "stack=" ) ) {
             field = getField( line, "stack=" );
-            stack = id_struct( field );
+            stack = str_to_hash( field );
         } else {
             field = getField( line, "active=" );
             ASSERT( !field.empty() );
@@ -2294,7 +2361,7 @@ std::tuple<std::vector<uint64_t>, std::vector<std::vector<uint64_t>>> ProfilerAp
         for ( const auto& trace : timer.trace )
             stacks.push_back( static_cast<uint64_t>( trace.stack ) );
     }
-    quicksort( stacks );
+    unique( stacks );
     stack2.reserve( stacks.size() );
     prev.reserve( stacks.size() );
     for ( const auto& timer : timers ) {
@@ -2529,6 +2596,24 @@ static inline void quicksort( std::vector<A>& x, std::vector<B>& y )
             }
         }
     }
+}
+template<class T>
+void unique( std::vector<T>& x )
+{
+    if ( x.size() <= 1 )
+        return;
+    // First perform a quicksort
+    quicksort( x );
+    // Next remove duplicate entries
+    size_t pos = 1;
+    for ( size_t i = 1; i < x.size(); i++ ) {
+        if ( x[i] != x[pos - 1] ) {
+            x[pos] = x[i];
+            pos++;
+        }
+    }
+    if ( pos < x.size() )
+        x.resize( pos );
 }
 
 

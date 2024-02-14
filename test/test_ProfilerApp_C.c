@@ -82,7 +82,6 @@ int run_tests( bool enable_trace, const char* save_name )
     // Re-save the results and finish
     PROFILE_SAVE(save_name);
     PROFILE_SAVE(save_name,true);
-    PROFILE_DISABLE();
     return N_errors;
 }
 

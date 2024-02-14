@@ -310,8 +310,7 @@ std::vector<TimerResults> convertCallgrind( const callgrind_results& callgrind )
     for ( auto& function : functions ) {
         id_struct id             = function.id;
         std::set<id_struct>& set = subfunctions[id];
-        if ( parents.find( id ) == parents.end() )
-            parents[id] = std::set<id_struct>();
+        parents.try_emplace( id, std::set<id_struct>() );
         for ( auto& subfunction : function.subfunctions ) {
             id_struct id2 = subfunction.id;
             set.insert( id2 );

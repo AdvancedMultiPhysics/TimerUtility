@@ -24,11 +24,11 @@ int main( int argc, char *argv[] )
     std::string filename( argv[1] );
 
     // Run the tests
-    int N_errors      = 0;
-    auto m1           = MemoryApp::getMemoryStats();
-    bool global       = filename.rfind( ".0.timer" ) != std::string::npos;
-    size_t i          = filename.rfind( '.', filename.rfind( ".timer" ) - 1 );
-    filename          = filename.substr( 0, i );
+    int N_errors = 0;
+    auto m1      = MemoryApp::getMemoryStats();
+    bool global  = filename.rfind( ".0.timer" ) != std::string::npos;
+    size_t i     = filename.rfind( '.', filename.rfind( ".timer" ) - 1 );
+    filename.resize( i );
     auto load_results = ProfilerApp::load( filename, -1, global );
     NULL_USE( load_results );
     auto m2 = MemoryApp::getMemoryStats();

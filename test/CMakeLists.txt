@@ -18,7 +18,8 @@ ENDIF()
 SET( COPY_LIST  set1.1.timer  set1.2.timer  set1.3.timer  set1.4.timer
                 set2.1.timer  set2.2.timer  set2.3.timer  set2.4.timer 
                 set2.1.trace  set2.2.trace  set2.3.trace  set2.4.trace 
-                set2.1.memory set2.2.memory set2.3.memory set2.4.memory )
+                set2.1.memory set2.2.memory set2.3.memory set2.4.memory
+                ASE.0.timer )
 FOREACH( tmp ${COPY_LIST} )
     COPY_TEST_FILE( ${tmp} )
 ENDFOREACH()

@@ -1,52 +1,13 @@
-// Supression ConfigurationNotChecked
-ConfigurationNotChecked
-
-
-// Suppress all operatorEq (false positives if we use = default)
-operatorEq:*
-
-// Suppress all useStlAlgorithm (too aggressive)
-useStlAlgorithm:*
-
-// Suppress all operatorEq (too many false positives)
-shadowFunction:*
-shadowVar:*
-
-// Suppress missing include message (we are not checking dependencies)
-missingInclude:*
+// Suppress unmatched suppression
 unmatchedSuppression:*
-
-// Suppress unusedFunction messages (functions may be used by subsequent packages)
-unusedFunction:*
-
-// Supress known expression messages
-knownConditionTrueFalse:*/test/test_Callgrind.cpp
-knownConditionTrueFalse:*/test/test_Load.cpp
-knownConditionTrueFalse:*/test/test_ProfilerApp.cpp
-knownConditionTrueFalse:*/ProfilerApp.cpp
-knownConditionTrueFalse:*/gui/timerwindow.cpp
 
 // Suppress mismatchAllocDealloc (This is an intentional test)
 mismatchAllocDealloc:*/test/test_MemoryApp.cpp
 
-// Suppress unreadVariable
-unreadVariable:*/test/test_ProfilerApp_C.c
+// Suppress returnDanglingLifetime (too many false positives with std::tie)
+returnDanglingLifetime:*
 
-// Suppress variable scope
-variableScope:*/matlab/profile_mex.cpp
-
-// Suppress false negativeContainerIndex
-negativeContainerIndex:*/gui/QSplitterGrid.cpp
-
-// Suppress duplicateCondition
-duplicateCondition:*/test/test_ProfilerApp.cpp
-
-// Suppress noExplicitConstructor
-noExplicitConstructor:*/gui/GuiTimerStructures.h
-noExplicitConstructor:*/ProfilerApp.h
-
-// Suppress knownEmptyContainer
-knownEmptyContainer:*/test/test_ProfilerApp.cpp
-
-
+// Suppress preprocessorErrorDirective (issue with MATLAB)
 preprocessorErrorDirective:*
+
+

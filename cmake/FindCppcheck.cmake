@@ -86,7 +86,7 @@ FUNCTION( ADD_CPPCHECK_TEST TESTNAME SRCDIR )
 
     # Set the options for cppcheck
     IF ( NOT DEFINED CPPCHECK_OPTIONS )
-        SET( CPPCHECK_OPTIONS -q --enable=warning,performance,portability,information )
+        SET( CPPCHECK_OPTIONS -q --error-exitcode=2 --enable=warning,performance,portability,information )
         IF ( CPPCHECK_INCONCLUSIVE )
             SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --inconclusive )
         ENDIF()
@@ -118,6 +118,7 @@ FUNCTION( ADD_CPPCHECK_TEST TESTNAME SRCDIR )
             SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --std=c++20 )
         ENDIF()
         # Set definitions
+        SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} -D__cppcheck__ )
         IF ( PROCESSED )
             GET_DIRECTORY_PROPERTY( DirDefs DIRECTORY "${SRCDIR}" COMPILE_DEFINITIONS )
         ELSE()
@@ -137,7 +138,7 @@ FUNCTION( ADD_CPPCHECK_TEST TESTNAME SRCDIR )
     ENDIF()
 
     # Add the include paths
-    IF( NOT DEFINED CPPCHECK_INCLUDE )
+    IF( NOT DEFINED CPPCHECK_INCLUDE AND NOT CPPCHECK_USE_JSON )
         SET( CPPCHECK_INCLUDE )
         IF ( PROCESSED )
             GET_PROPERTY( dirs DIRECTORY "${SRCDIR}" PROPERTY INCLUDE_DIRECTORIES )

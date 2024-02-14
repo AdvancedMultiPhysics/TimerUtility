@@ -330,7 +330,7 @@ public:
      * @param[in] filename  File name for saving the results
      * @param[in] global    Save a global file (true) or individual files (false)
      */
-    void save( const std::string& filename, bool global = false ) const;
+    void save( const std::string& filename, bool global = true ) const;
 
     /*!
      * \brief  Function to load the profiling info
@@ -357,7 +357,7 @@ public:
      * \details  This function will enable the current timer clase.  It supports an optional level
      * argument that specifies the level of detail to use for the timers.
      * @param[in] level     Level of detail to include this timer (default is 0)
-     *                      Only timers whos level is <= the level will be included.
+     *                      Only timers whose level is <= the level will be included.
      */
     void enable( int level = 0 );
 
@@ -385,7 +385,7 @@ public:
      *    If the level is set to Fast, it will only track new/delete calls
      *    (requires overloading new/delete).  If the level is set to Full, it will attempt
      *    to count all memory usage.
-     *  Note: Enabling this option will check the memory usage evergy time we enter or leave
+     *  Note: Enabling this option will check the memory usage every time we enter or leave
      *    timer.  This data will be combined from all timers/threads to get the memory usage
      *    of the application over time.  Combined with the trace level data, we can determine
      *    when memory is allocated and which timers are active.
@@ -554,7 +554,8 @@ public: // Member classes
         char path[64];                        // The path to the file (if availible)
         volatile store_timer_data_info* next; // Pointer to the next entry in the list
         store_timer_data_info();
-        store_timer_data_info( const char* msg, const char* filepath, uint64_t id, int start );
+        store_timer_data_info(
+            std::string_view msg, std::string_view filepath, uint64_t id, int start );
         ~store_timer_data_info();
         store_timer_data_info( const store_timer_data_info& rhs )            = delete;
         store_timer_data_info& operator=( const store_timer_data_info& rhs ) = delete;
@@ -653,7 +654,7 @@ private: // Private member functions
     static void gatherMemory( std::vector<MemoryResults>& memory );
 
     // Error processing
-    void error( std::string message, ThreadData* thread, store_timer* timer );
+    void error( const std::string& message, ThreadData* thread, store_timer* timer );
 };
 
 

@@ -1,0 +1,292 @@
+                  Message                      Filename          Thread  Start Line  Stop Line  N_calls  Min Time  Max Time  Total Time  %% Time
+-----------------------------------------------------------------------------------------------------------------------------------------------
+                          main             laser_simulator.cpp      0        21         -1         1     31936.366  31936.366   31936.366   100.0
+            runLaserSimulation              LaserSimulator.cpp      0       212         -1         1     31898.630  31898.630   31898.630    99.9
+ CoupledLaserOperator::advance             CoupledOperator.cpp      0       511         -1      1879        7.758    23.943   28967.342    90.7
+                     propagate            MultiRayOperator.cpp      0       104        172      8051        0.180     9.738   21630.813    67.7
+                     propagate          boxCrystalOperator.hpp      0        99        118   4993524        0.000     6.021   19068.332    59.7
+                         apply                 ASEOperator.cpp      0        57        110      1879        0.139    10.752   12829.673    40.2
+                           run       MultiPassBeamOperator.cpp      0       156         -1      4293        0.562    11.544   11800.284    36.9
+                         apply                PumpOperator.cpp      0       102        270      1880        5.712    12.569   11255.212    35.2
+                propagate rays       MultiPassBeamOperator.cpp      0       243        260      6173        0.180     8.548   10336.799    32.4
+              apply::propagate                PumpOperator.cpp      0       183        187      1880        4.698    11.546    9311.860    29.2
+                     writeFile                  HDF5writer.cpp      0        95         -1      1880        0.622     2.433    2924.338     9.2
+                         apply               ProbeOperator.cpp      0        77         -1      1880        1.136     2.413    2380.020     7.5
+                         apply                SeedOperator.cpp      0        40         -1      1879        0.000     9.126    1850.508     5.8
+            apply::check_power                PumpOperator.cpp      0       224        242      1880        0.783     1.372    1509.900     4.7
+                         reset            MultiRayOperator.cpp      0        37         54      6172        0.139     0.339    1176.170     3.7
+ boxCrystalOperator<RAYSTORE>::reset          boxCrystalOperator.hpp      0        61         75     74064        0.011     0.068    1176.023     3.7
+              writeBoxMeshVars                  HDF5writer.cpp      0       381        393     22560        0.029     0.101    1048.944     3.3
+                       getData                    RayTrace.cpp      0        81         -1      5640        0.000     0.680    1010.548     3.2
+                      writeXMF                 ASEOperator.cpp      0       239         -1      1880        0.000     0.786     971.156     3.0
+                       analyze                 ASEOperator.cpp      0       119        220      1878        0.274     0.485     529.623     1.7
+                  generateRays            MultiRayOperator.cpp      0        65         73      1878        0.255     0.422     491.950     1.5
+ RayOperatorHelper::generateRays           RayOperatorHelper.cpp      0       143         -1     22536        0.020     0.040     489.780     1.5
+                      writeXMF       MultiPassBeamOperator.cpp      0       394         -1      3760        0.000     0.480     416.284     1.3
+              writeDefaultMesh                  HDF5writer.cpp      0       194         -1     47000        0.007     0.078     414.877     1.3
+                   interpolate            MultiRayOperator.cpp      0       176        179      6171        0.026     0.154     412.246     1.3
+                   interpolate          boxCrystalOperator.hpp      0       123        142     74052        0.002     0.027     412.115     1.3
+      RayOperatorHelper::reset           RayOperatorHelper.cpp      0        55         97     74064        0.001     0.042     355.257     1.1
+                   convertData                  HDF5writer.cpp      0       291        327     45120        0.005     0.010     213.609     0.7
+                         apply             GainCoefficient.cpp      0        29        147      1880        0.108     0.170     210.226     0.7
+                         apply             PopChangeRateOP.cpp      0       130         -1      1880        0.102     0.174     198.325     0.6
+                       advance             PopChangeRateOP.cpp      0       313         -1      1880        0.099     0.172     191.154     0.6
+   RayOperatorHelper::intEmiss           RayOperatorHelper.cpp      0       110        133     22536        0.008     0.035     190.060     0.6
+             apply::initialize                PumpOperator.cpp      0       166        180      1880        0.095     0.157     184.214     0.6
+                apply::thermal                PumpOperator.cpp      0       190        221      1880        0.092     0.162     180.215     0.6
+                     getMatrix             PopChangeRateOP.cpp      0       196         -1     22560        0.005     0.010     130.538     0.4
+                  writeBoxMesh                  HDF5writer.cpp      0       343        379     22560        0.002     0.007      52.649     0.2
+                          expM                solve_system.cpp      0       278        311  238481760        0.000     0.000      34.919     0.1
+                 generate rays       MultiPassBeamOperator.cpp      0       215        219      6173        0.001     0.065      30.433     0.1
+        generate-RectangleBeam                        Beam.cpp      0       959         -1      5703        0.000     0.015      20.885     0.1
+              solveTemperature                SolveThermal.cpp      0       470         -1         1       18.389    18.389      18.389     0.1
+        runFastLaserSimulation              LaserSimulator.cpp      0       365         -1         1       11.344    11.344      11.344     0.0
+                         reset            LinearFEOperator.cpp      0        35         61        24        0.355     0.499      10.151     0.0
+                         solve  NonlinearKrylovAccelerator.hpp      0       331        446         1        9.746     9.746       9.746     0.0
+                         save2       MultiPassBeamOperator.cpp      0       287         -1      5640        0.000     0.005       9.453     0.0
+                         apply         NonlinearFEOperator.cpp      0        25         57        73        0.062     1.580       6.143     0.0
+            loop over elements         NonlinearFEOperator.cpp      0        37         44        73        0.062     1.367       5.923     0.0
+                         apply             CoupledOperator.cpp      0        27         46         6        0.830     0.860       5.052     0.0
+                         apply        NonlinearBVPOperator.cpp      0        24         62        72        0.064     0.095       4.766     0.0
+                         solve            TrilinosMLSolver.cpp      0       217        309       108        0.011     0.033       1.500     0.0
+           createLaserOperator              LaserSimulator.cpp      0       164         -1         1        0.850     0.850       0.850     0.0
+        CoupledLaserOperator::             CoupledOperator.cpp      0        59         -1         1        0.799     0.799       0.799     0.0
+                    createMesh              LaserSimulator.cpp      0       150         -1         1        0.731     0.731       0.731     0.0
+       constSubsetOutputVector                    Operator.cpp      0       138        149       114        0.000     0.048       0.286     0.0
+                        reinit       createLibmeshElements.cpp      0        64        136         2        0.044     0.157       0.201     0.0
+            subsetOutputVector                    Operator.cpp      0       100        111      2099        0.000     0.053       0.187     0.0
+                         apply                  Absorption.cpp      0        26         57      1880        0.000     0.000       0.158     0.0
+                         apply                StoredEnergy.cpp      0        28        107      1880        0.000     0.000       0.076     0.0
+                makeConsistent                      Writer.cpp      0       369        377      1880        0.000     0.000       0.062     0.0
+        constSubsetInputVector                    Operator.cpp      0       157        168         1        0.046     0.046       0.046     0.0
+             subsetInputVector                    Operator.cpp      0       119        130      1988        0.000     0.000       0.044     0.0
+                 getParameters        NonlinearBVPOperator.cpp      0        82         89        24        0.000     0.001       0.011     0.0
+                      finalize                     BoxMesh.cpp      0       286        303        13        0.000     0.001       0.006     0.0
+                    initialize                     BoxMesh.cpp      0       219         -1        13        0.000     0.000       0.000     0.0
+
+
+
+<N_procs=1,id=0,store_trace=0,store_memory=0,walltime=3.193637e+04,date='Wed Feb 14 09:36:02 2024'>
+<timer:id=bHY&d,message=main,file=laser_simulator.cpp,path=/projects/AMP/LaserCrystal/src/test,start=21,stop=-1>
+<trace:id=bHY&d,thread=0,rank=0,N=1,min=3.193637e+04,max=3.193637e+04,tot=3.193637e+04,active=[ xeis ]>
+<timer:id=xeis,message=runLaserSimulation,file=LaserSimulator.cpp,path=/projects/AMP/LaserCrystal/src,start=212,stop=-1>
+<trace:id=xeis,thread=0,rank=0,N=1,min=3.189863e+04,max=3.189863e+04,tot=3.189863e+04,active=[ bHY&d ]>
+<timer:id=$OLch,message=CoupledLaserOperator::advance,file=CoupledOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=511,stop=-1>
+<trace:id=$OLch,thread=0,rank=0,N=1879,min=7.757541e+00,max=2.394273e+01,tot=2.896734e+04,active=[ bHY&d xeis ]>
+<timer:id=1Fm8q,message=propagate,file=MultiRayOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=104,stop=172>
+<trace:id=1Fm8q,thread=0,rank=0,N=2,min=2.333951e+00,max=2.461244e+00,tot=4.795195e+00,active=[ bHY&d wIXla i7EVM gw5uO F1pSW Po5dN ]>
+<trace:id=1Fm8q,thread=0,rank=0,N=1,min=2.289432e-01,max=2.289432e-01,tot=2.289432e-01,active=[ bHY&d wIXla F1pSW Po5dN zJTzP ]>
+<trace:id=1Fm8q,thread=0,rank=0,N=3758,min=2.195341e+00,max=8.547322e+00,tot=8.794817e+03,active=[ bHY&d i7EVM gw5uO F1pSW Po5dN xeis $OLch ]>
+<trace:id=1Fm8q,thread=0,rank=0,N=1879,min=1.801905e-01,max=8.507479e-01,tot=5.305207e+02,active=[ bHY&d F1pSW Po5dN zJTzP xeis $OLch ]>
+<trace:id=1Fm8q,thread=0,rank=0,N=1878,min=5.636008e+00,max=9.737868e+00,tot=1.129595e+04,active=[ bHY&d xeis $OLch v8BfE ]>
+<trace:id=1Fm8q,thread=0,rank=0,N=533,min=1.764564e+00,max=2.191613e+00,tot=1.004497e+03,active=[ bHY&d F1pSW Po5dN xeis $OLch JJ7eF ]>
+<timer:id=WZxCx,message=propagate,file=boxCrystalOperator.hpp,path=/projects/AMP/LaserCrystal/src,start=99,stop=118>
+<trace:id=WZxCx,thread=0,rank=0,N=1128,min=1.052500e-05,max=1.617031e-01,tot=4.027495e+00,active=[ bHY&d wIXla i7EVM gw5uO F1pSW Po5dN 1Fm8q ]>
+<trace:id=WZxCx,thread=0,rank=0,N=564,min=1.018000e-05,max=1.156632e-02,tot=2.018892e-01,active=[ bHY&d wIXla F1pSW Po5dN 1Fm8q zJTzP ]>
+<trace:id=WZxCx,thread=0,rank=0,N=2130120,min=6.405000e-06,max=6.020989e+00,tot=7.422651e+03,active=[ bHY&d i7EVM gw5uO F1pSW Po5dN 1Fm8q xeis $OLch ]>
+<trace:id=WZxCx,thread=0,rank=0,N=967836,min=8.159000e-06,max=5.680739e-02,tot=4.743128e+02,active=[ bHY&d F1pSW Po5dN 1Fm8q zJTzP xeis $OLch ]>
+<trace:id=WZxCx,thread=0,rank=0,N=1591680,min=8.762000e-06,max=1.122103e+00,tot=1.031686e+04,active=[ bHY&d 1Fm8q xeis $OLch v8BfE ]>
+<trace:id=WZxCx,thread=0,rank=0,N=302196,min=6.242000e-06,max=1.934154e-01,tot=8.502782e+02,active=[ bHY&d F1pSW Po5dN 1Fm8q xeis $OLch JJ7eF ]>
+<timer:id=v8BfE,message=apply,file=ASEOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=57,stop=110>
+<trace:id=v8BfE,thread=0,rank=0,N=1879,min=1.391583e-01,max=1.075171e+01,tot=1.282967e+04,active=[ bHY&d xeis $OLch ]>
+<timer:id=F1pSW,message=run,file=MultiPassBeamOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=156,stop=-1>
+<trace:id=F1pSW,thread=0,rank=0,N=1,min=5.053491e+00,max=5.053491e+00,tot=5.053491e+00,active=[ bHY&d wIXla i7EVM gw5uO ]>
+<trace:id=F1pSW,thread=0,rank=0,N=1,min=6.072678e-01,max=6.072678e-01,tot=6.072678e-01,active=[ bHY&d wIXla zJTzP ]>
+<trace:id=F1pSW,thread=0,rank=0,N=1879,min=4.696050e+00,max=1.154393e+01,tot=9.302420e+03,active=[ bHY&d i7EVM gw5uO xeis $OLch ]>
+<trace:id=F1pSW,thread=0,rank=0,N=1879,min=5.618291e-01,max=1.466699e+00,tot=1.272777e+03,active=[ bHY&d zJTzP xeis $OLch ]>
+<trace:id=F1pSW,thread=0,rank=0,N=533,min=2.162549e+00,max=2.604022e+00,tot=1.219426e+03,active=[ bHY&d xeis $OLch JJ7eF ]>
+<timer:id=i7EVM,message=apply,file=PumpOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=102,stop=270>
+<trace:id=i7EVM,thread=0,rank=0,N=1,min=6.080296e+00,max=6.080296e+00,tot=6.080296e+00,active=[ bHY&d wIXla ]>
+<trace:id=i7EVM,thread=0,rank=0,N=1879,min=5.711657e+00,max=1.256904e+01,tot=1.124913e+04,active=[ bHY&d xeis $OLch ]>
+<timer:id=Po5dN,message=propagate rays,file=MultiPassBeamOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=243,stop=260>
+<trace:id=Po5dN,thread=0,rank=0,N=2,min=2.334418e+00,max=2.461659e+00,tot=4.796077e+00,active=[ bHY&d wIXla i7EVM gw5uO F1pSW ]>
+<trace:id=Po5dN,thread=0,rank=0,N=1,min=2.289792e-01,max=2.289792e-01,tot=2.289792e-01,active=[ bHY&d wIXla F1pSW zJTzP ]>
+<trace:id=Po5dN,thread=0,rank=0,N=3758,min=2.195749e+00,max=8.547756e+00,tot=8.796500e+03,active=[ bHY&d i7EVM gw5uO F1pSW xeis $OLch ]>
+<trace:id=Po5dN,thread=0,rank=0,N=1879,min=1.802133e-01,max=8.507900e-01,tot=5.305877e+02,active=[ bHY&d F1pSW zJTzP xeis $OLch ]>
+<trace:id=Po5dN,thread=0,rank=0,N=533,min=1.764898e+00,max=2.191987e+00,tot=1.004686e+03,active=[ bHY&d F1pSW xeis $OLch JJ7eF ]>
+<timer:id=gw5uO,message=apply::propagate,file=PumpOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=183,stop=187>
+<trace:id=gw5uO,thread=0,rank=0,N=1,min=5.055760e+00,max=5.055760e+00,tot=5.055760e+00,active=[ bHY&d wIXla i7EVM ]>
+<trace:id=gw5uO,thread=0,rank=0,N=1879,min=4.698312e+00,max=1.154620e+01,tot=9.306804e+03,active=[ bHY&d i7EVM xeis $OLch ]>
+<timer:id=6KSUz,message=writeFile,file=HDF5writer.cpp,path=/projects/AMP/AMP/src/IO,start=95,stop=-1>
+<trace:id=6KSUz,thread=0,rank=0,N=1,min=8.390285e-01,max=8.390285e-01,tot=8.390285e-01,active=[ bHY&d wIXla ]>
+<trace:id=6KSUz,thread=0,rank=0,N=1879,min=6.220678e-01,max=2.432729e+00,tot=2.923499e+03,active=[ bHY&d xeis ]>
+<timer:id=zJTzP,message=apply,file=ProbeOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=77,stop=-1>
+<trace:id=zJTzP,thread=0,rank=0,N=1,min=1.181818e+00,max=1.181818e+00,tot=1.181818e+00,active=[ bHY&d wIXla ]>
+<trace:id=zJTzP,thread=0,rank=0,N=1879,min=1.136351e+00,max=2.412822e+00,tot=2.378838e+03,active=[ bHY&d xeis $OLch ]>
+<timer:id=JJ7eF,message=apply,file=SeedOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=40,stop=-1>
+<trace:id=JJ7eF,thread=0,rank=0,N=1879,min=1.374900e-05,max=9.126030e+00,tot=1.850508e+03,active=[ bHY&d xeis $OLch ]>
+<timer:id=&sRMF,message=apply::check_power,file=PumpOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=224,stop=242>
+<trace:id=&sRMF,thread=0,rank=0,N=1,min=8.057475e-01,max=8.057475e-01,tot=8.057475e-01,active=[ bHY&d wIXla i7EVM ]>
+<trace:id=&sRMF,thread=0,rank=0,N=1879,min=7.834444e-01,max=1.371609e+00,tot=1.509094e+03,active=[ bHY&d i7EVM xeis $OLch ]>
+<timer:id=OtPtX,message=reset,file=MultiRayOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=37,stop=54>
+<trace:id=OtPtX,thread=0,rank=0,N=1,min=1.545305e-01,max=1.545305e-01,tot=1.545305e-01,active=[ bHY&d wIXla i7EVM gw5uO F1pSW ]>
+<trace:id=OtPtX,thread=0,rank=0,N=1,min=1.541250e-01,max=1.541250e-01,tot=1.541250e-01,active=[ bHY&d wIXla F1pSW zJTzP ]>
+<trace:id=OtPtX,thread=0,rank=0,N=1879,min=1.566372e-01,max=2.626913e-01,tot=3.182519e+02,active=[ bHY&d i7EVM gw5uO F1pSW xeis $OLch ]>
+<trace:id=OtPtX,thread=0,rank=0,N=1879,min=1.564431e-01,max=2.621640e-01,tot=3.166324e+02,active=[ bHY&d F1pSW zJTzP xeis $OLch ]>
+<trace:id=OtPtX,thread=0,rank=0,N=1879,min=1.385806e-01,max=3.392729e-01,tot=4.505132e+02,active=[ bHY&d xeis $OLch v8BfE ]>
+<trace:id=OtPtX,thread=0,rank=0,N=533,min=1.558232e-01,max=2.184548e-01,tot=9.046350e+01,active=[ bHY&d F1pSW xeis $OLch JJ7eF ]>
+<timer:id=WPbPA,message=boxCrystalOperator<RAYSTORE>::reset,file=boxCrystalOperator.hpp,path=/projects/AMP/LaserCrystal/src,start=61,stop=75>
+<trace:id=WPbPA,thread=0,rank=0,N=12,min=1.270645e-02,max=1.310935e-02,tot=1.545051e-01,active=[ bHY&d wIXla i7EVM gw5uO F1pSW OtPtX ]>
+<trace:id=WPbPA,thread=0,rank=0,N=12,min=1.270353e-02,max=1.310388e-02,tot=1.540992e-01,active=[ bHY&d wIXla F1pSW OtPtX zJTzP ]>
+<trace:id=WPbPA,thread=0,rank=0,N=22548,min=1.279848e-02,max=2.309084e-02,tot=3.182098e+02,active=[ bHY&d i7EVM gw5uO F1pSW OtPtX xeis $OLch ]>
+<trace:id=WPbPA,thread=0,rank=0,N=22548,min=1.257661e-02,max=2.950152e-02,tot=3.165882e+02,active=[ bHY&d F1pSW OtPtX zJTzP xeis $OLch ]>
+<trace:id=WPbPA,thread=0,rank=0,N=22548,min=1.143162e-02,max=6.828481e-02,tot=4.504670e+02,active=[ bHY&d OtPtX xeis $OLch v8BfE ]>
+<trace:id=WPbPA,thread=0,rank=0,N=6396,min=1.269502e-02,max=2.264523e-02,tot=9.044910e+01,active=[ bHY&d F1pSW OtPtX xeis $OLch JJ7eF ]>
+<timer:id=2&L5K,message=writeBoxMeshVars,file=HDF5writer.cpp,path=/projects/AMP/AMP/src/IO,start=381,stop=393>
+<trace:id=2&L5K,thread=0,rank=0,N=12,min=3.683256e-02,max=3.808605e-02,tot=4.494122e-01,active=[ bHY&d wIXla 6KSUz ]>
+<trace:id=2&L5K,thread=0,rank=0,N=22548,min=2.870078e-02,max=1.012666e-01,tot=1.048495e+03,active=[ bHY&d 6KSUz xeis ]>
+<timer:id=x7tHo,message=getData,file=RayTrace.cpp,path=/projects/AMP/LaserCrystal/src,start=81,stop=-1>
+<trace:id=x7tHo,thread=0,rank=0,N=2,min=8.080000e-07,max=2.311513e-02,tot=2.311594e-02,active=[ bHY&d wIXla 6KSUz d&75i ]>
+<trace:id=x7tHo,thread=0,rank=0,N=1,min=1.065000e-06,max=1.065000e-06,tot=1.065000e-06,active=[ bHY&d wIXla 6KSUz 9spPT ]>
+<trace:id=x7tHo,thread=0,rank=0,N=3758,min=7.390000e-07,max=3.656590e-01,tot=1.724935e+02,active=[ bHY&d 6KSUz d&75i xeis ]>
+<trace:id=x7tHo,thread=0,rank=0,N=1879,min=6.340000e-07,max=6.795011e-01,tot=8.380316e+02,active=[ bHY&d 6KSUz 9spPT xeis ]>
+<timer:id=9spPT,message=writeXMF,file=ASEOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=239,stop=-1>
+<trace:id=9spPT,thread=0,rank=0,N=1,min=1.944400e-04,max=1.944400e-04,tot=1.944400e-04,active=[ bHY&d wIXla 6KSUz ]>
+<trace:id=9spPT,thread=0,rank=0,N=1879,min=1.074980e-04,max=7.855809e-01,tot=9.711553e+02,active=[ bHY&d 6KSUz xeis ]>
+<timer:id=LIIv5,message=analyze,file=ASEOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=119,stop=220>
+<trace:id=LIIv5,thread=0,rank=0,N=1878,min=2.739529e-01,max=4.847287e-01,tot=5.296234e+02,active=[ bHY&d xeis $OLch v8BfE ]>
+<timer:id=zN&&H,message=generateRays,file=MultiRayOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=65,stop=73>
+<trace:id=zN&&H,thread=0,rank=0,N=1878,min=2.552507e-01,max=4.220918e-01,tot=4.919501e+02,active=[ bHY&d xeis $OLch v8BfE ]>
+<timer:id=PUZnS,message=RayOperatorHelper::generateRays,file=RayOperatorHelper.cpp,path=/projects/AMP/LaserCrystal/src,start=143,stop=-1>
+<trace:id=PUZnS,thread=0,rank=0,N=22536,min=2.046289e-02,max=3.991200e-02,tot=4.897802e+02,active=[ bHY&d xeis $OLch v8BfE zN&&H ]>
+<timer:id=d&75i,message=writeXMF,file=MultiPassBeamOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=394,stop=-1>
+<trace:id=d&75i,thread=0,rank=0,N=2,min=1.942850e-04,max=1.288297e-01,tot=1.290240e-01,active=[ bHY&d wIXla 6KSUz ]>
+<trace:id=d&75i,thread=0,rank=0,N=3758,min=1.572810e-04,max=4.801322e-01,tot=4.161555e+02,active=[ bHY&d 6KSUz xeis ]>
+<timer:id=ZFZZ1,message=writeDefaultMesh,file=HDF5writer.cpp,path=/projects/AMP/AMP/src/IO,start=194,stop=-1>
+<trace:id=ZFZZ1,thread=0,rank=0,N=25,min=6.871538e-03,max=4.121498e-02,tot=2.189042e-01,active=[ bHY&d wIXla 6KSUz ]>
+<trace:id=ZFZZ1,thread=0,rank=0,N=46975,min=6.803543e-03,max=7.834842e-02,tot=4.146577e+02,active=[ bHY&d 6KSUz xeis ]>
+<timer:id=&sb0n,message=interpolate,file=MultiRayOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=176,stop=179>
+<trace:id=&sb0n,thread=0,rank=0,N=1,min=8.105196e-02,max=8.105196e-02,tot=8.105196e-02,active=[ bHY&d wIXla i7EVM gw5uO F1pSW ]>
+<trace:id=&sb0n,thread=0,rank=0,N=1,min=8.513690e-02,max=8.513690e-02,tot=8.513690e-02,active=[ bHY&d wIXla F1pSW zJTzP ]>
+<trace:id=&sb0n,thread=0,rank=0,N=1879,min=8.011431e-02,max=1.538879e-01,tot=1.570525e+02,active=[ bHY&d i7EVM gw5uO F1pSW xeis $OLch ]>
+<trace:id=&sb0n,thread=0,rank=0,N=1879,min=8.045785e-02,max=1.360519e-01,tot=1.576455e+02,active=[ bHY&d F1pSW zJTzP xeis $OLch ]>
+<trace:id=&sb0n,thread=0,rank=0,N=1878,min=2.647598e-02,max=5.074842e-02,tot=5.305441e+01,active=[ bHY&d xeis $OLch v8BfE ]>
+<trace:id=&sb0n,thread=0,rank=0,N=533,min=8.021318e-02,max=1.311571e-01,tot=4.432722e+01,active=[ bHY&d F1pSW xeis $OLch JJ7eF ]>
+<timer:id=O&O2b,message=interpolate,file=boxCrystalOperator.hpp,path=/projects/AMP/LaserCrystal/src,start=123,stop=142>
+<trace:id=O&O2b,thread=0,rank=0,N=12,min=6.623149e-03,max=7.015407e-03,tot=8.103323e-02,active=[ bHY&d wIXla i7EVM gw5uO F1pSW &sb0n ]>
+<trace:id=O&O2b,thread=0,rank=0,N=12,min=6.690927e-03,max=8.161757e-03,tot=8.509052e-02,active=[ bHY&d wIXla F1pSW &sb0n zJTzP ]>
+<trace:id=O&O2b,thread=0,rank=0,N=22548,min=6.586922e-03,max=2.155711e-02,tot=1.570059e+02,active=[ bHY&d i7EVM gw5uO F1pSW &sb0n xeis $OLch ]>
+<trace:id=O&O2b,thread=0,rank=0,N=22548,min=6.609846e-03,max=2.729921e-02,tot=1.576001e+02,active=[ bHY&d F1pSW &sb0n zJTzP xeis $OLch ]>
+<trace:id=O&O2b,thread=0,rank=0,N=22536,min=2.165569e-03,max=7.246739e-03,tot=5.303074e+01,active=[ bHY&d &sb0n xeis $OLch v8BfE ]>
+<trace:id=O&O2b,thread=0,rank=0,N=6396,min=6.588560e-03,max=1.863458e-02,tot=4.431190e+01,active=[ bHY&d F1pSW &sb0n xeis $OLch JJ7eF ]>
+<timer:id=0Q3eb,message=RayOperatorHelper::reset,file=RayOperatorHelper.cpp,path=/projects/AMP/LaserCrystal/src,start=55,stop=97>
+<trace:id=0Q3eb,thread=0,rank=0,N=12,min=7.361960e-04,max=7.802670e-04,tot=9.043242e-03,active=[ bHY&d wIXla i7EVM gw5uO F1pSW OtPtX WPbPA ]>
+<trace:id=0Q3eb,thread=0,rank=0,N=12,min=7.419210e-04,max=7.839890e-04,tot=9.142955e-03,active=[ bHY&d wIXla F1pSW OtPtX WPbPA zJTzP ]>
+<trace:id=0Q3eb,thread=0,rank=0,N=22548,min=6.658670e-04,max=4.517047e-03,tot=1.618810e+01,active=[ bHY&d i7EVM gw5uO F1pSW OtPtX WPbPA xeis $OLch ]>
+<trace:id=0Q3eb,thread=0,rank=0,N=22548,min=6.623550e-04,max=7.647551e-03,tot=1.606862e+01,active=[ bHY&d F1pSW OtPtX WPbPA zJTzP xeis $OLch ]>
+<trace:id=0Q3eb,thread=0,rank=0,N=22548,min=5.705633e-03,max=4.243707e-02,tot=3.184405e+02,active=[ bHY&d OtPtX WPbPA xeis $OLch v8BfE ]>
+<trace:id=0Q3eb,thread=0,rank=0,N=6396,min=6.611920e-04,max=1.105827e-03,tot=4.541961e+00,active=[ bHY&d F1pSW OtPtX WPbPA xeis $OLch JJ7eF ]>
+<timer:id=k2b3T,message=convertData,file=HDF5writer.cpp,path=/projects/AMP/AMP/src/IO,start=291,stop=327>
+<trace:id=k2b3T,thread=0,rank=0,N=24,min=4.573669e-03,max=4.911117e-03,tot=1.129618e-01,active=[ bHY&d wIXla 6KSUz 2&L5K ]>
+<trace:id=k2b3T,thread=0,rank=0,N=45096,min=4.504968e-03,max=1.042708e-02,tot=2.134960e+02,active=[ bHY&d 6KSUz 2&L5K xeis ]>
+<timer:id=cY0oT,message=apply,file=GainCoefficient.cpp,path=/projects/AMP/LaserCrystal/src,start=29,stop=147>
+<trace:id=cY0oT,thread=0,rank=0,N=1,min=1.140329e-01,max=1.140329e-01,tot=1.140329e-01,active=[ bHY&d wIXla ]>
+<trace:id=cY0oT,thread=0,rank=0,N=1879,min=1.083726e-01,max=1.695944e-01,tot=2.101122e+02,active=[ bHY&d xeis $OLch ]>
+<timer:id=5fqK8,message=apply,file=PopChangeRateOP.cpp,path=/projects/AMP/LaserCrystal/src,start=130,stop=-1>
+<trace:id=5fqK8,thread=0,rank=0,N=1,min=1.142429e-01,max=1.142429e-01,tot=1.142429e-01,active=[ bHY&d wIXla ]>
+<trace:id=5fqK8,thread=0,rank=0,N=1879,min=1.019575e-01,max=1.735427e-01,tot=1.982109e+02,active=[ bHY&d xeis $OLch ]>
+<timer:id=o51YU,message=advance,file=PopChangeRateOP.cpp,path=/projects/AMP/LaserCrystal/src,start=313,stop=-1>
+<trace:id=o51YU,thread=0,rank=0,N=1,min=1.024046e-01,max=1.024046e-01,tot=1.024046e-01,active=[ bHY&d wIXla ]>
+<trace:id=o51YU,thread=0,rank=0,N=1879,min=9.861058e-02,max=1.721130e-01,tot=1.910512e+02,active=[ bHY&d xeis $OLch ]>
+<timer:id=mJKiN,message=RayOperatorHelper::intEmiss,file=RayOperatorHelper.cpp,path=/projects/AMP/LaserCrystal/src,start=110,stop=133>
+<trace:id=mJKiN,thread=0,rank=0,N=22536,min=8.140209e-03,max=3.499973e-02,tot=1.900595e+02,active=[ bHY&d OtPtX WPbPA 0Q3eb xeis $OLch v8BfE ]>
+<timer:id=Tkzio,message=apply::initialize,file=PumpOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=166,stop=180>
+<trace:id=Tkzio,thread=0,rank=0,N=1,min=9.964748e-02,max=9.964748e-02,tot=9.964748e-02,active=[ bHY&d wIXla i7EVM ]>
+<trace:id=Tkzio,thread=0,rank=0,N=1879,min=9.499834e-02,max=1.566732e-01,tot=1.841144e+02,active=[ bHY&d i7EVM xeis $OLch ]>
+<timer:id=V0ETI,message=apply::thermal,file=PumpOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=190,stop=221>
+<trace:id=V0ETI,thread=0,rank=0,N=1,min=9.438490e-02,max=9.438490e-02,tot=9.438490e-02,active=[ bHY&d wIXla i7EVM ]>
+<trace:id=V0ETI,thread=0,rank=0,N=1879,min=9.240514e-02,max=1.622252e-01,tot=1.801207e+02,active=[ bHY&d i7EVM xeis $OLch ]>
+<timer:id=HO5Tv,message=getMatrix,file=PopChangeRateOP.cpp,path=/projects/AMP/LaserCrystal/src,start=196,stop=-1>
+<trace:id=HO5Tv,thread=0,rank=0,N=12,min=5.570564e-03,max=6.456511e-03,tot=7.059074e-02,active=[ bHY&d wIXla 5fqK8 ]>
+<trace:id=HO5Tv,thread=0,rank=0,N=22548,min=5.444919e-03,max=1.028255e-02,tot=1.304677e+02,active=[ bHY&d 5fqK8 xeis $OLch ]>
+<timer:id=2WU1N,message=writeBoxMesh,file=HDF5writer.cpp,path=/projects/AMP/AMP/src/IO,start=343,stop=379>
+<trace:id=2WU1N,thread=0,rank=0,N=12,min=2.260709e-03,max=2.588916e-03,tot=2.788926e-02,active=[ bHY&d wIXla 6KSUz ]>
+<trace:id=2WU1N,thread=0,rank=0,N=22548,min=2.237995e-03,max=6.517978e-03,tot=5.262152e+01,active=[ bHY&d 6KSUz xeis ]>
+<timer:id=rydYU,message=expM,file=solve_system.cpp,path=/projects/AMP/LaserCrystal/src,start=278,stop=311>
+<trace:id=rydYU,thread=0,rank=0,N=126852,min=1.300000e-07,max=8.151000e-06,tot=1.905335e-02,active=[ bHY&d wIXla o51YU ]>
+<trace:id=rydYU,thread=0,rank=0,N=238354908,min=1.220000e-07,max=3.491640e-04,tot=3.490010e+01,active=[ bHY&d o51YU xeis $OLch ]>
+<timer:id=updpj,message=generate rays,file=MultiPassBeamOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=215,stop=219>
+<trace:id=updpj,thread=0,rank=0,N=2,min=7.636116e-03,max=1.183607e-02,tot=1.947219e-02,active=[ bHY&d wIXla i7EVM gw5uO F1pSW ]>
+<trace:id=updpj,thread=0,rank=0,N=1,min=5.276640e-04,max=5.276640e-04,tot=5.276640e-04,active=[ bHY&d wIXla F1pSW zJTzP ]>
+<trace:id=updpj,thread=0,rank=0,N=3758,min=6.692485e-03,max=2.007247e-02,tot=2.694222e+01,active=[ bHY&d i7EVM gw5uO F1pSW xeis $OLch ]>
+<trace:id=updpj,thread=0,rank=0,N=1879,min=5.288240e-04,max=1.102329e-03,tot=1.048756e+00,active=[ bHY&d F1pSW zJTzP xeis $OLch ]>
+<trace:id=updpj,thread=0,rank=0,N=533,min=3.426571e-03,max=6.545278e-02,tot=2.422491e+00,active=[ bHY&d F1pSW xeis $OLch JJ7eF ]>
+<timer:id=hAZWp,message=generate-RectangleBeam,file=Beam.cpp,path=/projects/AMP/LaserCrystal/src,start=959,stop=-1>
+<trace:id=hAZWp,thread=0,rank=0,N=2,min=5.057947e-03,max=7.085608e-03,tot=1.214356e-02,active=[ bHY&d wIXla i7EVM gw5uO F1pSW updpj ]>
+<trace:id=hAZWp,thread=0,rank=0,N=1,min=4.060020e-04,max=4.060020e-04,tot=4.060020e-04,active=[ bHY&d wIXla F1pSW updpj zJTzP ]>
+<trace:id=hAZWp,thread=0,rank=0,N=3758,min=4.985577e-03,max=1.532296e-02,tot=1.982044e+01,active=[ bHY&d i7EVM gw5uO F1pSW updpj xeis $OLch ]>
+<trace:id=hAZWp,thread=0,rank=0,N=1879,min=4.027120e-04,max=7.943110e-04,tot=7.926509e-01,active=[ bHY&d F1pSW updpj zJTzP xeis $OLch ]>
+<trace:id=hAZWp,thread=0,rank=0,N=63,min=4.004456e-03,max=4.884130e-03,tot=2.593476e-01,active=[ bHY&d F1pSW updpj xeis $OLch JJ7eF ]>
+<timer:id=Uq6qL,message=solveTemperature,file=SolveThermal.cpp,path=/projects/AMP/LaserCrystal/src,start=470,stop=-1>
+<trace:id=Uq6qL,thread=0,rank=0,N=1,min=1.838879e+01,max=1.838879e+01,tot=1.838879e+01,active=[ bHY&d ]>
+<timer:id=wIXla,message=runFastLaserSimulation,file=LaserSimulator.cpp,path=/projects/AMP/LaserCrystal/src,start=365,stop=-1>
+<trace:id=wIXla,thread=0,rank=0,N=1,min=1.134415e+01,max=1.134415e+01,tot=1.134415e+01,active=[ bHY&d ]>
+<timer:id=pVxYn,message=reset,file=LinearFEOperator.cpp,path=/projects/AMP/AMP/src/operators/libmesh,start=35,stop=61>
+<trace:id=pVxYn,thread=0,rank=0,N=12,min=4.795335e-01,max=4.986537e-01,tot=5.840234e+00,active=[ bHY&d Uq6qL ]>
+<trace:id=pVxYn,thread=0,rank=0,N=12,min=3.546150e-01,max=3.677718e-01,tot=4.311000e+00,active=[ bHY&d Uq6qL WRsKF ]>
+<timer:id=WRsKF,message=solve,file=NonlinearKrylovAccelerator.hpp,path=/projects/AMP/AMP/src/solvers,start=331,stop=446>
+<trace:id=WRsKF,thread=0,rank=0,N=1,min=9.745834e+00,max=9.745834e+00,tot=9.745834e+00,active=[ bHY&d Uq6qL ]>
+<timer:id=Ao9&e,message=save2,file=MultiPassBeamOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=287,stop=-1>
+<trace:id=Ao9&e,thread=0,rank=0,N=2,min=4.640000e-07,max=3.931128e-03,tot=3.931592e-03,active=[ bHY&d wIXla 6KSUz d&75i ]>
+<trace:id=Ao9&e,thread=0,rank=0,N=1,min=1.737000e-06,max=1.737000e-06,tot=1.737000e-06,active=[ bHY&d wIXla 6KSUz 9spPT ]>
+<trace:id=Ao9&e,thread=0,rank=0,N=3758,min=4.010000e-07,max=3.275646e-03,tot=3.995395e+00,active=[ bHY&d 6KSUz d&75i xeis ]>
+<trace:id=Ao9&e,thread=0,rank=0,N=1879,min=4.650000e-07,max=4.967692e-03,tot=5.453917e+00,active=[ bHY&d 6KSUz 9spPT xeis ]>
+<timer:id=oPa2F,message=apply,file=NonlinearFEOperator.cpp,path=/projects/AMP/AMP/src/operators/libmesh,start=25,stop=57>
+<trace:id=oPa2F,thread=0,rank=0,N=1,min=1.580256e+00,max=1.580256e+00,tot=1.580256e+00,active=[ bHY&d ]>
+<trace:id=oPa2F,thread=0,rank=0,N=24,min=6.175739e-02,max=9.192045e-02,tot=1.527671e+00,active=[ bHY&d Uq6qL agl9s bRzrm ]>
+<trace:id=oPa2F,thread=0,rank=0,N=48,min=6.176693e-02,max=6.580173e-02,tot=3.034605e+00,active=[ bHY&d Uq6qL agl9s bRzrm WRsKF ]>
+<timer:id=LKwZh,message=loop over elements,file=NonlinearFEOperator.cpp,path=/projects/AMP/AMP/src/operators/libmesh,start=37,stop=44>
+<trace:id=LKwZh,thread=0,rank=0,N=1,min=1.367275e+00,max=1.367275e+00,tot=1.367275e+00,active=[ bHY&d oPa2F ]>
+<trace:id=LKwZh,thread=0,rank=0,N=24,min=6.167459e-02,max=9.183358e-02,tot=1.525647e+00,active=[ bHY&d oPa2F Uq6qL agl9s bRzrm ]>
+<trace:id=LKwZh,thread=0,rank=0,N=48,min=6.168382e-02,max=6.571842e-02,tot=3.030522e+00,active=[ bHY&d oPa2F Uq6qL agl9s bRzrm WRsKF ]>
+<timer:id=agl9s,message=apply,file=CoupledOperator.cpp,path=/projects/AMP/AMP/src/operators,start=27,stop=46>
+<trace:id=agl9s,thread=0,rank=0,N=2,min=8.298758e-01,max=8.599787e-01,tot=1.689854e+00,active=[ bHY&d Uq6qL ]>
+<trace:id=agl9s,thread=0,rank=0,N=4,min=8.309140e-01,max=8.531855e-01,tot=3.362283e+00,active=[ bHY&d Uq6qL WRsKF ]>
+<timer:id=bRzrm,message=apply,file=NonlinearBVPOperator.cpp,path=/projects/AMP/AMP/src/operators,start=24,stop=62>
+<trace:id=bRzrm,thread=0,rank=0,N=24,min=6.447139e-02,max=9.462974e-02,tot=1.595266e+00,active=[ bHY&d Uq6qL agl9s ]>
+<trace:id=bRzrm,thread=0,rank=0,N=48,min=6.457018e-02,max=6.862278e-02,tot=3.170404e+00,active=[ bHY&d Uq6qL agl9s WRsKF ]>
+<timer:id=Z6&Ua,message=solve,file=TrilinosMLSolver.cpp,path=/projects/AMP/AMP/src/solvers/trilinos/ml,start=217,stop=309>
+<trace:id=Z6&Ua,thread=0,rank=0,N=108,min=1.120498e-02,max=3.263422e-02,tot=1.499534e+00,active=[ bHY&d Uq6qL WRsKF ]>
+<timer:id=v1F43,message=createLaserOperator,file=LaserSimulator.cpp,path=/projects/AMP/LaserCrystal/src,start=164,stop=-1>
+<trace:id=v1F43,thread=0,rank=0,N=1,min=8.499220e-01,max=8.499220e-01,tot=8.499220e-01,active=[ bHY&d ]>
+<timer:id=GLST8,message=CoupledLaserOperator::,file=CoupledOperator.cpp,path=/projects/AMP/LaserCrystal/src,start=59,stop=-1>
+<trace:id=GLST8,thread=0,rank=0,N=1,min=7.989370e-01,max=7.989370e-01,tot=7.989370e-01,active=[ bHY&d v1F43 ]>
+<timer:id=pq$e4,message=createMesh,file=LaserSimulator.cpp,path=/projects/AMP/LaserCrystal/src,start=150,stop=-1>
+<trace:id=pq$e4,thread=0,rank=0,N=1,min=7.310867e-01,max=7.310867e-01,tot=7.310867e-01,active=[ bHY&d ]>
+<timer:id=05Uqn,message=constSubsetOutputVector,file=Operator.cpp,path=/projects/AMP/AMP/src/operators,start=138,stop=149>
+<trace:id=05Uqn,thread=0,rank=0,N=2,min=4.592587e-02,max=4.709507e-02,tot=9.302094e-02,active=[ bHY&d Uq6qL agl9s ]>
+<trace:id=05Uqn,thread=0,rank=0,N=4,min=4.621395e-02,max=4.810032e-02,tot=1.887190e-01,active=[ bHY&d Uq6qL agl9s WRsKF ]>
+<trace:id=05Uqn,thread=0,rank=0,N=108,min=2.263000e-05,max=5.164500e-05,tot=3.800189e-03,active=[ bHY&d Uq6qL WRsKF ]>
+<timer:id=C0$59,message=reinit,file=createLibmeshElements.cpp,path=/projects/AMP/AMP/src/discretization,start=64,stop=136>
+<trace:id=C0$59,thread=0,rank=0,N=2,min=4.433915e-02,max=1.565089e-01,tot=2.008481e-01,active=[ bHY&d ]>
+<timer:id=6uK3d,message=subsetOutputVector,file=Operator.cpp,path=/projects/AMP/AMP/src/operators,start=100,stop=111>
+<trace:id=6uK3d,thread=0,rank=0,N=1,min=1.708200e-05,max=1.708200e-05,tot=1.708200e-05,active=[ bHY&d wIXla ]>
+<trace:id=6uK3d,thread=0,rank=0,N=2,min=4.610080e-02,max=4.734525e-02,tot=9.344605e-02,active=[ bHY&d oPa2F ]>
+<trace:id=6uK3d,thread=0,rank=0,N=24,min=1.347800e-05,max=3.956600e-05,tot=4.731690e-04,active=[ bHY&d Uq6qL agl9s bRzrm ]>
+<trace:id=6uK3d,thread=0,rank=0,N=48,min=6.130000e-06,max=1.110100e-05,tot=4.018310e-04,active=[ bHY&d oPa2F Uq6qL agl9s bRzrm ]>
+<trace:id=6uK3d,thread=0,rank=0,N=48,min=1.336200e-05,max=2.568500e-05,tot=8.437590e-04,active=[ bHY&d Uq6qL agl9s bRzrm WRsKF ]>
+<trace:id=6uK3d,thread=0,rank=0,N=96,min=5.753000e-06,max=1.165800e-05,tot=7.921240e-04,active=[ bHY&d oPa2F Uq6qL agl9s bRzrm WRsKF ]>
+<trace:id=6uK3d,thread=0,rank=0,N=1,min=5.260852e-02,max=5.260852e-02,tot=5.260852e-02,active=[ bHY&d ]>
+<trace:id=6uK3d,thread=0,rank=0,N=1879,min=1.765600e-05,max=5.007800e-05,tot=3.880917e-02,active=[ bHY&d xeis $OLch ]>
+<timer:id=0O7NW,message=apply,file=Absorption.cpp,path=/projects/AMP/LaserCrystal/src,start=26,stop=57>
+<trace:id=0O7NW,thread=0,rank=0,N=1,min=6.538600e-05,max=6.538600e-05,tot=6.538600e-05,active=[ bHY&d wIXla ]>
+<trace:id=0O7NW,thread=0,rank=0,N=1879,min=7.249800e-05,max=4.289400e-04,tot=1.577989e-01,active=[ bHY&d xeis $OLch ]>
+<timer:id=RdXkE,message=apply,file=StoredEnergy.cpp,path=/projects/AMP/LaserCrystal/src,start=28,stop=107>
+<trace:id=RdXkE,thread=0,rank=0,N=1,min=5.903400e-05,max=5.903400e-05,tot=5.903400e-05,active=[ bHY&d wIXla ]>
+<trace:id=RdXkE,thread=0,rank=0,N=1879,min=3.327200e-05,max=9.704400e-05,tot=7.544427e-02,active=[ bHY&d xeis $OLch ]>
+<timer:id=rguyQ,message=makeConsistent,file=Writer.cpp,path=/projects/AMP/AMP/src/IO,start=369,stop=377>
+<trace:id=rguyQ,thread=0,rank=0,N=1,min=3.974900e-05,max=3.974900e-05,tot=3.974900e-05,active=[ bHY&d wIXla 6KSUz ]>
+<trace:id=rguyQ,thread=0,rank=0,N=1879,min=2.374700e-05,max=2.332380e-04,tot=6.218091e-02,active=[ bHY&d 6KSUz xeis ]>
+<timer:id=fVrhH,message=constSubsetInputVector,file=Operator.cpp,path=/projects/AMP/AMP/src/operators,start=157,stop=168>
+<trace:id=fVrhH,thread=0,rank=0,N=1,min=4.639659e-02,max=4.639659e-02,tot=4.639659e-02,active=[ bHY&d ]>
+<timer:id=y1ydc,message=subsetInputVector,file=Operator.cpp,path=/projects/AMP/AMP/src/operators,start=119,stop=130>
+<trace:id=y1ydc,thread=0,rank=0,N=1,min=3.214500e-05,max=3.214500e-05,tot=3.214500e-05,active=[ bHY&d wIXla ]>
+<trace:id=y1ydc,thread=0,rank=0,N=108,min=1.182500e-05,max=2.242600e-05,tot=1.568873e-03,active=[ bHY&d Uq6qL WRsKF ]>
+<trace:id=y1ydc,thread=0,rank=0,N=1879,min=1.770800e-05,max=7.560100e-05,tot=4.255332e-02,active=[ bHY&d xeis $OLch ]>
+<timer:id=xMjp3,message=getParameters,file=NonlinearBVPOperator.cpp,path=/projects/AMP/AMP/src/operators,start=82,stop=89>
+<trace:id=xMjp3,thread=0,rank=0,N=12,min=4.265150e-04,max=4.726480e-04,tot=5.200576e-03,active=[ bHY&d Uq6qL ]>
+<trace:id=xMjp3,thread=0,rank=0,N=12,min=4.276750e-04,max=5.256120e-04,tot=5.455390e-03,active=[ bHY&d Uq6qL WRsKF ]>
+<timer:id=7svVj,message=finalize,file=BoxMesh.cpp,path=/projects/AMP/AMP/src/mesh/structured,start=286,stop=303>
+<trace:id=7svVj,thread=0,rank=0,N=13,min=4.407980e-04,max=9.407140e-04,tot=6.306767e-03,active=[ bHY&d pq$e4 ]>
+<timer:id=RlJqJ,message=initialize,file=BoxMesh.cpp,path=/projects/AMP/AMP/src/mesh/structured,start=219,stop=-1>
+<trace:id=RlJqJ,thread=0,rank=0,N=13,min=3.700000e-07,max=2.174000e-06,tot=7.100000e-06,active=[ bHY&d pq$e4 ]>
