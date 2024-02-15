@@ -85,9 +85,9 @@
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  *  \param FILE     Name of the file to save
- *  \param GLOBAL   Optional variable to save all ranks in a single file (default is false)
+ *  \param GLOBAL   Optional variable to save all ranks in a single file (default is true)
  */
-#define PROFILE_SAVE( ... ) PROFILE_SAVE_GLOBAL( __VA_ARGS__, false, 0 )
+#define PROFILE_SAVE( ... ) PROFILE_SAVE_GLOBAL( __VA_ARGS__, true, 0 )
 
 
 /*! \def PROFILE_STORE_TRACE(X)
