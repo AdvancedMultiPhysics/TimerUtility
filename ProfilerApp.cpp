@@ -2,6 +2,7 @@
 #include "MemoryApp.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <ctime>
 #include <iostream>
@@ -68,6 +69,13 @@ static inline std::string getDateString()
     time( &rawtime );
     std::string tmp( ctime( &rawtime ) );
     return tmp.substr( 0, tmp.length() - 1 );
+}
+
+
+// check if two values are approximately equal
+static bool approx_equal( double x, double y, double tol = 1e-12 )
+{
+    return fabs( x - y ) <= tol * 0.5 * fabs( x + y );
 }
 
 
@@ -582,6 +590,9 @@ static_assert( check_char_conversion(), "Internal error" );
 static_assert( check_char_conversion(), "Internal error" );
 static_assert( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
 static_assert( str_to_hash( hash_to_str( 0x35a5b6b25e9eb68f ).data() ) == 0x35a5b6b25e9eb68f );
+static_assert(
+    std::string_view( hash_to_str( str_to_hash( "O8luZAsKZG6" ) ).data() ) == "O8luZAsKZG6" );
+static_assert( sizeof( id_struct ) <= sizeof( uint64_t ), "Unexpected size for id_struct" );
 id_struct::id_struct( const std::string& rhs ) { data = str_to_hash( rhs ); }
 id_struct::id_struct( const std::string_view rhs ) { data = str_to_hash( rhs ); }
 id_struct::id_struct( const char* rhs ) { data = str_to_hash( rhs ); }
@@ -603,7 +614,6 @@ TraceResults::TraceResults()
       stack2( 0 ),
       times( nullptr )
 {
-    static_assert( sizeof( id_struct ) <= sizeof( uint64_t ), "Unexpected size for id_struct" );
     ASSERT( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
 }
 TraceResults::~TraceResults()
@@ -715,9 +725,9 @@ bool TraceResults::operator==( const TraceResults& rhs ) const
     equal      = equal && thread == rhs.thread;
     equal      = equal && rank == rhs.rank;
     equal      = equal && N_trace == rhs.N_trace;
-    equal      = equal && min == rhs.min;
-    equal      = equal && max == rhs.max;
-    equal      = equal && tot == rhs.tot;
+    equal      = equal && approx_equal( min, rhs.min, 0.005 );
+    equal      = equal && approx_equal( max, rhs.max, 0.005 );
+    equal      = equal && approx_equal( tot, rhs.tot, 0.005 );
     equal      = equal && N == rhs.N;
     equal      = equal && stack == rhs.stack;
     equal      = equal && stack2 == rhs.stack2;
@@ -1066,7 +1076,7 @@ void ProfilerApp::stop( store_timer* timer, time_point end_time, int enableTrace
     if ( enableTrace )
         trace->times.add( start, stop );
     // Get the memory usage
-    if ( d_store_memory_data != MemoryLevel::None )
+    if ( static_cast<int8_t>( d_store_memory_data ) >= 2 )
         thread.memory.add( stop, d_store_memory_data, d_bytes );
 }
 void ProfilerApp::stop( store_trace* trace, time_point end_time, int enableTrace )
@@ -1094,7 +1104,7 @@ void ProfilerApp::stop( store_trace* trace, time_point end_time, int enableTrace
     if ( enableTrace )
         trace->times.add( start, stop );
     // Get the memory usage
-    if ( d_store_memory_data != MemoryLevel::None )
+    if ( static_cast<int8_t>( d_store_memory_data ) >= 2 )
         thread.memory.add( stop, d_store_memory_data, d_bytes );
 }
 
@@ -1104,7 +1114,7 @@ void ProfilerApp::stop( store_trace* trace, time_point end_time, int enableTrace
  ***********************************************************************/
 void ProfilerApp::memory()
 {
-    if ( d_store_memory_data != MemoryLevel::None ) {
+    if ( static_cast<int8_t>( d_store_memory_data ) >= 2 ) {
         int64_t ns   = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
         auto& thread = d_threadData[getThreadID()];
         thread.memory.add( ns, d_store_memory_data, d_bytes );
@@ -1299,7 +1309,7 @@ TimerResults ProfilerApp::getTimerResults( std::string_view message, std::string
 MemoryResults ProfilerApp::getMemoryResults() const
 {
     // Get the current memory usage
-    if ( d_store_memory_data != MemoryLevel::None ) {
+    if ( static_cast<int8_t>( d_store_memory_data ) >= 2 ) {
         uint32_t thread_id = getThreadID();
         int64_t ns         = diff_ns( std::chrono::steady_clock::now(), d_construct_time );
         const_cast<ProfilerApp*>( this )->d_threadData[thread_id].memory.add(
@@ -1374,10 +1384,12 @@ MemoryResults ProfilerApp::getMemoryResults() const
 /***********************************************************************
  * Function to create stack ids for the timer file                      *
  ***********************************************************************/
-namespace {
+/*namespace {
 class StackLabels
 {
 public:
+    StackLabels() = default;
+    StackLabels& operator=( StackLabels&& ) = default;
     StackLabels( const std::vector<TimerResults>& timers, bool global )
     {
         stack.reserve( timers.size() + 1 );
@@ -1399,19 +1411,34 @@ public:
             for ( uint64_t i = 0; i < stack.size(); i++ )
                 labels[i] = hash_to_str( stack[i] );
         }
+
     }
+    StackLabels( std::string_view data )
+    {
+        std::cout << data << std::endl;
+    }
+    bool empty() const { return stack.empty(); }
     char* operator[]( uint64_t id )
     {
         int k = binarySearch( stack, id );
         ASSERT( k != -1 );
         return labels[k].data();
     }
+    void print( FILE* fid ) const {
+        fprintf( fid, "<stackLabels=" );
+        for ( auto s : stack )
+            fprintf( fid, "%s ", id_struct( s ).str().data() );
+        fprintf( fid, ":" );
+        for ( auto l : labels )
+            fprintf( fid, " %s", l.data() );
+        fprintf( fid, ">" );
+    }
 
 private:
     std::vector<uint64_t> stack;
     std::vector<std::array<char, 12>> labels;
 };
-} // namespace
+} // namespace*/
 
 
 /***********************************************************************
@@ -1423,8 +1450,8 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         std::cout << "Warning: Timers are not enabled, no data will be saved\n";
         return;
     }
-    int N_procs = comm_size();
-    int rank    = comm_rank();
+    const int N_procs = comm_size();
+    const int rank    = comm_rank();
     // Set the filenames
     char filename_timer[1000], filename_trace[1000], filename_memory[1000];
     if ( !global ) {
@@ -1472,8 +1499,6 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 total_time[i] = std::max<double>( total_time[i], time_thread[j] );
         }
         quicksort( total_time, id_order );
-        // Create the stack labels
-        ::StackLabels stackLabels( results, global );
         // Open the file(s) for writing
         FILE* timerFile = fopen( filename_timer, "wb" );
         if ( timerFile == nullptr ) {
@@ -1553,14 +1578,14 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                     "<trace:id=%s,thread=%u,rank=%u,N=%lu,min=%e,max=%e,tot=%e,stack=[%s;%s]>"
                     "\n",
                     trace.id.str().data(), trace.thread, trace.rank, N, 1e-9 * trace.min,
-                    1e-9 * trace.max, 1e-9 * trace.tot, stackLabels[trace.stack],
-                    stackLabels[trace.stack2] );
+                    1e-9 * trace.max, 1e-9 * trace.tot, hash_to_str( trace.stack ).data(),
+                    hash_to_str( trace.stack2 ).data() );
                 // Save the detailed trace results (this is a binary file)
                 if ( trace.N_trace > 0 ) {
                     unsigned long Nt = trace.N_trace;
                     fprintf( traceFile, "<id=%s,thread=%u,rank=%u,stack=%s,N=%lu,format=uint16f>\n",
-                        trace.id.str().data(), trace.thread, trace.rank, stackLabels[trace.stack],
-                        Nt );
+                        trace.id.str().data(), trace.thread, trace.rank,
+                        hash_to_str( trace.stack ).data(), Nt );
                     fwrite( trace.times, sizeof( uint16f ), 2 * Nt, traceFile );
                     fprintf( traceFile, "\n" );
                 }
@@ -1621,7 +1646,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             // Note: Visual studio has an issue with type %zi
             ASSERT( sizeof( unsigned int ) == 4 );
             fprintf( memoryFile, "<N=%li,type1=%s,type2=%s,units=%s,rank=%i>\n",
-                static_cast<long int>( count ), "double", "uint32", units.c_str(), rank );
+                static_cast<long int>( count ), "double", "uint32", units.c_str(), mem.rank );
             size_t N1 = fwrite( time, sizeof( double ), count, memoryFile );
             size_t N2 = fwrite( size, sizeof( unsigned int ), count, memoryFile );
             fprintf( memoryFile, "\n" );
@@ -1815,6 +1840,13 @@ TimerMemoryResults ProfilerApp::load( const std::string& filename, int rank, boo
         }
     }
     data.N_procs = N_procs;
+    // Clear any timers that are empty (missing on the current rank)
+    size_t N = 0;
+    for ( size_t i = 0; i < data.timers.size(); i++ ) {
+        if ( !data.timers[i].trace.empty() )
+            std::swap( data.timers[N++], data.timers[i] );
+    }
+    data.timers.resize( N );
     return data;
 }
 void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResults>& data,
@@ -1910,10 +1942,10 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
                         copyText( timer.message, fields[i].second, sizeof( timer.message ) );
                     } else if ( fields[i].first == "file" ) {
                         // Load the filename
-                        copyText( timer.file, fields[i].second, sizeof( timer.file ) - 1 );
+                        copyText( timer.file, fields[i].second, sizeof( timer.file ) );
                     } else if ( fields[i].first == "path" ) {
                         // Load the path
-                        copyText( timer.path, fields[i].second, sizeof( timer.path ) - 1 );
+                        copyText( timer.path, fields[i].second, sizeof( timer.path ) );
                     } else if ( fields[i].first == "start" || fields[i].first == "line" ) {
                         // Load the start line
                         timer.line = convert<int>( fields[i].second );

@@ -341,7 +341,7 @@ public:
      * @param[in] global    Save the time results in a global file (default is false)
      */
     static TimerMemoryResults load(
-        const std::string& filename, int rank = -1, bool global = false );
+        const std::string& filename, int rank = -1, bool global = true );
 
     /*!
      * \brief  Function to synchronize the timers
@@ -376,7 +376,7 @@ public:
     void setStoreTrace( bool profile );
 
     //! Enum defining the level of memory detail
-    enum class MemoryLevel : int8_t { None, Fast, Full };
+    enum class MemoryLevel : int8_t { None = 0, Pause = 1, Fast = 2, Full = 3 };
 
     /*!
      * \brief  Function to change if we are storing memory information

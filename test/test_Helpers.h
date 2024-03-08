@@ -1,3 +1,5 @@
+#include "ProfilerApp.h"
+
 #include <sstream>
 #include <stdexcept>
 #include <stdio.h>
@@ -115,6 +117,59 @@ static inline void quicksort( std::vector<type_a> &arr, std::vector<type_b> &brr
     if ( arr.size() != brr.size() )
         throw std::logic_error( "Vector sizes do not match" );
     quicksort( arr.size(), arr.data(), brr.data() );
+}
+
+
+/***********************************************************************
+ * Sort the profile results                                             *
+ ***********************************************************************/
+void sort( std::vector<TimerResults> &x )
+{
+    std::vector<id_struct> id( x.size() );
+    for ( size_t i = 0; i < x.size(); i++ )
+        id[i] = x[i].id;
+    quicksort( id, x );
+}
+
+
+/***********************************************************************
+ * Find a timer by message                                              *
+ ***********************************************************************/
+int find( const std::vector<TimerResults> &x, const std::string &message )
+{
+    for ( size_t i = 0; i < x.size(); i++ ) {
+        if ( std::string( x[i].message ) == message )
+            return i;
+    }
+    return -1;
+}
+
+
+/***********************************************************************
+ * Find an entry in the profile results (assumes they are sorted)       *
+ ***********************************************************************/
+int find( const std::vector<TimerResults> &x, const id_struct &id )
+{
+    if ( x.empty() )
+        return -1;
+    // Check if value is within the range of x
+    if ( id < x[0].id || id > x.back().id )
+        return -1;
+    if ( id == x[0].id )
+        return 0;
+    // Perform the search
+    size_t lower = 0;
+    size_t upper = x.size() - 1;
+    while ( ( upper - lower ) != 1 ) {
+        size_t index = ( upper + lower ) / 2;
+        if ( x[index].id >= id )
+            upper = index;
+        else
+            lower = index;
+    }
+    if ( x[upper].id == id )
+        return upper;
+    return -1;
 }
 
 

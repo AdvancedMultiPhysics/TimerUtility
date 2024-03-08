@@ -6,7 +6,7 @@
 bool load_test( const std::string& name, size_t size, bool includes_trace, bool includes_memory )
 {
 
-    auto load_results = ProfilerApp::load( name );
+    auto load_results = ProfilerApp::load( name, -1, false );
     auto& timers      = load_results.timers;
 
     // Check the timers

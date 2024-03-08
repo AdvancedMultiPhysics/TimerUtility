@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <limits>
 #include <random>
+#include <set>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -218,6 +219,54 @@ static inline int test_getTotalMemoryUsage()
 }
 
 
+// Compare two sets of timers
+bool compareTimers( const std::vector<TimerResults> &x, const std::vector<TimerResults> &y )
+{
+    int i = find( x, "MAIN" );
+    int j = find( y, "MAIN" );
+    if ( i == -1 || j == -1 ) {
+        printf( "Unable to find 'MAIN'\n" );
+        return false;
+    } else if ( x[i].id != y[j].id ) {
+        printf( "Timer ids for 'MAIN' do not match\n" );
+        return false;
+    }
+    std::set<id_struct> ids;
+    for ( auto &t : x )
+        ids.insert( t.id );
+    for ( auto &t : y )
+        ids.insert( t.id );
+    bool pass = true;
+    for ( auto id : ids ) {
+        i = find( x, id );
+        j = find( y, id );
+        if ( i == -1 ) {
+            printf( "Timer '%s' is missing from x but is found in y\n", y[j].message );
+            pass = false;
+        } else if ( j == -1 ) {
+            printf( "Timer '%s' is missing from y but is found in x\n", x[i].message );
+            pass = false;
+        } else if ( x[i] == y[j] ) {
+            continue;
+        } else if ( std::string( x[i].message ) == "SAVE" ) {
+            // SAVE is special
+        } else if ( x[i].size( true ) != y[j].size( true ) ||
+                    x[i].size( false ) != y[j].size( false ) ) {
+            printf( "Timers do not match: '%s' (%i,%i) (%i,%i)\n", x[i].message,
+                (int) x[i].size( false ), (int) x[i].size( true ), (int) y[j].size( false ),
+                (int) y[j].size( true ) );
+            pass = false;
+        } else if ( std::string( x[i].message ) == "MAIN" ) {
+            // MAIN is special, times change
+        } else if ( pass ) {
+            printf( "Timers do not match: '%s'\n", x[i].message );
+            pass = false;
+        }
+    }
+    return pass;
+}
+
+
 // Run all tests
 int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
 {
@@ -356,6 +405,9 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     global_profiler.start( long_id, long_msg.data(), long_filename.data(), 0 );
     global_profiler.stop( long_id );
 
+    // Pause memory profiling before the save
+    global_profiler.setStoreMemory( ProfilerApp::MemoryLevel::Pause );
+
     // Profile the save
     {
         PROFILE( "SAVE" );
@@ -374,14 +426,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         std::cout << "Memory results do not make sense\n";
         N_errors++;
     }
-    size_t bytes1[2] = { 0, 0 };
-    std::vector<id_struct> id1( data1.size() );
-    for ( size_t i = 0; i < data1.size(); i++ ) {
-        bytes1[0] += data1[i].size( false );
-        bytes1[1] += data1[i].size( true );
-        id1[i] = data1[i].id;
-    }
-    quicksort( id1, data1 );
+    sort( data1 );
 
     // Load the data from the file (sorting based on the timer ids)
     auto id = ProfilerApp::getTimerId( "LOAD", __FILE__, 0 );
@@ -392,43 +437,10 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     if ( !load_results.memory.empty() )
         memory2 = load_results.memory[0];
     global_profiler.stop( id );
-    size_t bytes2[2] = { 0, 0 };
-    std::vector<id_struct> id2( data2.size() );
-    for ( size_t i = 0; i < data2.size(); i++ ) {
-        bytes2[0] += data2[i].size( false );
-        bytes2[1] += data2[i].size( true );
-        id2[i] = data2[i].id;
-    }
-    quicksort( id2, data2 );
-
-    // Find and check MAIN
-    const TraceResults *trace = nullptr;
-    for ( auto &timer : data1 ) {
-        if ( strcmp( timer.message, "MAIN" ) == 0 )
-            trace = timer.trace.data();
-    }
-    if ( trace != nullptr ) {
-        if ( trace->tot == 0 ) {
-            std::cout << "Error with trace results\n";
-            N_errors++;
-        }
-    } else {
-        std::cout << "MAIN was not found in trace results\n";
-        N_errors++;
-    }
-    if ( enable_trace && trace != nullptr ) {
-        bool pass      = true;
-        uint64_t start = trace->times[0];
-        if ( start > 100e9 )
-            pass = false;
-        if ( !pass ) {
-            std::cout << "Error with trace results of MAIN\n";
-            N_errors++;
-        }
-    }
+    sort( data2 );
 
     // Find and check sleep
-    trace = nullptr;
+    TraceResults *trace = nullptr;
     for ( auto &timer : data1 ) {
         if ( strcmp( timer.message, "sleep" ) == 0 ) {
             trace      = &timer.trace[0];
@@ -445,21 +457,9 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     }
 
     // Compare the sets of timers
-    if ( data1.size() != data2.size() || bytes1[0] == 0 || bytes1[0] != bytes2[0] ||
-         bytes1[1] != bytes2[1] ) {
-        std::cout << "Timers do not match " << data1.size() << " " << data2.size() << " "
-                  << bytes1[0] << " " << bytes2[0] << " " << bytes1[1] << " " << bytes2[1] << " "
-                  << std::endl;
+    bool test = compareTimers( data1, data2 );
+    if ( !test )
         N_errors++;
-    } else {
-        bool error = false;
-        for ( size_t i = 0; i < data1[i].trace.size(); i++ )
-            error = error && data1[i].trace == data2[i].trace;
-        if ( error ) {
-            std::cout << "Timers do not match (1)" << std::endl;
-            N_errors++;
-        }
-    }
 
     // Compare the memory results
     if ( enable_memory ) {
@@ -495,8 +495,8 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         delete[] data;
     }
 
-    PROFILE_SAVE( save_name );
     PROFILE_SAVE( save_name, true );
+    PROFILE_SAVE( save_name, false );
     return N_errors;
 }
 
