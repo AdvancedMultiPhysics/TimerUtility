@@ -406,7 +406,8 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     global_profiler.stop( long_id );
 
     // Pause memory profiling before the save
-    global_profiler.setStoreMemory( ProfilerApp::MemoryLevel::Pause );
+    if ( global_profiler.getStoreMemory() != ProfilerApp::MemoryLevel::None )
+        global_profiler.setStoreMemory( ProfilerApp::MemoryLevel::Pause );
 
     // Profile the save
     {

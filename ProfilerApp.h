@@ -34,9 +34,9 @@ public:
     inline constexpr bool operator==( const uint16f& rhs ) const { return data == rhs.data; }
     inline constexpr bool operator!=( const uint16f& rhs ) const { return data != rhs.data; }
     inline constexpr bool operator>=( const uint16f& rhs ) const { return data >= rhs.data; }
+    inline constexpr bool operator<=( const uint16f& rhs ) const { return data <= rhs.data; }
     inline constexpr bool operator>( const uint16f& rhs ) const { return data > rhs.data; }
     inline constexpr bool operator<( const uint16f& rhs ) const { return data < rhs.data; }
-    inline constexpr bool operator<=( const uint16f& rhs ) const { return data <= rhs.data; }
     // Overload typecast
     inline constexpr operator uint64_t() const;
 
@@ -63,9 +63,9 @@ public:
     constexpr inline bool operator==( const id_struct& rhs ) const { return data == rhs.data; }
     constexpr inline bool operator!=( const id_struct& rhs ) const { return data != rhs.data; }
     constexpr inline bool operator>=( const id_struct& rhs ) const { return data >= rhs.data; }
+    constexpr inline bool operator<=( const id_struct& rhs ) const { return data <= rhs.data; }
     constexpr inline bool operator>( const id_struct& rhs ) const { return data > rhs.data; }
     constexpr inline bool operator<( const id_struct& rhs ) const { return data < rhs.data; }
-    constexpr inline bool operator<=( const id_struct& rhs ) const { return data <= rhs.data; }
     // Return null terminated string stored in a std::array
     std::array<char, 12> str() const;
     // Return a std::string
@@ -217,11 +217,6 @@ struct TimerMemoryResults {
  * and calling an unused timer adds 2-5ns per call. <BR>
  * For repeated calls the timer adds 100-200 ns per call.
  * The resolution is ~ 50 ns for a single timer call. <BR>
- * Note: PROFILE_START and PROFILE_STOP require compile time string constants for the
- * message. Calling start/stop directly eliminates this requirement, but adds ~50 ns to the cost. <BR>
- * Note: When a timer is created the initial cost may be significantly higher, but this only
- * occurs once pertimer. <BR>
- * Note: The scoped timer (PROFILE_SCOPED) has very similar performance to START/STOP. <BR>
  * Example usage: \verbatim 
  *    void my_function(void *arg) {
  *       PROFILE("my function");
@@ -249,20 +244,14 @@ struct TimerMemoryResults {
 class ProfilerApp final
 {
 public:
+    //! This is a singleton class
+    ProfilerApp* getInstantance();
+
     //! Constructor
     ProfilerApp();
 
-    // Copy constructor
-    ProfilerApp( const ProfilerApp& ) = delete;
-
     //! Destructor
     ~ProfilerApp();
-
-    // Deprecated functions to enable the old PROFILE_START/PROFILE_STOP macros
-    [[deprecated( "Use PROFILE(...) or PROFILE2(...) instead" )]] void start(
-        const char* file, int line, std::string_view message, int level = 0 );
-    [[deprecated( "Use PROFILE(...) or PROFILE2(...) instead" )]] void stop(
-        const char* file, std::string_view message, int level = 0 );
 
     /*!
      * \brief  Function to start profiling a block of code (advanced interface)
@@ -393,6 +382,10 @@ public:
      */
     void setStoreMemory( MemoryLevel level = MemoryLevel::Fast );
 
+
+    //! Get the current memory level
+    MemoryLevel getStoreMemory();
+
     //! Return the current timer level
     inline int getLevel() const { return d_level; }
 
@@ -466,11 +459,8 @@ public: // Helper functions
     constexpr static inline uint64_t hashString( std::string_view str );
 
 public: // Constants to determine parameters that affect performance/memory
-    // The maximum number of threads supported
-    constexpr static size_t MAX_THREADS = 1024;
-
-    // The size of the hash table to store the timers (must be a power of 2)
-    constexpr static size_t TIMER_HASH_SIZE = 1024;
+    // The size of the hash table to store the timers/ (must be a power of 2)
+    constexpr static uint64_t HASH_SIZE = 1024;
 
 
 public: // Member classes
@@ -513,9 +503,9 @@ public: // Member classes
         inline StoreMemory& operator=( const StoreMemory& rhs ) = delete;
         inline void add(
             uint64_t time, MemoryLevel level, volatile std::atomic_int64_t& bytes_profiler );
-        void reset();
+        void reset() volatile;
         void swap( StoreMemory& rhs );
-        void get( std::vector<uint64_t>& time, std::vector<uint64_t>& bytes ) const;
+        void get( std::vector<uint64_t>& time, std::vector<uint64_t>& bytes ) const volatile;
 
     private:
         // The maximum number of memory traces allowed
@@ -538,7 +528,6 @@ public: // Member classes
         uint64_t total_time; // Store the total time spent in the given block (nano-seconds)
         StoreTimes times;    // Store when start/stop was called (nano-seconds from constructor)
         store_trace* next;   // Store the next trace
-        constexpr static uint64_t nullStart = static_cast<uint64_t>( (int64_t) -1 );
         store_trace( uint64_t stack = 0 );
         ~store_trace();
         store_trace( const store_trace& rhs )            = delete;
@@ -577,57 +566,52 @@ public: // Member classes
 
     // Structure to store thread specific data
     struct ThreadData {
-        uint32_t N;
-        uint32_t depth;
-        uint64_t stack;
-        store_timer* timers[TIMER_HASH_SIZE];
+        uint32_t id;               // A unique id for each thread
+        uint32_t depth;            // Stack depth
+        uint64_t stack;            // Current stack hash
+        uint64_t hash;             // std::hash of std::thread::id
+        volatile ThreadData* next; // Pointer to the next entry in the list
+        store_timer* timers[HASH_SIZE];
         StoreMemory memory;
         ThreadData();
         ~ThreadData();
         ThreadData( const ThreadData& ) = delete;
-        void reset();
+        void reset() volatile;
     };
 
-public: // These really shouldn't be public but are required by ProfilerAppTimer<id>
-    // Start/stop the timer
+public: // Advanced interfaces, not intended for users
     store_trace* start( store_timer* timer );
-    void stop( store_timer* timer, time_point end_time = std::chrono::steady_clock::now(),
-        int enableTrace = -1 );
-    void stop( store_trace* trace, time_point end_time = std::chrono::steady_clock::now(),
-        int enableTrace = -1 );
-
-    // Function to return the appropriate timer block
+    void stop( store_timer* timer, time_point end_time, int enableTrace );
+    void stop( store_trace* trace, time_point end_time, int enableTrace );
     inline store_timer* getBlock( uint64_t id );
     inline store_timer* getBlock(
         uint64_t id, const char* message, const char* filename, const int line );
 
 private: // Member data
-    // Store thread specific info
-    static volatile std::atomic_uint32_t d_N_threads;
-    ThreadData d_threadData[MAX_THREADS];
-
-    // Store the global timer info in a hash table
-    volatile store_timer_data_info* d_timer_table[TIMER_HASH_SIZE];
-
-    // Handle to a mutex lock
-    mutable std::mutex d_lock;
-
-    // Misc variables
-    bool d_store_trace_data;                      // Store trace information (default value)?
-    MemoryLevel d_store_memory_data;              // Store memory information?
-    bool d_disable_timer_error;                   // Disable the timer errors for start/stop?
-    int8_t d_level;                               // Timer level (default is 0, -1 is disabled)
-    time_point d_construct_time;                  // Constructor time
-    uint64_t d_shift;                             // Offset to synchronize the trace data
-    mutable volatile std::atomic_int64_t d_bytes; // The current memory used by the profiler
+    using ThreadDataPtr = volatile ThreadData*;
+    using TimerDataPtr  = volatile store_timer_data_info*;
+    ThreadDataPtr volatile d_threadData[HASH_SIZE]; // Store thread specific info
+    TimerDataPtr d_timer_table[HASH_SIZE];          // Store the global timer info
+    mutable std::mutex d_lock;                      // Handle to a mutex lock
+    bool d_store_trace_data;                        // Store trace information (default value)?
+    MemoryLevel d_store_memory_data;                // Store memory information?
+    bool d_disable_timer_error;                     // Disable the timer errors for start/stop?
+    int8_t d_level;                                 // Timer level (default is 0, -1 is disabled)
+    time_point d_construct_time;                    // Constructor time
+    uint64_t d_shift;                               // Offset to synchronize the trace data
+    mutable volatile std::atomic_int64_t d_bytes;   // The current memory used by the profiler
 
 private: // Private member functions
+    ProfilerApp( const ProfilerApp& )            = delete;
+    ProfilerApp& operator=( const ProfilerApp& ) = delete;
+
     // Function to get a global thread id
-    static inline int32_t getThreadID()
+    static inline ThreadData* getThreadData()
     {
-        static thread_local int id = d_N_threads++;
-        return id;
+        static thread_local ThreadData* data = createThreadData();
+        return data;
     }
+    static ThreadData* createThreadData();
 
     // Function to return a pointer to the global timer info (or create it if necessary)
     // Note: this function may block for thread safety
@@ -654,7 +638,7 @@ private: // Private member functions
     static void gatherMemory( std::vector<MemoryResults>& memory );
 
     // Error processing
-    void error( const std::string& message, ThreadData* thread, store_timer* timer );
+    void error( const std::string& message, const ThreadData* thread, const store_timer* timer );
 };
 
 

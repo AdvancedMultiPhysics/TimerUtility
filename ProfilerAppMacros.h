@@ -29,12 +29,11 @@
  */
 
 
-/*! \def PROFILE_START(NAME,LEVEL,TRACE)
- *  \brief Start the profiler
- *  \details This is the primary call to start a timer.  Only one call within a file
- *      may call the timer.  Any other calls must use PROFILE_START2(X).
- *      This call will automatically add the file and line number to the timer.
- *      See  \ref ProfilerApp "ProfilerApp" for more info.
+/*! \def PROFILE(NAME,LEVEL,TRACE)
+ *  \brief Create and start a timer
+ *  \details This create and start a Timer
+ *      See  \ref ProfilerApp "ProfilerApp" and
+ *     \ref ProfilerApp "ProfilerApp" for more info.
  *  \param NAME     Name of the timer
  *  \param LEVEL    Optional level at which to enable the timer
  *  \param TRACE    Optional flag to indicate if we want to store trace level data
@@ -42,12 +41,11 @@
 #define PROFILE( ... ) OVERLOADED_MACRO( PROFILE_, __VA_ARGS__, __LINE__ )
 
 
-/*! \def PROFILE_SCOPED(OBJ,NAME,LEVEL,TRACE)
- *  \brief Create and start a scoped timer
- *  \details This create and start a ScopedTimer
+/*! \def PROFILE2(OBJ,NAME,LEVEL,TRACE)
+ *  \brief Create and start a timer
+ *  \details This create and start a Timer
  *      See  \ref ProfilerApp "ProfilerApp" and
  *     \ref ProfilerApp "ProfilerApp" for more info.
- *  \param OBJ      Name of the object
  *  \param NAME     Name of the timer
  *  \param LEVEL    Optional level at which to enable the timer
  *  \param TRACE    Optional flag to indicate if we want to store trace level data
@@ -144,7 +142,7 @@
  *      the application.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE_MEMORY( X ) global_profiler.setStoreMemory( X )
+#define PROFILE_ENABLE_MEMORY( ... ) global_profiler.setStoreMemory( __VA_ARGS__ )
 
 
 /*! \def PROFILE_DISABLE_MEMORY()
@@ -158,14 +156,6 @@
 
 
 /*! @} */
-
-
-// Old macros (deprecated)
-#define PROFILE_START( ... ) global_profiler.start( __FILE__, __LINE__, __VA_ARGS__ )
-#define PROFILE_START2( ... ) global_profiler.start( __FILE__, __LINE__, __VA_ARGS__ )
-#define PROFILE_STOP( ... ) global_profiler.stop( __FILE__, __VA_ARGS__ )
-#define PROFILE_STOP2( ... ) global_profiler.stop( __FILE__, __VA_ARGS__ )
-#define PROFILE_SCOPED( TIMER, ... ) PROFILE2( __VA_ARGS__ )
 
 
 #endif

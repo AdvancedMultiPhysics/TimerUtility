@@ -80,20 +80,6 @@ public:
 
 
 /***********************************************************************
- * Integer log2                                                         *
- ***********************************************************************/
-constexpr int log2int( uint64_t x )
-{
-    int r = 0;
-    while ( x > 1 ) {
-        r++;
-        x = x >> 1;
-    }
-    return r;
-}
-
-
-/***********************************************************************
  * Get the time elapsed in ns                                           *
  * Note we implement this because duration_cast takes too long in debug *
  ***********************************************************************/
@@ -116,13 +102,10 @@ constexpr int64_t diff_ns( std::chrono::time_point<TYPE> t2, std::chrono::time_p
  ***********************************************************************/
 inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id )
 {
-    uint32_t thread_id = getThreadID();
-    if ( thread_id >= MAX_THREADS )
-        return nullptr;
-    constexpr uint64_t mask = ( (uint64_t) 0x1 << log2int( TIMER_HASH_SIZE ) ) - 1;
-    static_assert( mask + 1 == TIMER_HASH_SIZE );
-    uint64_t key       = id & mask; // Get the hash index
-    store_timer* timer = d_threadData[thread_id].timers[key];
+    constexpr uint64_t mask = HASH_SIZE - 1;
+    uint64_t key            = id & mask; // Get the hash index
+    auto thread             = getThreadData();
+    store_timer* timer      = thread->timers[key];
     if ( !timer )
         return nullptr;
     while ( timer->id != id ) {
@@ -135,20 +118,17 @@ inline ProfilerApp::store_timer* ProfilerApp::getBlock( uint64_t id )
 inline ProfilerApp::store_timer* ProfilerApp::getBlock(
     uint64_t id, const char* message, const char* filename, int line )
 {
-    uint32_t thread_id = getThreadID();
-    if ( thread_id >= MAX_THREADS )
-        return nullptr;
-    constexpr uint64_t mask = ( (uint64_t) 0x1 << log2int( TIMER_HASH_SIZE ) ) - 1;
-    static_assert( mask + 1 == TIMER_HASH_SIZE );
-    uint64_t key       = id & mask; // Get the hash index
-    store_timer* timer = d_threadData[thread_id].timers[key];
+    constexpr uint64_t mask = HASH_SIZE - 1;
+    uint64_t key            = id & mask; // Get the hash index
+    auto thread             = getThreadData();
+    store_timer* timer      = thread->timers[key];
     if ( !timer ) {
         auto new_timer = new store_timer;
         d_bytes.fetch_add( sizeof( store_timer ) );
-        new_timer->id                       = id;
-        new_timer->timer_data               = getTimerData( id, message, filename, line );
-        d_threadData[thread_id].timers[key] = new_timer;
-        timer                               = new_timer;
+        new_timer->id         = id;
+        new_timer->timer_data = getTimerData( id, message, filename, line );
+        thread->timers[key]   = new_timer;
+        timer                 = new_timer;
     }
     while ( timer->id != id ) {
         if ( timer->next == nullptr ) {
