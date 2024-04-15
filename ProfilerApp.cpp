@@ -1565,8 +1565,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
             for ( const auto& trace : results[i].trace ) {
                 unsigned long N = trace.N;
                 fprintf( timerFile,
-                    "<trace:id=%s,thread=%u,rank=%u,N=%lu,min=%e,max=%e,tot=%e,stack=[%s;%s]>"
-                    "\n",
+                    "<trace:id=%s,thread=%u,rank=%u,N=%lu,min=%e,max=%e,tot=%e,stack=[%s;%s]>\n",
                     trace.id.str().data(), trace.thread, trace.rank, N, 1e-9 * trace.min,
                     1e-9 * trace.max, 1e-9 * trace.tot, hash_to_str( trace.stack ).data(),
                     hash_to_str( trace.stack2 ).data() );
