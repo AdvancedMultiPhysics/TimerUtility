@@ -71,9 +71,11 @@ CHECK_ENABLE_FLAG( ONLY_BUILD_DOCS 0 )
 # Set testing paramaters
 SET( DROP_METHOD "http" )
 SET( DROP_SITE "" )
-SET( DROP_LOCATION "/CDash/submit.php?project=AMR-MHD" )
+SET( DROP_LOCATION "/CDash/submit.php?project=AMP" )
 SET( TRIGGER_SITE "" )
 SET( DROP_SITE_CDASH TRUE )
+SET( CMAKE_DIRECTORY_LABELS "Timer" ) # Set a label for subprojects
+SET( CTEST_LABELS_FOR_SUBPROJECTS Timer )
 ENABLE_TESTING()
 INCLUDE( CTest )
 
