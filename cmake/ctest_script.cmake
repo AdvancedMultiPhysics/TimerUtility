@@ -1,6 +1,6 @@
 # ctest script for building, running, and submitting the test results 
 # Usage:  ctest -S script,build
-#   build = debug / optimized / weekly / valgrind / valgrind-matlab
+#   build = debug / optimized / valgrind / valgrind-matlab
 # Note: this test will use use the number of processors defined in the variable N_PROCS,
 #   the enviornmental variable N_PROCS, or the number of processors availible (if not specified)
 
@@ -63,7 +63,6 @@ ENDIF()
 
 
 # Check that we specified the build type to run
-SET( RUN_WEEKLY FALSE )
 IF( NOT CTEST_SCRIPT_ARG )
     MESSAGE(FATAL_ERROR "No build specified: ctest -S /path/to/script,build (debug/optimized/valgrind")
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "debug" )
@@ -80,14 +79,6 @@ ELSEIF( (${CTEST_SCRIPT_ARG} STREQUAL "optimized") OR (${CTEST_SCRIPT_ARG} STREQ
     SET( ENABLE_GCOV "false" )
     SET( USE_VALGRIND FALSE )
     SET( USE_VALGRIND_MATLAB FALSE )
-ELSEIF( (${CTEST_SCRIPT_ARG} STREQUAL "weekly") )
-    SET( CTEST_BUILD_NAME "${PROJ}-Weekly" )
-    SET( CMAKE_BUILD_TYPE "Release" )
-    SET( CTEST_COVERAGE_COMMAND )
-    SET( ENABLE_GCOV "false" )
-    SET( USE_VALGRIND FALSE )
-    SET( USE_VALGRIND_MATLAB FALSE )
-    SET( RUN_WEEKLY TRUE )
 ELSEIF( ${CTEST_SCRIPT_ARG} STREQUAL "valgrind" )
     SET( CTEST_BUILD_NAME "${PROJ}-valgrind" )
     SET( CMAKE_BUILD_TYPE "Debug" )
@@ -183,10 +174,8 @@ SET( CTEST_CUSTOM_ERROR_EXCEPTION
 )
 
 
-# Set timeouts: 5 minutes for debug, 2 for opt, and 30 minutes for valgrind/weekly
+# Set timeouts: 5 minutes for debug, 2 for opt, and 30 minutes for valgrind
 IF ( USE_VALGRIND )
-    SET( CTEST_TEST_TIMEOUT 1800 )
-ELSEIF ( RUN_WEEKLY )
     SET( CTEST_TEST_TIMEOUT 1800 )
 ELSEIF( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
     SET( CTEST_TEST_TIMEOUT 300 )
@@ -298,10 +287,8 @@ ELSEIF ( USE_VALGRIND_MATLAB )
     CTEST_TEST( INCLUDE MATLAB  EXCLUDE WEEKLY  PARALLEL_LEVEL ${N_PROCS} )
 ELSEIF ( USE_VALGRIND )
     CTEST_MEMCHECK( EXCLUDE "(procs|WEEKLY)"  PARALLEL_LEVEL ${N_PROCS} )
-ELSEIF ( RUN_WEEKLY )
-    CTEST_TEST( INCLUDE WEEKLY  PARALLEL_LEVEL ${N_PROCS} )
 ELSE()
-    CTEST_TEST( EXCLUDE WEEKLY  PARALLEL_LEVEL ${N_PROCS} )
+    CTEST_TEST( PARALLEL_LEVEL ${N_PROCS} )
 ENDIF()
 IF( CTEST_COVERAGE_COMMAND )
     CTEST_COVERAGE()

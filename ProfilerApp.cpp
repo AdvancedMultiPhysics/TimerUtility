@@ -1431,6 +1431,16 @@ MemoryResults ProfilerApp::getMemoryResults() const
 /***********************************************************************
  * Function to save the profiling info                                  *
  ***********************************************************************/
+static bool isRecursive( const TimerResults& timer, const TraceResults& trace,
+    const std::vector<uint64_t>& stackIDs, const std::vector<std::vector<uint64_t>>& stackList )
+{
+    int i = binarySearch<uint64_t>( stackIDs, trace.stack );
+    ASSERT( i != -1 );
+    bool found = false;
+    for ( auto& trace2 : timer.trace )
+        found = found || binarySearch<uint64_t>( stackList[i], trace2.stack2 ) != -1;
+    return found;
+};
 void ProfilerApp::save( const std::string& filename, bool global ) const
 {
     if ( this->d_level < 0 ) {
@@ -1469,21 +1479,12 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
         // to create a global order to save the results
         std::vector<size_t> id_order( results.size(), 0 );
         std::vector<double> total_time( results.size(), 0 );
-        auto isRecursive = [&stackIDs, &stackList](
-                               const TimerResults& timer, const TraceResults& trace ) {
-            int i = binarySearch( stackIDs, trace.stack );
-            ASSERT( i != -1 );
-            bool found = false;
-            for ( auto& trace2 : timer.trace )
-                found = found || binarySearch( stackList[i], trace2.stack2 ) != -1;
-            return found;
-        };
         for ( size_t i = 0; i < results.size(); i++ ) {
             id_order[i]   = i;
             total_time[i] = 0.0;
             std::vector<double> time_thread( N_threads, 0 );
             for ( auto& trace : results[i].trace ) {
-                if ( !isRecursive( results[i], trace ) )
+                if ( !isRecursive( results[i], trace, stackIDs, stackList ) )
                     time_thread[trace.thread] += trace.tot;
             }
             for ( int j = 0; j < N_threads; j++ )
@@ -1531,7 +1532,7 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 N_thread[k] += trace.N;
                 min_thread[k] = std::min( min_thread[k], 1e-9 * trace.min );
                 max_thread[k] = std::max( max_thread[k], 1e-9 * trace.max );
-                if ( !isRecursive( results[i], trace ) )
+                if ( !isRecursive( results[i], trace, stackIDs, stackList ) )
                     tot_thread[k] += 1e-9 * trace.tot;
             }
             for ( int j = 0; j < N_threads; j++ ) {
