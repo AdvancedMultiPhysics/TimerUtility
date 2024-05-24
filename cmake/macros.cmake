@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.19)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.21)
 CMAKE_POLICY( SET CMP0057 NEW )
 CMAKE_POLICY( SET CMP0110 NEW )
 
@@ -228,6 +228,7 @@ MACRO( BEGIN_PACKAGE_CONFIG PACKAGE )
     SET( FSOURCES "" )
     SET( M4FSOURCES "" )
     SET( CUDASOURCES "" )
+    SET( HIPSOURCES "" )
     SET( SOURCES "" )
     SET( CURPACKAGE ${PACKAGE} )
     IF ( NOT DEFINED PACKAGE_NAME )
@@ -245,6 +246,9 @@ MACRO( FIND_FILES )
     # Find the CUDA sources
     SET( T_CUDASOURCES "" )
     FILE( GLOB T_CUDASOURCES "*.cu" )
+    # Find the HIP sources
+    SET( T_HIPSOURCES "" )
+    FILE( GLOB T_HIPSOURCES "*.cu" "*.hip" )
     # Find the C sources
     SET( T_CSOURCES "" )
     FILE( GLOB T_CSOURCES "*.c" )
@@ -264,10 +268,11 @@ MACRO( FIND_FILES )
     SET( HEADERS ${HEADERS} ${T_HEADERS} )
     SET( CXXSOURCES ${CXXSOURCES} ${T_CXXSOURCES} )
     SET( CUDASOURCES ${CUDASOURCES} ${T_CUDASOURCES} )
+    SET( CUDASOURCES ${HIPSOURCES} ${T_HIPSOURCES} )
     SET( CSOURCES ${CSOURCES} ${T_CSOURCES} )
     SET( FSOURCES ${FSOURCES} ${T_FSOURCES} )
     SET( M4FSOURCES ${M4FSOURCES} ${T_M4FSOURCES} )
-    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_M4FSOURCES} ${T_CUDASOURCES} )
+    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_M4FSOURCES} ${T_CUDASOURCES} ${T_HIPSOURCES} )
 ENDMACRO()
 
 
@@ -279,6 +284,9 @@ MACRO( FIND_FILES_PATH IN_PATH )
     # Find the CUDA sources
     SET( T_CUDASOURCES "" )
     FILE( GLOB T_CUDASOURCES "${IN_PATH}/*.cu" )
+    # Find the HIP sources
+    SET( T_HIPSOURCES "" )
+    FILE( GLOB T_HIPSOURCES "${IN_PATH}/*.cu" "${IN_PATH}/*.hip"  )
     # Find the C sources
     SET( T_CSOURCES "" )
     FILE( GLOB T_CSOURCES "${IN_PATH}/*.c" )
@@ -298,9 +306,10 @@ MACRO( FIND_FILES_PATH IN_PATH )
     SET( HEADERS ${HEADERS} ${T_HEADERS} )
     SET( CXXSOURCES ${CXXSOURCES} ${T_CXXSOURCES} )
     SET( CUDASOURCES ${CUDASOURCES} ${T_CUDASOURCES} )
+    SET( HIPSOURCES ${HIPSOURCES} ${T_HIPSOURCES} )
     SET( CSOURCES ${CSOURCES} ${T_CSOURCES} )
     SET( FSOURCES ${FSOURCES} ${T_FSOURCES} )
-    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_CUDASOURCES} )
+    SET( SOURCES ${SOURCES} ${T_CXXSOURCES} ${T_CSOURCES} ${T_FSOURCES} ${T_CUDASOURCES} ${T_HIPSOURCES} )
 ENDMACRO()
 
 
@@ -368,7 +377,7 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
         FOREACH ( HFILE ${HFILES} )
             SET( SRC_FILE "${${PROJ}_SOURCE_DIR}/${HFILE}" )
             SET( DST_FILE "${${PROJ}_INSTALL_DIR}/include/${${PROJ}_INC}/${HFILE}" )
-            # Only copy the headers if the exisit in the project source directory
+            # Only copy the headers if they exist in the project source directory
             IF ( EXISTS "${SRC_FILE}" )
                 ADD_CUSTOM_COMMAND(TARGET ${COPY_TARGET} 
                     PRE_BUILD 
@@ -397,6 +406,10 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
         # If we are using CUDA and COMPILE_CXX_AS_CUDA is set, change the language
         IF ( USE_CUDA AND COMPILE_CXX_AS_CUDA )
             SET_SOURCE_FILES_PROPERTIES( ${CXXSOURCES} PROPERTIES LANGUAGE CUDA )
+        ENDIF()
+        # If we are using HIP and COMPILE_CXX_AS_HIP is set, change the language
+        IF ( USE_CUDA AND COMPILE_CXX_AS_HIP )
+            SET_SOURCE_FILES_PROPERTIES( ${CXXSOURCES} PROPERTIES LANGUAGE HIP )
         ENDIF()
         # Create the library
         IF ( ${PROJ}_LIB )
@@ -440,7 +453,12 @@ MACRO( INSTALL_PROJ_LIB )
     ADD_LIBRARY( ${${PROJ}_LIB} ${LIB_TYPE} ${tmp_link_list} )
     TARGET_LINK_LIBRARIES( ${${PROJ}_LIB} LINK_PUBLIC ${COVERAGE_LIBS} )
     TARGET_LINK_EXTERNAL_LIBRARIES( ${${PROJ}_LIB} LINK_PUBLIC )
-    INSTALL( TARGETS ${${PROJ}_LIB} DESTINATION ${${PROJ}_INSTALL_DIR}/lib )
+    INSTALL( TARGETS ${${PROJ}_LIB} EXPORT ${${PROJ}_LIB}Targets DESTINATION ${${PROJ}_INSTALL_DIR}/lib )
+    INSTALL( EXPORT ${${PROJ}_LIB}Targets
+             FILE ${${PROJ}_LIB}Targets.cmake
+             NAMESPACE ${PROJ}::
+             DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake
+    )
 ENDMACRO()
 
 
@@ -566,7 +584,7 @@ MACRO( SET_WARNINGS )
     ELSEIF ( USING_ICC )
         # Add Intel specifc compiler options
         SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
-        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -wd1011" )
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall" )
     ELSEIF ( USING_CRAY )
         # Add default compiler options
         SET(CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}")
@@ -611,6 +629,9 @@ MACRO( SET_COMPILER_FLAGS )
         SET(CMAKE_CXX_FLAGS_DEBUG "-D_DEBUG /DEBUG /Od /EHsc /MDd /Z7" )
         SET(CMAKE_C_FLAGS_RELEASE   "/O2 /EHsc /MD" )
         SET(CMAKE_CXX_FLAGS_RELEASE "/O2 /EHsc /MD" )
+    ELSEIF ( USING_ICC )
+        SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -fp-model precise")
+    ELSE()
     ENDIF()
     # Set the behavior of GLIBCXX flags
     CHECK_ENABLE_FLAG( ENABLE_GXX_DEBUG 0 )
@@ -792,8 +813,9 @@ MACRO( TARGET_LINK_EXTERNAL_LIBRARIES TARGET_NAME )
         TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${ARGN} ${tmp} )
     ENDFOREACH()
     # Include CMake implicit libraries
-    FOREACH ( tmp ${CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES} ${CMAKE_C_IMPLICIT_LINK_LIBRARIES}
-        ${CMAKE_CXX_IMPLICIT_LINK_LIBRARIES} ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES} )
+    FOREACH ( tmp ${CMAKE_HIP_IMPLICIT_LINK_LIBRARIES} ${CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES}
+        ${CMAKE_C_IMPLICIT_LINK_LIBRARIES} ${CMAKE_CXX_IMPLICIT_LINK_LIBRARIES}
+        ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES} )
         TARGET_LINK_LIBRARIES( ${TARGET_NAME} ${ARGN} ${tmp} )
     ENDFOREACH()
 ENDMACRO()
@@ -858,6 +880,9 @@ MACRO( ADD_PROJ_EXE_DEP EXE )
     IF ( USE_CUDA )
         SET_TARGET_PROPERTIES( ${EXE} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON )
     ENDIF()
+    IF ( USE_HIP )
+        SET_TARGET_PROPERTIES( ${EXE} PROPERTIES HIP_RESOLVE_DEVICE_SYMBOLS ON )
+    ENDIF()
 ENDMACRO()
 
 
@@ -918,6 +943,18 @@ FUNCTION( ADD_PROJ_PROVISIONAL_TEST EXEFILE ${ARGN} )
                     SET_SOURCE_FILES_PROPERTIES( ${tmp} PROPERTIES LANGUAGE CUDA )
                 ENDIF()
             ENDFOREACH()
+            SET_PROPERTY( TARGET ${EXEFILE} PROPERTY CUDA_SEPARABLE_COMPILATION ON )
+        ENDIF()
+        # If we are using HIP and COMPILE_CXX_AS_HIP is set, change the language
+        IF ( USE_HIP AND COMPILE_CXX_AS_HIP )
+            SET( OVERRIDE_LINKER FALSE )
+            FOREACH ( tmp ${SOURCES} )
+                GET_SOURCE_FILE_PROPERTY( lang "${tmp}" LANGUAGE ) 
+                IF ( lang STREQUAL "CXX" )
+                    SET( OVERRIDE_LINKER TRUE )
+                    SET_SOURCE_FILES_PROPERTIES( ${tmp} PROPERTIES LANGUAGE HIP )
+                ENDIF()
+            ENDFOREACH()
             IF ( OVERRIDE_LINKER )
                 SET_PROPERTY( TARGET ${EXEFILE} PROPERTY LINKER_LANGUAGE CXX )
             ENDIF()
@@ -938,9 +975,9 @@ ENDFUNCTION()
 # Parse test arguments
 MACRO( PARSE_TEST_ARGUMENTS )
     # Parse the input arguments
-    SET( optionalArgs WEEKLY TESTBUILDER GPU RUN_SERIAL EXAMPLE MATLAB NO_RESOURCES )
-    SET( oneValueArgs TESTNAME PROCS THREADS TIMEOUT )
-    SET( multiValueArgs RESOURCES DEPENDS ARGS )
+    SET( optionalArgs WEEKLY TESTBUILDER GPU RUN_SERIAL EXAMPLE MATLAB NO_RESOURCES CATCH2 )
+    SET( oneValueArgs TESTNAME PROCS THREADS TIMEOUT MAIN )
+    SET( multiValueArgs RESOURCES LIBRARIES DEPENDS ARGS LABELS )
     CMAKE_PARSE_ARGUMENTS( TEST "${optionalArgs}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
     # Set default values for threads/procs/GPUs
     SET_DEFAULT( TEST_THREADS 1 )
@@ -1044,13 +1081,49 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
     # Parse the input arguments
     PARSE_TEST_ARGUMENTS( ${ARGN} )
 
+    # Add example to list
+    IF ( TEST_EXAMPLE )
+        SET( VALUE 0 )
+        FOREACH (_variableName ${EXAMPLE_LIST})
+            IF ( "${_variableName}" STREQUAL "${EXEFILE}" )
+                SET( VALUE 1 )
+            ENDIF()
+        ENDFOREACH()
+        IF ( NOT ${VALUE} )
+            FILE(APPEND ${EXAMPLE_INSTALL_DIR}/examples.h "* \\ref ${EXEFILE} \"${EXEFILE}\"\n" )
+            SET( EXAMPLE_LIST ${EXAMPLE_LIST} ${EXEFILE} CACHE INTERNAL "example_list" FORCE )
+        ENDIF()
+    ENDIF()
+
     # Check if we are dealing with a TestBuilder test
     IF ( TEST_TESTBUILDER )
         # Add the test to the TestBuilder sources
         SET( TESTBUILDER_SOURCES ${TESTBUILDER_SOURCES} ${EXEFILE} PARENT_SCOPE )
     ELSE()
         # Add the provisional test
-        ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
+        ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} ${TEST_MAIN} )
+    ENDIF()
+
+    # Add catch2 link if needed
+    IF ( TEST_CATCH2 )
+        IF ( TEST_MAIN )
+            TARGET_LINK_LIBRARIES( ${EXEFILE} Catch2::Catch2 )
+        ELSE()
+            TARGET_LINK_LIBRARIES( ${EXEFILE} Catch2::Catch2WithMain )
+        ENDIF()
+    ENDIF()
+
+    # ADD additional link libraries
+    FOREACH( tmp ${TEST_LIBRARIES} )
+        TARGET_LINK_LIBRARIES( ${EXEFILE} ${tmp} )
+    ENDFOREACH()
+
+    # Copy example
+    IF ( TEST_EXAMPLE )
+        ADD_DEPENDENCIES( build-examples ${EXEFILE} )
+        ADD_CUSTOM_COMMAND( TARGET ${EXEFILE} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${LAST_TEST}> "${EXAMPLE_INSTALL_DIR}/${EXEFILE}"
+        )
     ENDIF()
 
     # Create the tests for ctest
@@ -1058,6 +1131,9 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
         # Skip test (provisional)
         RETURN()
     ELSEIF ( USE_CUDA AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ) )
+        MESSAGE("Disabling test \"${TESTNAME}\" (exceeds maximum number of GPUs available ${NUMBER_OF_GPUS})")
+        RETURN()
+    ELSEIF ( USE_HIP AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ) )
         MESSAGE("Disabling test \"${TESTNAME}\" (exceeds maximum number of GPUs available ${NUMBER_OF_GPUS})")
         RETURN()
     ELSEIF ( ${TOT_PROCS} GREATER ${TEST_MAX_PROCS} )
@@ -1083,6 +1159,11 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
     SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
     SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES ENVIRONMENT "OMP_NUM_THREADS=${TEST_THREADS};OMP_WAIT_POLICY=passive" )
 
+    # Add labels
+    IF ( TEST_LABELS )
+        SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES LABELS ${TEST_LABELS} )
+    ENDIF()
+
     # Add resource locks
     IF ( NOT TEST_NO_RESOURCES )
         IF ( NOT TEST_RESOURCES )
@@ -1091,8 +1172,18 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
         SET_PROPERTY( TEST ${TESTNAME} PROPERTY RESOURCE_LOCK ${TEST_RESOURCES} )
     ENDIF()
     
-    # Add resource locks
+    # Add resource locks for GPUs
     IF ( USE_CUDA AND TEST_GPU )
+        SET( GPU_RESOURCE )
+        FOREACH ( tmp RANGE 1 ${TEST_PROCS} )
+            SET( GPU_RESOURCE "${GPU_RESOURCE},gpus:1" )
+        ENDFOREACH()
+        STRING( REGEX REPLACE "^," "" GPU_RESOURCE ${GPU_RESOURCE} )
+        SET_PROPERTY( TEST ${TESTNAME} PROPERTY RESOURCE_GROUPS ${GPU_RESOURCE} )
+    ENDIF()
+    
+    # Add resource locks for GPUs
+    IF ( USE_HIP AND TEST_GPU )
         SET( GPU_RESOURCE )
         FOREACH ( tmp RANGE 1 ${TEST_PROCS} )
             SET( GPU_RESOURCE "${GPU_RESOURCE},gpus:1" )
@@ -1106,12 +1197,10 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
         SET_PROPERTY( TEST ${TESTNAME} PROPERTY TIMEOUT ${TEST_TIMEOUT} )
     ENDIF()
 
-
     # Run the test by itself
     IF ( TEST_RUN_SERIAL )
         SET_PROPERTY( TEST ${TESTNAME} PROPERTY RUN_SERIAL TRUE )
     ENDIF()
-
 
     # Add dependencies
     IF ( TEST_DEPENDS )
@@ -1197,6 +1286,15 @@ FUNCTION( FINALIZE_TESTBUILDER )
             ENDIF()
         ENDFOREACH()
     ENDIF()
+    # If we are using HIP and COMPILE_CXX_AS_HIP is set, change the language
+    IF ( USE_HIP AND COMPILE_CXX_AS_HIP )
+        FOREACH ( tmp ${TESTBUILDER_SOURCES} )
+            GET_SOURCE_FILE_PROPERTY( lang "${tmp}" LANGUAGE ) 
+            IF ( lang STREQUAL "CXX" )
+                SET_SOURCE_FILES_PROPERTIES( ${tmp} PROPERTIES LANGUAGE HIP )
+            ENDIF()
+        ENDFOREACH()
+    ENDIF()
     # Finish generating TestBuilder.cpp
     SET( TB_FILE "${CMAKE_CURRENT_BINARY_DIR}/TestBuilder-tmp.cpp" )
     FILE( WRITE "${TB_FILE}" "// Auto generated file\n\n" )
@@ -1209,7 +1307,11 @@ FUNCTION( FINALIZE_TESTBUILDER )
     FILE( APPEND "${TB_FILE}" "int main( int argc, char *argv[] )\n" )
     FILE( APPEND "${TB_FILE}" "{\n" )
     FILE( APPEND "${TB_FILE}" "    if ( argc < 2 ) {\n" )
-    FILE( APPEND "${TB_FILE}" "        std::cerr << \"Invaild number of arguments for TestBuilder\";\n " )
+    FILE( APPEND "${TB_FILE}" "        std::cerr << \"Invalid number of arguments for TestBuilder\\n\";\n" )
+    FILE( APPEND "${TB_FILE}" "        std::cerr << \"Supported tests:\\n\";\n" )
+    FOREACH ( tmp ${TESTBUILDER_SOURCES} )
+        FILE( APPEND "${TB_FILE}" "        std::cerr << \"   ${tmp}\\n\";\n" )
+    ENDFOREACH()
     FILE( APPEND "${TB_FILE}" "        return 1;\n" )
     FILE( APPEND "${TB_FILE}" "    }\n\n" )
     FILE( APPEND "${TB_FILE}" "    int rtn = 0;\n" )
@@ -1219,7 +1321,7 @@ FUNCTION( FINALIZE_TESTBUILDER )
         FILE( APPEND "${TB_FILE}" "        rtn = ${tmp}( argc-1, &argv[1] );\n" )
     ENDFOREACH()
     FILE( APPEND "${TB_FILE}" "    } else {\n" )
-    FILE( APPEND "${TB_FILE}" "        std::cerr << \"Unknown test\";\n" )
+    FILE( APPEND "${TB_FILE}" "        std::cerr << \"Unknown test: \" << argv[1] << std::endl;\n" )
     FILE( APPEND "${TB_FILE}" "        return 1;\n" )
     FILE( APPEND "${TB_FILE}" "    }\n\n" )
     FILE( APPEND "${TB_FILE}" "    return rtn;\n" )
@@ -1229,7 +1331,7 @@ ENDFUNCTION()
 
 
 # Convenience functions to add a test
-# Note: These should be mcaros so that LAST_TESTNAME is set properly
+# Note: These should be macros so that LAST_TESTNAME is set properly
 MACRO( ADD_${PROJ}_TEST EXEFILE ${ARGN} )
     CALL_ADD_TEST( ${EXEFILE} ${ARGN} )
 ENDMACRO()
@@ -1239,7 +1341,7 @@ MACRO( ADD_${PROJ}_TEST_1_2_4 EXEFILE ${ARGN} )
     CALL_ADD_TEST( ${EXEFILE} PROCS 4 ${ARGN} )
 ENDMACRO()
 MACRO( ADD_TB_PROVISIONAL_TEST EXEFILE )
-    SET( TESTBUILDER_SOURCES ${TESTBUILDER_SOURCES} ${EXEFILE} PARENT_SCOPE )
+    SET( TESTBUILDER_SOURCES ${TESTBUILDER_SOURCES} ${EXEFILE} )
 ENDMACRO()
 MACRO( ADD_TB_TEST EXEFILE ${ARGN} )
     CALL_ADD_TEST( ${EXEFILE} PROCS 1 TESTBUILDER ${ARGN} )
@@ -1252,49 +1354,9 @@ ENDMACRO()
 
 
 # Add a executable as an example
-FUNCTION( ADD_${PROJ}_EXAMPLE EXEFILE )
-    # Parse input arguments
-    PARSE_TEST_ARGUMENTS( ${ARGN} )
-    # Add the file to the example doxygen file
-    SET( VALUE 0 )
-    FOREACH (_variableName ${EXAMPLE_LIST})
-        IF ( "${_variableName}" STREQUAL "${EXEFILE}" )
-            SET( VALUE 1 )
-        ENDIF()
-    ENDFOREACH()
-    IF ( NOT ${VALUE} )
-        FILE(APPEND ${EXAMPLE_INSTALL_DIR}/examples.h "* \\ref ${EXEFILE} \"${EXEFILE}\"\n" )
-        SET( EXAMPLE_LIST ${EXAMPLE_LIST} ${EXEFILE} CACHE INTERNAL "example_list" FORCE )
-    ENDIF()
-    # Check if we actually want to add the test
-    IF ( ONLY_BUILD_DOCS )
-        RETURN()
-    ENDIF()
-    # Add the provisional test
-    ADD_PROJ_PROVISIONAL_TEST( ${EXEFILE} )
-    IF ( ${TEST_PROCS} STREQUAL "0" )
-        RETURN()
-    ENDIF()
-    # Add the test command to ctest
-    ADD_DEPENDENCIES( build-examples ${EXEFILE} )
-    ADD_CUSTOM_COMMAND( TARGET ${EXEFILE} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${LAST_TEST}> "${EXAMPLE_INSTALL_DIR}/${EXEFILE}"
-    )
-    CREATE_TEST_NAME( ${EXEFILE} EXAMPLE ${ARGN} )
-    IF ( ${TEST_PROCS} STREQUAL "1" AND (NOT USE_MPI_FOR_SERIAL_TESTS) )
-        ADD_TEST( NAME ${TESTNAME} COMMAND $<TARGET_FILE:${LAST_TEST}> ${TEST_ARGS} )
-    ELSEIF ( USE_EXT_MPI AND NOT (${TOT_PROCS} GREATER ${TEST_MAX_PROCS}) )
-        ADD_TEST( NAME ${TESTNAME} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${TEST_PROCS} $<TARGET_FILE:${LAST_TEST}> ${TEST_ARGS} )
-        SET_PROPERTY( TEST ${TESTNAME} APPEND PROPERTY ENVIRONMENT "OMPI_MCA_hwloc_base_binding_policy=none" )
-    ENDIF()
-    SET( LAST_TESTNAME ${TESTNAME} PARENT_SCOPE )
-    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES FAIL_REGULAR_EXPRESSION "${TEST_FAIL_REGULAR_EXPRESSION}" PROCESSORS ${TOT_PROCS} )
-    SET_TESTS_PROPERTIES( ${TESTNAME} PROPERTIES ENVIRONMENT "OMP_NUM_THREADS=${TEST_THREADS};OMP_WAIT_POLICY=passive" )
-    IF ( NOT TEST_RESOURCES )
-        SET( TEST_RESOURCES ${EXEFILE} ${TEST_ARGS} )
-    ENDIF()
-    SET_PROPERTY( TEST ${TESTNAME} PROPERTY RESOURCE_LOCK ${TEST_RESOURCES} )
-ENDFUNCTION()
+MACRO( ADD_${PROJ}_EXAMPLE EXEFILE )
+    CALL_ADD_TEST( ${EXEFILE} EXAMPLE ${ARGN} )
+ENDMACRO()
 
 
 # Begin configure for the examples for a package
@@ -1509,17 +1571,6 @@ FUNCTION( ADD_MEXCLEAN )
             ARGS    -Rf libmatlab.* *.mex* test/*.mex*
         )
     ENDIF(UNIX)
-ENDFUNCTION()
-
-
-# Print the current repo version and create target to write to a file
-SET( WriteRepoVersionCmakeFile "${CMAKE_CURRENT_LIST_DIR}/WriteRepoVersion.cmake" )
-FUNCTION( WRITE_REPO_VERSION FILENAME )
-    SET( CMD ${CMAKE_COMMAND} -Dfilename="${FILENAME}" -Dsrc_dir="${${PROJ}_SOURCE_DIR}" 
-             -Dtmp_file="${CMAKE_CURRENT_BINARY_DIR}/tmp/version.h" -DPROJ=${PROJ} 
-             -P "${WriteRepoVersionCmakeFile}" )
-    EXECUTE_PROCESS( COMMAND ${CMD} )
-    ADD_CUSTOM_TARGET( write_repo_version  COMMENT "Write repo version"  COMMAND ${CMD} )
 ENDFUNCTION()
 
 

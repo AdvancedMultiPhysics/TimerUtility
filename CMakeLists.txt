@@ -45,7 +45,7 @@ ENABLE_LANGUAGE( C )
 ENABLE_LANGUAGE( CXX )
 IF ( CMAKE_Fortran_COMPILER )
     ENABLE_LANGUAGE( Fortran )
-    SET (CMAKE_Fortran_MODULE_DIRECTORY ${TIMER_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
+    SET( CMAKE_Fortran_MODULE_DIRECTORY ${TIMER_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
 ENDIF()
 
 
@@ -113,6 +113,7 @@ ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT qwt Debug TI
 
 
 # Get the version information
+INCLUDE( cmake/WriteRepoVersion.cmake )
 WRITE_REPO_VERSION( "${${PROJ}_INSTALL_DIR}/include/TimerUtilityVersion.h" )
 
 
@@ -160,6 +161,40 @@ ENDIF()
 IF ( USE_LATEX )
     ADD_SUBDIRECTORY(latex_docs)
 ENDIF()
+
+
+# Generate a Package Configuration File
+INCLUDE( CMakePackageConfigHelpers )
+SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
+SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake CACHE PATH "Location of configuration files" )
+CONFIGURE_PACKAGE_CONFIG_FILE( cmake/Timer.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerConfig.cmake
+    INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/Timer"
+    PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
+WRITE_BASIC_PACKAGE_VERSION_FILE(
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerVersion.cmake
+    VERSION ${${PROJ}_VERSION}
+    COMPATIBILITY SameMajorVersion )
+INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerConfig.cmake
+               ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerVersion.cmake
+         DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake )
+
+
+# Generate a Dummy Configuration File
+INCLUDE( CMakePackageConfigHelpers )
+SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
+SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake CACHE PATH "Location of configuration files" )
+CONFIGURE_PACKAGE_CONFIG_FILE( cmake/DummyTimer.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerConfig.cmake
+    INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/dummy/Timer"
+    PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
+WRITE_BASIC_PACKAGE_VERSION_FILE(
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerVersion.cmake
+    VERSION ${${PROJ}_VERSION}
+    COMPATIBILITY SameMajorVersion )
+INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerConfig.cmake
+               ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerVersion.cmake
+         DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/dummy )
 
 
 # Add the GUI
