@@ -43,7 +43,7 @@ int main( int, char *[] )
     check_ptr( tmp2 );
     MemoryApp::MemoryStats m4 = MemoryApp::getMemoryStats();
     DISABLE_WARNINGS
-    delete tmp1;
+    delete[] tmp1;
     ENABLE_WARNINGS
     operator delete[]( tmp2, std::nothrow );
     MemoryApp::MemoryStats m5 = MemoryApp::getMemoryStats();
