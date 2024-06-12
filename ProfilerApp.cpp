@@ -439,8 +439,8 @@ ProfilerApp::store_timer_data_info::store_timer_data_info(
     next = nullptr;
     // Copy the message, filename, path
     copyMessage( message, msg, sizeof( message ) );
-    constexpr char split[2] = { 47, 92 };
-    auto i                  = filepath.find_last_of( split );
+    constexpr char split[] = { 47, 92, 0 };
+    auto i                 = filepath.find_last_of( split );
     if ( i == std::string::npos ) {
         copyMessage( filename, filepath, sizeof( filename ) );
     } else {
