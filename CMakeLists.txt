@@ -13,7 +13,7 @@ MESSAGE( "===========================" )
 
 
 # Set the project name
-SET( PROJ TIMER )              # Set the project name for CMake
+SET( PROJ Timer )              # Set the project name for CMake
 SET( TIMER_LIB timerutility )  # Set the final library name
 SET( TIMER_INC )               # Set an optional subfolder for includes (e.g. include/name/...)
 
@@ -166,7 +166,7 @@ ENDIF()
 # Generate a Package Configuration File
 INCLUDE( CMakePackageConfigHelpers )
 SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
-SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake CACHE PATH "Location of configuration files" )
+SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake/Timer CACHE PATH "Location of configuration files" )
 CONFIGURE_PACKAGE_CONFIG_FILE( cmake/Timer.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerConfig.cmake
     INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/Timer"
@@ -177,16 +177,16 @@ WRITE_BASIC_PACKAGE_VERSION_FILE(
     COMPATIBILITY SameMajorVersion )
 INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerConfig.cmake
                ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerVersion.cmake
-         DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake )
+         DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/Timer )
 
 
 # Generate a Dummy Configuration File
 INCLUDE( CMakePackageConfigHelpers )
 SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
-SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake CACHE PATH "Location of configuration files" )
+SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake/dummy CACHE PATH "Location of configuration files" )
 CONFIGURE_PACKAGE_CONFIG_FILE( cmake/DummyTimer.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerConfig.cmake
-    INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/dummy/Timer"
+    INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/dummy"
     PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
 WRITE_BASIC_PACKAGE_VERSION_FILE(
     ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerVersion.cmake
