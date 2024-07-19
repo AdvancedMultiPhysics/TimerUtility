@@ -295,7 +295,7 @@ ENDMACRO()
 MACRO( CONFIGURE_TIMER )
     SET( CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE )
     SET( CMAKE_BUILD_WITH_INSTALL_RPATH TRUE )
-    SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH} "${TIMER_INSTALL_DIR}/lib" )
+    SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH} "${${PROJ}_INSTALL_DIR}/lib" )
     # Set the maximum number of processors for the tests
     IF ( NOT TEST_MAX_PROCS )
         SET( TEST_MAX_PROCS 32 )
@@ -303,9 +303,9 @@ MACRO( CONFIGURE_TIMER )
     # Check if we want to enable the traps for new/delete
     CHECK_ENABLE_FLAG( OVERLOAD_NEW 1 )
     IF ( NOT OVERLOAD_NEW OR DISABLE_NEW_OVERLOAD )
-        FILE(WRITE "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_DISABLE_NEW_OVERLOAD\n" )
+        FILE(WRITE "${${PROJ}_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_DISABLE_NEW_OVERLOAD\n" )
     ELSE()
-        FILE(WRITE "${TIMER_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_ENABLE_NEW_OVERLOAD\n" )
+        FILE(WRITE "${${PROJ}_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_ENABLE_NEW_OVERLOAD\n" )
     ENDIF()
     # Add flags for MATLAB
     IF ( USE_MATLAB )
@@ -360,7 +360,7 @@ MACRO( CONFIGURE_QWT )
     ProcessorCount( PROCS_INSTALL )
     SET( QWT_BUILD_DIR "${CMAKE_BINARY_DIR}/QWT-prefix/src/QWT-build" )
     SET( QWT_SRC_DIR "${CMAKE_BINARY_DIR}/QWT-prefix/src/QWT-src" )
-    SET( QWT_INSTALL_DIR "${TIMER_INSTALL_DIR}/qwt" )
+    SET( QWT_INSTALL_DIR "${${PROJ}_INSTALL_DIR}/qwt" )
     ExternalProject_Add(
         QWT
         URL                     "${QWT_URL}"

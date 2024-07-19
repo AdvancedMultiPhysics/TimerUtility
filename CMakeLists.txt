@@ -14,8 +14,8 @@ MESSAGE( "===========================" )
 
 # Set the project name
 SET( PROJ Timer )              # Set the project name for CMake
-SET( TIMER_LIB timerutility )  # Set the final library name
-SET( TIMER_INC )               # Set an optional subfolder for includes (e.g. include/name/...)
+SET( Timer_LIB timerutility )  # Set the final library name
+SET( Timer_INC )               # Set an optional subfolder for includes (e.g. include/name/...)
 
 
 # Initialize the project (should disable langagues that the TPL builder will enable)
@@ -37,7 +37,7 @@ ELSEIF( NOT ${PROJ}_INSTALL_DIR )
     SET( ${PROJ}_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}" )
 ENDIF()
 INCLUDE_DIRECTORIES( "${${PROJ}_INSTALL_DIR}/include" )
-SET( CMAKE_MODULE_PATH ${TIMER_SOURCE_DIR} ${TIMER_SOURCE_DIR}/cmake )
+SET( CMAKE_MODULE_PATH ${${PROJ}_SOURCE_DIR} ${${PROJ}_SOURCE_DIR}/cmake )
 
 
 # Enable languages
@@ -45,7 +45,7 @@ ENABLE_LANGUAGE( C )
 ENABLE_LANGUAGE( CXX )
 IF ( CMAKE_Fortran_COMPILER )
     ENABLE_LANGUAGE( Fortran )
-    SET( CMAKE_Fortran_MODULE_DIRECTORY ${TIMER_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
+    SET( CMAKE_Fortran_MODULE_DIRECTORY ${${PROJ}_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
 ENDIF()
 
 
@@ -109,7 +109,7 @@ ENDIF()
 
 # Create custom targets for distclean
 SET( EXCLUDE_TESTS_FROM_ALL 0 )
-ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT qwt Debug TIMER.build TIMER.xcodeproj features gmon.out GUI-prefix plugins QWT-prefix )
+ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT qwt Debug ${PROJ}.build ${PROJ}.xcodeproj features gmon.out GUI-prefix plugins QWT-prefix )
 
 
 # Get the version information
@@ -131,14 +131,6 @@ IF ( NOT ONLY_BUILD_DOCS )
 ENDIF()
 
 
-# Set a macro to add serial, 2 processor, and 4 processor tests
-MACRO( ADD_LaserCrystal_TEST_1_2_4 EXENAME ${ARGN} )
-    ADD_TIMER_TEST( ${EXENAME} ${ARGN} )
-    ADD_TIMER_TEST( ${EXENAME} ${ARGN} PROCS 2 )
-    ADD_TIMER_TEST( ${EXENAME} ${ARGN} PROCS 4 )
-ENDMACRO()
-
-
 # Check for mallinfo2
 INCLUDE(CheckSymbolExists)
 CHECK_SYMBOL_EXISTS( mallinfo2 malloc.h HAVE_MALLINFO2 )
@@ -156,7 +148,9 @@ IF ( NOT ONLY_BUILD_DOCS )
     INSTALL_TIMER_TARGET( timerutility_library )
     INSTALL_PROJ_LIB()
     ADD_SUBDIRECTORY( test )
-    ADD_SUBDIRECTORY( matlab )
+    IF ( USE_MATLAB )
+        ADD_SUBDIRECTORY( matlab )
+    ENDIF()
 ENDIF()
 IF ( USE_LATEX )
     ADD_SUBDIRECTORY(latex_docs)
@@ -168,15 +162,15 @@ INCLUDE( CMakePackageConfigHelpers )
 SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
 SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake/Timer CACHE PATH "Location of configuration files" )
 CONFIGURE_PACKAGE_CONFIG_FILE( cmake/Timer.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerConfig.cmake
     INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/Timer"
     PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
 WRITE_BASIC_PACKAGE_VERSION_FILE(
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerVersion.cmake
     VERSION ${${PROJ}_VERSION}
     COMPATIBILITY SameMajorVersion )
-INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerConfig.cmake
-               ${CMAKE_CURRENT_BINARY_DIR}/cmake/TimerVersion.cmake
+INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerConfig.cmake
+               ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerVersion.cmake
          DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/Timer )
 
 
@@ -185,15 +179,15 @@ INCLUDE( CMakePackageConfigHelpers )
 SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
 SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake/dummy CACHE PATH "Location of configuration files" )
 CONFIGURE_PACKAGE_CONFIG_FILE( cmake/DummyTimer.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake
     INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/dummy"
     PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
 WRITE_BASIC_PACKAGE_VERSION_FILE(
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerVersion.cmake
     VERSION ${${PROJ}_VERSION}
     COMPATIBILITY SameMajorVersion )
-INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerConfig.cmake
-               ${CMAKE_CURRENT_BINARY_DIR}/cmake/dummy/TimerVersion.cmake
+INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake
+               ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerVersion.cmake
          DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/dummy )
 
 
