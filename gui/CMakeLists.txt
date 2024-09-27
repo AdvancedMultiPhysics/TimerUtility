@@ -84,9 +84,11 @@ REMOVE_DEFINITIONS( ${COVERAGE_FLAGS} )
 
 # Set extra compiler flags that are necessary for qt
 SET( QT_FLAGS )
-IF ( USING_GCC )
+IF ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
+     (${CMAKE_C_COMPILER_ID} MATCHES "GNU") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "GNU") )
     SET( QT_FLAGS "-Wno-strict-overflow -Wno-overloaded-virtual -Wno-unused-variable" )
-ELSEIF ( USING_CLANG )
+ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CLANG") OR
+         (${CMAKE_C_COMPILER_ID} MATCHES "Clang") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang") )
     SET( QT_FLAGS "-Wno-deprecated-register -Wno-unused-function -Wno-tautological-constant-out-of-range-compare" )
 ENDIF()
 

@@ -179,17 +179,18 @@ int find( const std::vector<TimerResults> &x, const id_struct &id )
 // clang-format off
 #ifdef DISABLE_WARNINGS
     // Macros previously defined
-#elif defined( USING_MSVC )
+#elif defined( _MSC_VER )
     #define DISABLE_WARNINGS __pragma( warning( push, 0 ) )
     #define ENABLE_WARNINGS __pragma( warning( pop ) )
-#elif defined( USING_CLANG )
+#elif defined( __clang__ )
     #define DISABLE_WARNINGS                                                \
         _Pragma( "clang diagnostic push" ) _Pragma( "clang diagnostic ignored \"-Wall\"" ) \
         _Pragma( "clang diagnostic ignored \"-Wextra\"" )                   \
         _Pragma( "clang diagnostic ignored \"-Wunused-private-field\"" )    \
         _Pragma( "clang diagnostic ignored \"-Wmismatched-new-delete\"" )
     #define ENABLE_WARNINGS _Pragma( "clang diagnostic pop" )
-#elif defined( USING_GCC )
+#elif defined( __INTEL_COMPILER )
+#elif defined( __GNUC__ )
     #define DISABLE_WARNINGS                                                \
         _Pragma( "GCC diagnostic push" ) _Pragma( "GCC diagnostic ignored \"-Wall\"" ) \
         _Pragma( "GCC diagnostic ignored \"-Wextra\"" )                     \
@@ -198,7 +199,7 @@ int find( const std::vector<TimerResults> &x, const id_struct &id )
         _Pragma( "GCC diagnostic ignored \"-Woverloaded-virtual\"" )        \
         _Pragma( "GCC diagnostic ignored \"-Wunused-parameter\"" )          \
         _Pragma( "GCC diagnostic ignored \"-Wsized-deallocation\"" )
-#define ENABLE_WARNINGS _Pragma( "GCC diagnostic pop" )
+    #define ENABLE_WARNINGS _Pragma( "GCC diagnostic pop" )
 #else
 #define DISABLE_WARNINGS
 #define ENABLE_WARNINGS

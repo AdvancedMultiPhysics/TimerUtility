@@ -76,7 +76,7 @@ size_t MemoryApp::d_page_size = static_cast<size_t>( sysconf( _SC_PAGESIZE ) );
 size_t MemoryApp::d_page_size = 0;
 #endif
 size_t MemoryApp::d_physical_memory = getPhysicalMemory();
-#if USING_GCC
+#if defined( __GNUC__ )
 void* MemoryApp::d_base_frame = __builtin_frame_address( 0 );
 #else
 void* MemoryApp::d_base_frame = 0;
@@ -232,7 +232,7 @@ void operator delete[]( void* data, std::size_t ) noexcept
 /***********************************************************************
  * Class functions                                                      *
  ***********************************************************************/
-#if defined( _GNU_SOURCE ) || defined( USING_GCC )
+#if defined( _GNU_SOURCE ) || defined( __GNUC__ )
 static size_t subtract_address_abs( const void* x1, const void* x2 )
 {
     // Return the absolute difference between two addresses abs(x-y)
@@ -264,7 +264,7 @@ MemoryApp::MemoryStats MemoryApp::getMemoryStats()
     pthread_attr_destroy( &attr );
     stats.stack_used = stacksize - subtract_address_abs( stackaddr, &stackaddr );
     stats.stack_size = stacksize;
-#elif defined( USING_GCC )
+#elif defined( __GNUC__ )
     stats.stack_used = subtract_address_abs( d_base_frame, __builtin_frame_address( 0 ) );
 #endif
     return stats;
