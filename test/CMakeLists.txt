@@ -7,7 +7,8 @@ IF ( ( ${CXX_STD} STREQUAL "11" ) OR ( ${CXX_STD} STREQUAL "14" ) )
     ADD_TIMER_PROVISIONAL_TEST( test_Callgrind )
 ENDIF()
 IF ( CMAKE_Fortran_COMPILER )
-    ADD_TIMER_TEST( test_ProfilerApp_Fortran.F )
+    ADD_TIMER_TEST( test_ProfilerApp_Fortran )
+    SET_TARGET_PROPERTIES( test_ProfilerApp_Fortran PROPERTIES LINKER_LANGUAGE Fortran )
 ENDIF()
 
 

@@ -18,7 +18,7 @@ SET( Timer_LIB timerutility )  # Set the final library name
 SET( Timer_INC )               # Set an optional subfolder for includes (e.g. include/name/...)
 
 
-# Initialize the project (should disable langagues that the TPL builder will enable)
+# Initialize the project (should disable languages that the TPL builder will enable)
 PROJECT( ${PROJ} LANGUAGES )
 
 
