@@ -79,6 +79,9 @@ public:
      */
     static MemoryStats getMemoryStats();
 
+    //! Return true if we are running within valgrind
+    static bool runningValgrind() { return d_valgrind; }
+
 private:
     // Private constructor/destructor
     MemoryApp();
@@ -92,6 +95,7 @@ private:
     static size_t d_page_size;
     static size_t d_physical_memory;
     static void* d_base_frame;
+    static const bool d_valgrind;
 
 #ifndef TIMER_DISABLE_NEW_OVERLOAD
     // Overload new/delete are friends

@@ -351,7 +351,6 @@ MACRO( CONFIGURE_QWT )
 ENDMACRO()
 
 
-
 # Macro to configure GUI
 MACRO( CONFIGURE_GUI )
     SET( TIMER_GUI_SOURCE_DIR "${${PROJ}_SOURCE_DIR}/gui" )
@@ -359,6 +358,15 @@ MACRO( CONFIGURE_GUI )
     SET( TIMER_GUI_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/gui" )
     CONFIGURE_FILE( "${${PROJ}_SOURCE_DIR}/cmake/configure_GUI.cmake" "${TIMER_GUI_BUILD_DIR}/configure_GUI.cmake" @ONLY )
     INSTALL( SCRIPT "${TIMER_GUI_BUILD_DIR}/configure_GUI.cmake" )
+ENDMACRO()
+
+
+# Configure valgrind (optional)
+MACRO( CONFIGURE_VALGRIND )
+    FIND_PACKAGE( Valgrind )
+    IF ( Valgrind_INCLUDE_DIR )
+        INCLUDE_DIRECTORIES( "${Valgrind_INCLUDE_DIR}" )
+    ENDIF()
 ENDMACRO()
 
 

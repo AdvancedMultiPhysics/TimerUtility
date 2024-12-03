@@ -10,4 +10,7 @@ returnDanglingLifetime:*
 // Suppress preprocessorErrorDirective (issue with MATLAB)
 preprocessorErrorDirective:*
 
+// Suppress realloc warnings
+memleakOnRealloc:*/ProfilerApp.cpp
+
 

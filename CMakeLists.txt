@@ -124,6 +124,7 @@ IF ( NOT ONLY_BUILD_DOCS )
     CONFIGURE_MATLAB()  # MATLAB must be second after MPI
     CONFIGURE_TIMER()
     CONFIGURE_LINE_COVERAGE()
+    CONFIGURE_VALGRIND()
     # Currently, windows doesn't link shared libraries
     IF( ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
         SET( LIB_TYPE STATIC )
@@ -210,7 +211,7 @@ IF ( ENABLE_GUI )
         # Configure GUI
         CONFIGURE_GUI()
         # Add the tests
-        ADD_TEST( NAME load_timer COMMAND ${TIMER_INSTALL_DIR}/bin/load_timer set1.1.timer set2.1.timer WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test )
+        ADD_TEST( NAME load_timer COMMAND ${Timer_INSTALL_DIR}/bin/load_timer set1.1.timer set2.1.timer WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/test )
     ENDIF()
 ENDIF()
 

@@ -283,3 +283,22 @@ void MemoryApp::print( std::ostream& os )
     os << "   Stack used: " << stats.stack_used << std::endl;
     os << "   Stack size: " << stats.stack_size << std::endl;
 }
+
+
+/****************************************************************************
+ *  Check if we are running withing valgrind                                 *
+ ****************************************************************************/
+#if __has_include( "valgrind.h" )
+#include "valgrind.h"
+static bool running_valgrind() { return RUNNING_ON_VALGRIND; }
+#else
+static bool running_valgrind()
+{
+    std::string x;
+    auto tmp = std::getenv( "LD_PRELOAD" );
+    if ( tmp )
+        x = std::string( tmp );
+    return std::min( x.find( "/valgrind/" ), x.find( "/vgpreload" ) ) != std::string::npos;
+}
+#endif
+const bool MemoryApp::d_valgrind = running_valgrind();
