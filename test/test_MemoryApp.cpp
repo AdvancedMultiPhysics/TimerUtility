@@ -17,7 +17,7 @@ int runTests( const MemoryApp::MemoryStats &m1 )
 {
     bool disableTests = MemoryApp::runningValgrind();
 #ifdef TIMER_DISABLE_NEW_OVERLOAD
-    bool disableTests = true;
+    disableTests = true;
 #endif
     if ( disableTests ) {
         std::cout << "Skipping new/delete tests (disabled)\n" << std::endl;
