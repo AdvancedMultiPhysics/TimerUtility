@@ -354,8 +354,22 @@ inline void ProfilerApp::StoreMemory::add(
     else
         bytes = MemoryApp::getTotalMemoryUsage();
 #else
-    NULL_USE( level );
-    bytes = MemoryApp::getTotalMemoryUsage();
+    if ( level == MemoryLevel::Fast ) {
+        static bool printWarning = false;
+        if ( !printWarning ) {
+            printWarning = true;
+            // clang-format off
+            auto msg = "Warning: MemoryLevel::Fast is disabled when TIMER_DISABLE_NEW_OVERLOAD is defined\n"
+                       "         Recording memory usage is disabled\n"
+                       "         Set the memory level to MemoryLevel::Full when disabling new overload (may impact performance)\n";
+            // clang-format on
+            if ( comm_rank() == 0 )
+                std::cout << msg;
+        }
+        return;
+    } else {
+        bytes = MemoryApp::getTotalMemoryUsage();
+    }
 #endif
     bytes_profiler.fetch_sub( bytes );
     // Check if we need to allocate more memory

@@ -462,7 +462,8 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     if ( !test )
         N_errors++;
 
-    // Compare the memory results
+        // Compare the memory results
+#ifndef TIMER_DISABLE_NEW_OVERLOAD
     if ( enable_memory ) {
         bool error = memory2.time.empty() || memory1.time.size() < memory2.time.size();
         for ( size_t i = 0; i < memory2.time.size(); i++ ) {
@@ -474,6 +475,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
             N_errors++;
         }
     }
+#endif
 
     // Test packing/unpacking TimerMemoryResults
     {
