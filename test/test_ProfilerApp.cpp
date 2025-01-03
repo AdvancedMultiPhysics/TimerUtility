@@ -283,6 +283,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     int N_errors       = 0;
     const int rank     = getRank();
     const int N_proc   = getSize();
+    printf( "Rank %i of %i\n",rank,N_proc);
 
     // Sleep for 1 second
     {

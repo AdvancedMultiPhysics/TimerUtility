@@ -86,7 +86,7 @@ FUNCTION( ADD_CPPCHECK_TEST TESTNAME SRCDIR )
 
     # Set the options for cppcheck
     IF ( NOT DEFINED CPPCHECK_OPTIONS )
-        SET( CPPCHECK_OPTIONS -q --error-exitcode=2 --enable=warning,performance,portability,information )
+        SET( CPPCHECK_OPTIONS -q --error-exitcode=2 --enable=warning,performance,portability,information --check-level=exhaustive )
         IF ( CPPCHECK_INCONCLUSIVE )
             SET( CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --inconclusive )
         ENDIF()
