@@ -16,7 +16,9 @@
 
 
 #ifdef USE_MPI
+PROFILE_DISABLE_WARNINGS
 #include <mpi.h>
+PROFILE_ENABLE_WARNINGS
 #endif
 
 

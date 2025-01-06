@@ -586,16 +586,8 @@ void TimerWindow::updateDisplay()
     }
     // Fill the table data
     QStringList TableHeader;
-    TableHeader << "id"
-                << "Message"
-                << "Filename"
-                << "Line"
-                << "Thread"
-                << "N calls"
-                << "min time"
-                << "max time"
-                << "total time"
-                << "% time";
+    TableHeader << "id" << "Message" << "Filename" << "Line" << "Thread" << "N calls" << "min time"
+                << "max time" << "total time" << "% time";
     timerTable->clear();
     timerTable->setRowCount( 0 );
     timerTable->setRowCount( current_timers.size() );
