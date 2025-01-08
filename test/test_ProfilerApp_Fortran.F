@@ -7,6 +7,9 @@ c Include profiler macros
 
         integer i, N
         real :: start, finish
+        character(LEN=128) filename
+
+        filename = __FILE__
         N = 100000
 
         ! Enable the profiler including all level 0-1 timers
@@ -18,8 +21,10 @@ c Include profiler macros
         ! Test performance of timers without memory/trace data
         call cpu_time(start)
         do i = 1, N
-          PROFILE_START("subroutine 1",0)
-          PROFILE_STOP("subroutine 1",0)
+          ! PROFILE_START("subroutine 1",0)
+          ! PROFILE_STOP("subroutine 1",0)
+          call GLOBAL_PROFILE_START("subroutine 1",filename,__LINE__,0)
+          call GLOBAL_PROFILE_STOP("subroutine 1",filename,0)
         enddo
         call cpu_time(finish)
         print '("Timer overhead: ",f6.2," us")',1e6*(finish-start)/N
@@ -35,19 +40,23 @@ c Include profiler macros
         PROFILE_ENABLE_MEMORY()
 
         ! Enable a timer
-        PROFILE_START( "Main", 0 )
+        ! PROFILE_START("Main",0)
+        call GLOBAL_PROFILE_START("Main",filename,__LINE__,0)
 
         ! Call sub timers
         call cpu_time(start)
         do i = 1, N
-          PROFILE_START("subroutine 2",0)
-          PROFILE_STOP("subroutine 2",0)
+          ! PROFILE_START("subroutine 2",0)
+          ! PROFILE_STOP("subroutine 2",0)
+          call GLOBAL_PROFILE_START("subroutine 2",filename,__LINE__,0)
+          call GLOBAL_PROFILE_STOP("subroutine 2",filename,0)
         enddo
         call cpu_time(finish)
         print '("Trace overhead: ",f6.2," us")',1e6*(finish-start)/N
 
         ! Stop a timer
-        PROFILE_STOP("Main",0)
+        ! PROFILE_STOP("Main",0)
+        call GLOBAL_PROFILE_STOP("Main",filename,0)
 
         ! Save timer results
         PROFILE_SAVE("test_ProfilerApp_Fortran")
