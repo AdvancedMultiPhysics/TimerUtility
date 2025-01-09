@@ -9,7 +9,8 @@ c Include profiler macros
         real :: start, finish
         character(LEN=128) filename
 
-        filename = __FILE__
+        ! filename = __FILE__
+        filename = "test_ProfilerApp_Fortran.F"
         N = 100000
 
         ! Enable the profiler including all level 0-1 timers
