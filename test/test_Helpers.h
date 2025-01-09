@@ -5,16 +5,6 @@
 #include <stdio.h>
 
 
-// Define NULL_USE
-#define NULL_USE( variable )                       \
-    do {                                           \
-        if ( 0 ) {                                 \
-            auto static temp = (char *) &variable; \
-            temp++;                                \
-        }                                          \
-    } while ( 0 )
-
-
 /***********************************************************************
  * Subroutine to perform a quicksort                                    *
  ***********************************************************************/

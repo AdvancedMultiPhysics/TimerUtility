@@ -33,14 +33,6 @@ PROFILE_ENABLE_WARNINGS
                                                                                          \
     } while ( false )
 
-#define NULL_USE( variable )                   \
-    do {                                       \
-        if ( 0 ) {                             \
-            auto static t = (char*) &variable; \
-            t++;                               \
-        }                                      \
-    } while ( 0 )
-
 
 // Check the hash size
 constexpr int log2int( uint64_t x )
@@ -632,7 +624,7 @@ TraceResults::TraceResults()
     : thread( 0 ),
       rank( 0 ),
       N_trace( 0 ),
-      min( std::numeric_limits<uint64_t>::max() ),
+      min( static_cast<double>( std::numeric_limits<uint64_t>::max() - 1 ) ),
       max( 0 ),
       tot( 0 ),
       N( 0 ),
@@ -967,8 +959,7 @@ ProfilerApp::ProfilerApp()
     d_disable_timer_error = false;
     d_bytes               = sizeof( ProfilerApp );
     // Get the current thread to set it's id to 0
-    auto thread = getThreadData();
-    NULL_USE( thread );
+    getThreadData();
 }
 ProfilerApp::~ProfilerApp()
 {
@@ -1967,7 +1958,7 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
                     }
                 }
             }
-        } else if ( fields[0].first, "trace:id" ) {
+        } else if ( fields[0].first == "trace:id" ) {
             // We are loading a trace field
             id_struct id( fields[0].second );
             // Find the trace
@@ -2002,7 +1993,6 @@ void ProfilerApp::loadTimer( const std::string& filename, std::vector<TimerResul
                     trace.tot = 1e9 * convert<double>( fields[i].second );
                 } else if ( fields[i].first == "stack" ) {
                     // Load stack
-                    std::string_view tmp( fields[i].second );
                     auto i1 = fields[i].second.find( '[' );
                     auto i2 = fields[i].second.find( ';' );
                     auto i3 = fields[i].second.find( ']' );

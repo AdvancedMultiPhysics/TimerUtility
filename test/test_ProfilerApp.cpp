@@ -2,6 +2,7 @@
 #include "ProfilerApp.h"
 #include "test_Helpers.h"
 
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -157,14 +158,11 @@ bool check( const MemoryResults &memory )
 template<typename TYPE>
 static inline int test_clock()
 {
-    auto start = TYPE::now();
-    std::chrono::time_point<TYPE> t1, t2;
+    auto start  = TYPE::now();
     const int N = 100000;
     for ( int j = 0; j < N; j++ ) {
-        t1 = TYPE::now();
-        t2 = TYPE::now();
-        NULL_USE( t1 );
-        NULL_USE( t2 );
+        [[maybe_unused]] auto t1 = TYPE::now();
+        [[maybe_unused]] auto t2 = TYPE::now();
     }
     auto stop = TYPE::now();
     auto ns   = diff_ns( stop, start );
@@ -190,8 +188,8 @@ static inline int test_diff_ns()
     uint64_t ns = 0;
     for ( int i = 0; i < N; i++ )
         ns += diff_ns( std::chrono::steady_clock::now(), start );
-    NULL_USE( ns );
-    auto stop         = std::chrono::steady_clock::now();
+    auto stop = std::chrono::steady_clock::now();
+    assert( ns > 0 );
     int time_duration = diff_ns( stop, start ) - N * test_clock<std::chrono::steady_clock>();
     return std::max( time_duration, 0 ) / N;
 }
@@ -199,24 +197,34 @@ static inline int test_getMemoryUsage()
 {
     auto t1 = std::chrono::steady_clock::now();
     int N   = 100000;
-    for ( int j = 0; j < N; j++ ) {
-        auto bytes = MemoryApp::getMemoryUsage();
-        NULL_USE( bytes );
-    }
-    auto t2 = std::chrono::steady_clock::now();
-    auto ns = diff_ns( t2, t1 );
+    auto x  = new size_t[N];
+    for ( int j = 0; j < N; j++ )
+        x[j] = MemoryApp::getMemoryUsage();
+    auto t2      = std::chrono::steady_clock::now();
+    auto ns      = diff_ns( t2, t1 );
+    size_t bytes = 0;
+    for ( int j = 0; j < N; j++ )
+        bytes = std::max( bytes, x[j] );
+    if ( bytes == 0 )
+        printf( "getMemoryUsage returns 0\n" );
+    delete[] x;
     return ns / N;
 }
 static inline int test_getTotalMemoryUsage()
 {
     auto t1 = std::chrono::steady_clock::now();
     int N   = 1000000;
-    for ( int j = 0; j < N; j++ ) {
-        auto bytes = MemoryApp::getTotalMemoryUsage();
-        NULL_USE( bytes );
-    }
-    auto t2 = std::chrono::steady_clock::now();
-    auto ns = diff_ns( t2, t1 );
+    auto x  = new size_t[N];
+    for ( int j = 0; j < N; j++ )
+        x[j] = MemoryApp::getTotalMemoryUsage();
+    auto t2      = std::chrono::steady_clock::now();
+    auto ns      = diff_ns( t2, t1 );
+    size_t bytes = 0;
+    for ( int j = 0; j < N; j++ )
+        bytes = std::max( bytes, x[j] );
+    if ( bytes == 0 )
+        printf( "getTotalMemoryUsage returns 0\n" );
+    delete[] x;
     return ns / N;
 }
 
@@ -371,17 +379,15 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         // Test the memory around allocations
         {
             PROFILE( "allocate1" );
-            double *tmp = nullptr;
+            [[maybe_unused]] double *tmp = nullptr;
             {
                 PROFILE( "allocate2" );
                 tmp = new double[5000000];
-                NULL_USE( tmp );
             }
             delete[] tmp;
             {
                 PROFILE( "allocate3" );
                 tmp = new double[100000];
-                NULL_USE( tmp );
             }
             delete[] tmp;
         }

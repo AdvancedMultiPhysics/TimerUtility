@@ -3,12 +3,6 @@
 #include <stdlib.h>
 
 
-// Define NULL_USE
-#define NULL_USE(variable) do {                         \
-    if(0) {char *temp = (char *)&variable; temp++;}     \
-}while(0)
-
-
 // Define bool
 typedef int bool;
 #define true 1
@@ -22,7 +16,7 @@ int run_tests( bool enable_trace, const char* save_name )
     char names[1000][16];
     int N_errors = 0;
     int i, j;
-    double *tmp;
+    [[maybe_unused]] double *tmp;
     printf("Sizeof size_t* = %i\n",(int)sizeof(size_t*));
 
     PROFILE_ENABLE(0);
@@ -60,12 +54,10 @@ int run_tests( bool enable_trace, const char* save_name )
         PROFILE_START("allocate1");
         PROFILE_START("allocate2");
         tmp = (double*) malloc(5000000*sizeof(double));
-        NULL_USE(tmp);
         PROFILE_STOP("allocate2");
         free(tmp);
         PROFILE_START("allocate3");
         tmp = (double*) malloc(100000*sizeof(double));
-        NULL_USE(tmp);
         PROFILE_STOP("allocate3");
         free(tmp);
         PROFILE_STOP("allocate1");
@@ -86,10 +78,8 @@ int run_tests( bool enable_trace, const char* save_name )
 }
 
 
-int main( int argc, char *argv[] )
+int main( int, char *[] )
 {
-    NULL_USE(argc);
-    NULL_USE(argv);
 
     // Run the tests
     int N_errors=0;
