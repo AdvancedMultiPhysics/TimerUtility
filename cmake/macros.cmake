@@ -530,6 +530,10 @@ MACRO( SET_WARNINGS )
         # Add XL specifc compiler options
         SET( CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
         SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -ftemplate-depth=512" )
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "NVHPC") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "NVHPC") )
+        # Try adding gcc specific compiler options as a first shot
+        SET( CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat-security" ) 
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wformat-security -Woverloaded-virtual -Wsign-compare -pedantic" )
     ELSE ( )
         MESSAGE("Compiler specific features are not set for this compiler")
     ENDIF()
@@ -542,6 +546,7 @@ MACRO( SET_WARNINGS )
             ENDIF()
         ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "Intel") ) 
         ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "PGI")
+        ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "NVHPC")
         ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "Cray") )
         ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "Clang") OR
                  (${CMAKE_Fortran_COMPILER_ID} MATCHES "FLANG") OR (${CMAKE_Fortran_COMPILER_ID} MATCHES "Flang") )
