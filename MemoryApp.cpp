@@ -11,10 +11,8 @@
     #include <malloc.h>
     #include <process.h>
     #include <stdlib.h>
-    // clang-format off
     #include <windows.h>
-    #include <Psapi.h>
-    // clang-format on
+    #include <Psapi.h>  // Must be after windows.h
     #define get_malloc_size( X ) _msize( X )
 #elif defined( __APPLE__ )
     // Using MAC
