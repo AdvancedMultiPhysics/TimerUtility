@@ -4,12 +4,13 @@
 
 #include <cassert>
 #include <cmath>
+#include <chrono>
 #include <cstdlib>
 #include <limits>
 #include <random>
 #include <set>
 #include <string>
-#include <unistd.h>
+#include <thread>
 #include <vector>
 
 #ifdef USE_MPI
@@ -298,7 +299,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     // Sleep for 1 second
     {
         PROFILE( "sleep" );
-        sleep( 1 );
+        std::this_thread::sleep_for( std::chrono::milliseconds( 1000 ) );
     }
 
     // Test recursion

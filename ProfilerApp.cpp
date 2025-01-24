@@ -52,7 +52,7 @@ constexpr int log2int( uint64_t x )
 ProfilerApp global_profiler;
 constexpr size_t ProfilerApp::StoreTimes::MAX_TRACE;
 constexpr size_t ProfilerApp::StoreMemory::MAX_ENTRIES;
-constexpr size_t ProfilerApp::HASH_SIZE;
+constexpr uint64_t ProfilerApp::HASH_SIZE;
 static_assert( ProfilerApp::HASH_SIZE == ( (uint64_t) 0x1 << log2int( ProfilerApp::HASH_SIZE ) ) );
 
 

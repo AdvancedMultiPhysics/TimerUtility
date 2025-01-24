@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 
 // clang-format off
@@ -9,9 +10,11 @@
     // Using windows
     #include <malloc.h>
     #include <process.h>
-    #include <Psapi.h>
     #include <stdlib.h>
+    // clang-format off
     #include <windows.h>
+    #include <Psapi.h>
+    // clang-format on
     #define get_malloc_size( X ) _msize( X )
 #elif defined( __APPLE__ )
     // Using MAC
@@ -298,7 +301,8 @@ static bool running_valgrind()
     auto tmp = std::getenv( "LD_PRELOAD" );
     if ( tmp )
         x = std::string( tmp );
-    return std::min( x.find( "/valgrind/" ), x.find( "/vgpreload" ) ) != std::string::npos;
+    size_t pos = std::min<size_t>( x.find( "/valgrind/" ), x.find( "/vgpreload" ) );
+    return pos != std::string::npos;
 }
 #endif
 const bool MemoryApp::d_valgrind = running_valgrind();
