@@ -2039,10 +2039,8 @@ void ProfilerApp::loadTrace( const std::string& filename, std::vector<TimerResul
     while ( true ) {
         // Read the header
         auto line = readLine( fid );
-        if ( line.empty() ) {
-            fclose( fid );
-            return;
-        }
+        if ( line.empty() )
+            break;
         if ( line[0] == '\1' )
             continue;
         // Get the id and find the appropriate timer
@@ -2149,10 +2147,8 @@ void ProfilerApp::loadMemory( const std::string& filename, std::vector<MemoryRes
     while ( true ) {
         // Read the header
         auto line = readLine( fid );
-        if ( line.empty() ) {
-            fclose( fid );
-            return;
-        }
+        if ( line.empty() )
+            break;
         if ( line[0] == '\1' )
             continue;
         data.resize( data.size() + 1 );
