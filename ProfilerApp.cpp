@@ -2654,6 +2654,7 @@ static_assert(
  * C interfaces                                                         *
  ***********************************************************************/
 extern "C" {
+void global_profiler_nullUse( void* ) {}
 void global_profiler_enable( int level ) { global_profiler.enable( level ); }
 void global_profiler_disable() { global_profiler.disable(); }
 int global_profiler_get_level() { return global_profiler.getLevel(); }

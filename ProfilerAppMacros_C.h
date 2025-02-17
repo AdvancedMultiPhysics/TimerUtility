@@ -3,6 +3,7 @@
 
 
 // Define some C interfaces to the global profiler
+extern void global_profiler_nullUse( void* );
 extern void global_profiler_enable( int level );
 extern void global_profiler_disable();
 extern int global_profiler_get_level();
