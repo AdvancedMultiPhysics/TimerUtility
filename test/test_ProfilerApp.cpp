@@ -2,13 +2,13 @@
 #include "ProfilerApp.h"
 #include "test_Helpers.h"
 
-#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <random>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -44,6 +44,18 @@ inline void barrier() {}
 inline void MPI_Init( int *, char **[] ) {}
 inline void MPI_Finalize() {}
 #endif
+
+
+#define ASSERT( EXP )                                                                    \
+    do {                                                                                 \
+        if ( !( EXP ) ) {                                                                \
+            std::stringstream stream;                                                    \
+            stream << "Failed assertion: " << #EXP << " " << __FILE__ << " " << __LINE__ \
+                   << std::endl;                                                         \
+            throw std::logic_error( stream.str() );                                      \
+        }                                                                                \
+                                                                                         \
+    } while ( false )
 
 
 inline void printOverhead( const std::string &timer, int N_calls )
@@ -190,7 +202,7 @@ static inline int test_diff_ns()
     for ( int i = 0; i < N; i++ )
         ns += diff_ns( std::chrono::steady_clock::now(), start );
     auto stop = std::chrono::steady_clock::now();
-    assert( ns > 0 );
+    ASSERT( ns > 0 );
     int time_duration = diff_ns( stop, start ) - N * test_clock<std::chrono::steady_clock>();
     return std::max( time_duration, 0 ) / N;
 }
