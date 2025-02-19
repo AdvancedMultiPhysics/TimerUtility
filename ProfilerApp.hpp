@@ -12,7 +12,7 @@
  ***********************************************************************/
 constexpr uint16_t uint16f::getData( uint64_t x )
 {
-    uint16_t y = x;
+    uint16_t y = static_cast<uint16_t>( x );
     if ( x > 2048 ) {
         uint64_t tmp = x >> 11;
         uint16_t e   = 0;

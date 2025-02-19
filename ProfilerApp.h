@@ -485,7 +485,7 @@ public: // Member classes
 
     private:
         // The maximum number of entries to store (we need 4 bytes/entry)
-        constexpr static size_t MAX_TRACE = 1e6;
+        constexpr static size_t MAX_TRACE = 1000000;
         // Internal data
         size_t d_capacity; // Capacity of d_data
         size_t d_size;     // Number of entries stored
