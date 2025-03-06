@@ -94,9 +94,10 @@ size_t MemoryApp::getTotalMemoryUsage() noexcept
     try {
         #if defined( WIN32 ) || defined( _WIN32 ) || defined( WIN64 ) || defined( _WIN64 )
             // Windows
-            PROCESS_MEMORY_COUNTERS memCounter;
-            GetProcessMemoryInfo( GetCurrentProcess(), &memCounter, sizeof( memCounter ) );
-            N_bytes = memCounter.WorkingSetSize;
+            PROCESS_MEMORY_COUNTERS_EX mem;
+            ZeroMemory(&mem, sizeof(PROCESS_MEMORY_COUNTERS_EX));
+            GetProcessMemoryInfo( GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&mem, sizeof( mem ) );
+            size_t N_bytes = mem.WorkingSetSize;
         #elif defined( __APPLE__ )
             // MAC
             struct task_basic_info t_info;
