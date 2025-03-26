@@ -172,6 +172,7 @@ static constexpr MPI_Datatype getType()
         return MPI_DOUBLE;
     } else {
         static_assert( !std::is_same_v<TYPE, TYPE> );
+        return MPI_BYTE;
     }
 }
 template<class TYPE>

@@ -73,7 +73,7 @@ inline void printOverhead( const std::string &timer, int N_calls )
 std::string random_string( int N )
 {
     std::string str;
-    static auto &chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    static char chars[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     static std::mt19937 gen{ std::random_device{}() };
     static std::uniform_int_distribution<int> dist( 0, sizeof( chars ) - 2 );
     str.reserve( N );

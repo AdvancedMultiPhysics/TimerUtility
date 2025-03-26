@@ -1,6 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.21)
 CMAKE_POLICY( SET CMP0057 NEW )
 CMAKE_POLICY( SET CMP0110 NEW )
+CMAKE_POLICY( SET CMP0115 NEW )
 
 INCLUDE(CheckCCompilerFlag)
 INCLUDE(CheckCSourceCompiles)
@@ -351,6 +352,7 @@ MACRO( ADD_ASSEMBLY PACKAGE SOURCE )
         IF ( MAKE_TARGETS )
             ADD_CUSTOM_TARGET( ${PACKAGE}-assembly )
             ADD_CUSTOM_COMMAND( TARGET ${PACKAGE}-assembly
+                 PRE_LINK
                  COMMAND $(MAKE) ${MAKE_TARGETS}
                  ${COPY_COMMANDS}
                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )
@@ -381,10 +383,10 @@ MACRO( INSTALL_${PROJ}_TARGET PACKAGE )
             SET( DST_FILE "${${PROJ}_INSTALL_DIR}/include/${${PROJ}_INC}/${HFILE}" )
             # Only copy the headers if they exist in the project source directory
             IF ( EXISTS "${SRC_FILE}" )
-                ADD_CUSTOM_COMMAND(TARGET ${COPY_TARGET} 
-                    PRE_BUILD 
+                ADD_CUSTOM_COMMAND(
+                    TARGET ${COPY_TARGET}
+                    PRE_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SRC_FILE}" "${DST_FILE}"
-                    DEPENDS "${SRC_FILE}"
                 )
             ENDIF()
         ENDFOREACH()
@@ -510,28 +512,28 @@ MACRO( SET_WARNINGS )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267 /Zc:preprocessor" )
     ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "Intel") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Intel") )
         # Add Intel specifc compiler options
-        SET( CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
-        SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall" )
+        SET( CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall" )
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall" )
     ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "CRAY") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CRAY") OR
              (${CMAKE_C_COMPILER_ID} MATCHES "Cray") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Cray") )
         # Add Cray specifc compiler options
-        SET( CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS}" )
-        SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS}" )
+        SET( CMAKE_C_FLAGS     "${CMAKE_C_FLAGS}" )
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
     ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "PGI") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "PGI") )
         # Add PGI specifc compiler options
-        SET( CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -lpthread" )
-        SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number" )
+        SET( CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -lpthread" )
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number" )
         # Suppress unreachable code warning, it causes non-useful warnings with some tests/templates
-        SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185")
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185")
     ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "CLANG") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "CLANG") OR
              (${CMAKE_C_COMPILER_ID} MATCHES "Clang") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang") )
         # Add CLANG specifc compiler options
-        SET( CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall -Wextra" )
-        SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wno-missing-braces -Wmissing-field-initializers -ftemplate-depth=1024" )
+        SET( CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra" )
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wno-missing-braces -Wmissing-field-initializers -ftemplate-depth=1024" )
     ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "XL") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "XL") )
         # Add XL specifc compiler options
-        SET( CMAKE_C_FLAGS     " ${CMAKE_C_FLAGS} -Wall" )
-        SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -Wall -ftemplate-depth=512" )
+        SET( CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall" )
+        SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -ftemplate-depth=512" )
     ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "NVHPC") OR (${CMAKE_CXX_COMPILER_ID} MATCHES "NVHPC") )
         # Try adding gcc specific compiler options as a first shot
         SET( CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat-security" ) 
@@ -640,10 +642,10 @@ FUNCTION( COPY_DATA_FILE SRC_FILE DST_FILE )
     IF ( NOT SRC_FILE OR NOT DST_FILE )
         MESSAGE( FATAL_ERROR "COPY_DATA_FILE( ${SRC_FILE} ${DST_FILE} )" )
     ENDIF()
-    ADD_CUSTOM_COMMAND( TARGET ${COPY_TARGET}
+    ADD_CUSTOM_COMMAND(
+        TARGET ${COPY_TARGET}
         PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SRC_FILE}" "${DST_FILE}"
-        DEPENDS "${SRC_FILE}"
     )
 ENDFUNCTION()
 
@@ -930,8 +932,8 @@ ENDFUNCTION()
 MACRO( PARSE_TEST_ARGUMENTS )
     # Parse the input arguments
     SET( optionalArgs WEEKLY TESTBUILDER GPU RUN_SERIAL EXAMPLE MATLAB NO_RESOURCES CATCH2 )
-    SET( oneValueArgs TESTNAME PROCS THREADS TIMEOUT MAIN )
-    SET( multiValueArgs RESOURCES LIBRARIES DEPENDS ARGS LABELS )
+    SET( oneValueArgs TESTNAME PROCS THREADS TIMEOUT MAIN COST )
+    SET( multiValueArgs RESOURCES LIBRARIES DEPENDS ARGS LABELS REQUIRES )
     CMAKE_PARSE_ARGUMENTS( TEST "${optionalArgs}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
     # Set default values for threads/procs/GPUs
     SET_DEFAULT( TEST_THREADS 1 )
@@ -1016,6 +1018,7 @@ ENDFUNCTION()
 #                   RESOURCES resources
 #                   GPU
 #                   TIMEOUT seconds
+#                   COST seconds
 #                   RUN_SERIAL
 #                   DEPENDS depends
 #                   ARGS arguments )
@@ -1035,10 +1038,19 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
     # Parse the input arguments
     PARSE_TEST_ARGUMENTS( ${ARGN} )
 
+    # Check dependencies
+    FOREACH( tmp ${TEST_REQUIRES} )
+        IF ( NOT ${tmp} )
+            MESSAGE( "Disabling \"${TESTNAME}\" because ${tmp} was required and not found" ) 
+            RETURN()    
+        ENDIF()
+    ENDFOREACH()
+
+
     # Add example to list
     IF ( TEST_EXAMPLE )
         SET( VALUE 0 )
-        FOREACH (_variableName ${EXAMPLE_LIST})
+        FOREACH ( _variableName ${EXAMPLE_LIST} )
             IF ( "${_variableName}" STREQUAL "${EXEFILE}" )
                 SET( VALUE 1 )
             ENDIF()
@@ -1151,6 +1163,11 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
         SET_PROPERTY( TEST ${TESTNAME} PROPERTY TIMEOUT ${TEST_TIMEOUT} )
     ENDIF()
 
+    # Add cost data
+    IF ( TEST_COST )
+        SET_PROPERTY( TEST ${TESTNAME} PROPERTY COST ${TEST_COST} )
+    ENDIF()
+
     # Run the test by itself
     IF ( TEST_RUN_SERIAL )
         SET_PROPERTY( TEST ${TESTNAME} PROPERTY RUN_SERIAL TRUE )
@@ -1216,8 +1233,9 @@ FUNCTION( FINALIZE_TESTBUILDER )
         LIST( REMOVE_DUPLICATES TESTBUILDER_SOURCES )
         SET( TB_TARGET_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/TestBuilder.cpp" )
         FOREACH ( tmp ${TESTBUILDER_SOURCES} )
-            GET_FILENAME_COMPONENT( tmp ${tmp} ABSOLUTE )
-            SET( TB_TARGET_SOURCES ${TB_TARGET_SOURCES} ${tmp} )
+            FIND_FILE(  NAMES "${tmp}.*" NO_DEFAULT_PATH )
+            FILE( GLOB SOURCES "${tmp}" "${tmp}.*" )
+            SET( TB_TARGET_SOURCES ${TB_TARGET_SOURCES} ${SOURCES} )
         ENDFOREACH()
         TARGET_SOURCES( ${TB_TARGET} PUBLIC ${TB_TARGET_SOURCES} )
         ADD_DEPENDENCIES( ${TB_TARGET} copy-${PROJ}-include )
@@ -1235,7 +1253,7 @@ FUNCTION( FINALIZE_TESTBUILDER )
     SET( TB_TARGET ${TB_TARGET} PARENT_SCOPE )
     # If we are using CUDA and COMPILE_CXX_AS_CUDA is set, change the language
     IF ( USE_CUDA AND COMPILE_CXX_AS_CUDA )
-        FOREACH ( tmp ${TESTBUILDER_SOURCES} )
+        FOREACH ( tmp ${TB_TARGET_SOURCES} )
             GET_SOURCE_FILE_PROPERTY( lang "${tmp}" LANGUAGE ) 
             IF ( lang STREQUAL "CXX" )
                 SET_SOURCE_FILES_PROPERTIES( ${tmp} PROPERTIES LANGUAGE CUDA )
@@ -1487,14 +1505,12 @@ FUNCTION( ADD_DISTCLEAN ${ARGN} )
         TPLs.h
         ${ARGN}
     )
-    ADD_CUSTOM_TARGET(distclean @echo cleaning for source distribution)
     IF (UNIX)
-        ADD_CUSTOM_COMMAND(
-            DEPENDS clean
+        ADD_CUSTOM_TARGET(
+            distclean
             COMMENT "distribution clean"
-            COMMAND rm
-            ARGS    -Rf ${DISTCLEANED}
-            TARGET  distclean
+            COMMAND rm -Rf ${DISTCLEANED}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BUILD_DIR}"
         )
     ELSE()
         SET( DISTCLEANED
@@ -1509,11 +1525,11 @@ FUNCTION( ADD_DISTCLEAN ${ARGN} )
         APPEND_LIST( "${DISTCLEAN_FILE}" "${DISTCLEANED}" " " " " )
         FILE( APPEND "${DISTCLEAN_FILE}" "\n" )
         APPEND_LIST( "${DISTCLEAN_FILE}" "${DISTCLEANED}" "for /d %%x in ("   ") do rd /s /q \"%%x\"\n" )
-        ADD_CUSTOM_COMMAND(
-            DEPENDS clean
+        ADD_CUSTOM_TARGET(
+            distclean
             COMMENT "distribution clean"
             COMMAND distclean.bat & del /s/q/f distclean.bat
-            TARGET  distclean
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BUILD_DIR}"
         )
     ENDIF()
 ENDFUNCTION()
@@ -1528,6 +1544,17 @@ FUNCTION( ADD_MEXCLEAN )
             ARGS    -Rf libmatlab.* *.mex* test/*.mex*
         )
     ENDIF(UNIX)
+ENDFUNCTION()
+
+
+# Print the current repo version and create target to write to a file
+SET( WriteRepoVersionCmakeFile "${CMAKE_CURRENT_LIST_DIR}/WriteRepoVersion.cmake" )
+FUNCTION( WRITE_REPO_VERSION FILENAME )
+    SET( CMD ${CMAKE_COMMAND} -Dfilename="${FILENAME}" -Dsrc_dir="${${PROJ}_SOURCE_DIR}" 
+             -Dtmp_file="${CMAKE_CURRENT_BINARY_DIR}/tmp/version.h" -DPROJ=${PROJ} 
+             -P "${WriteRepoVersionCmakeFile}" )
+    EXECUTE_PROCESS( COMMAND ${CMD} )
+    ADD_CUSTOM_TARGET( write_repo_version  COMMENT "Write repo version"  COMMAND ${CMD} )
 ENDFUNCTION()
 
 
