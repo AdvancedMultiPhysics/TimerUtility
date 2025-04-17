@@ -14,7 +14,7 @@ class Timerutility(CMakePackage):
     maintainers("bobby-philip", "gllongo", "rbberger")
 
     version("master", branch="master")
-    
+
     variant("mpi", default=True, description="build with mpi")
     variant("shared", default=False, description="Build shared libraries")
     variant("pic", default=False, description="Produce position-independent code")
@@ -24,7 +24,7 @@ class Timerutility(CMakePackage):
 
     def cmake_args(self):
         args = [
-            self.define("TIMER_INSTALL_DIR", self.prefix),
+            self.define("Timer_INSTALL_DIR", self.prefix),
             self.define_from_variant("USE_MPI", "mpi"),
             self.define_from_variant("BUILD_SHARED_LIBS", "shared"),
             self.define_from_variant("CMAKE_POSITION_INDEPENDENT_CODE", "pic"),
