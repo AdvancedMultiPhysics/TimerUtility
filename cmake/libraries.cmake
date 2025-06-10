@@ -337,12 +337,12 @@ MACRO( CONFIGURE_QWT )
     SET( QWT_INSTALL_DIR "${${PROJ}_INSTALL_DIR}/qwt" )
     ExternalProject_Add(
         QWT
-        URL                     "${QWT_URL}"
+        URL                 "${QWT_URL}"
         SOURCE_DIR          "${QWT_SRC_DIR}"
-        PATCH_COMMAND       patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/cmake/QWT.patch
+        PATCH_COMMAND       cmake -P ${CMAKE_CURRENT_LIST_DIR}/cmake/QWT.patch.cmake
         CONFIGURE_COMMAND   ${QT_QMAKE_EXECUTABLE} QWT_INSTALL_PREFIX=${QWT_INSTALL_DIR} qwt.pro
-        BUILD_COMMAND       make -j ${PROCS_INSTALL}
-        INSTALL_COMMAND     make install
+        BUILD_COMMAND       $(MAKE) VERBOSE=1
+        INSTALL_COMMAND     $(MAKE) install
         BUILD_IN_SOURCE     1
         DOWNLOAD_EXTRACT_TIMESTAMP FALSE
         DEPENDS             
