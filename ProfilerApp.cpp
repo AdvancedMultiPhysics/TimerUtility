@@ -1543,18 +1543,17 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 if ( !isRecursive( results[i], trace, stackIDs, stackList ) )
                     tot_thread[k] += 1e-9 * trace.tot;
             }
-            for ( auto &tot : tot_thread )
-                tot /= N_procs;
             for ( int j = 0; j < N_threads; j++ ) {
                 if ( N_thread[j] == 0 )
                     continue;
+                double percentage = 100 * tot_thread[j] / ( N_procs * walltime );
                 // Save the timer to the file
                 // Note: we always want one space in front in case the timer starts
                 //    with '<' and is long.
                 fprintf( timerFile,
                     " %29s  %30s   %5i   %5i    %8i   %8.3f  %8.3f  %10.3f  %6.1f\n",
                     results[i].message, results[i].file, results[i].line, j, N_thread[j],
-                    min_thread[j], max_thread[j], tot_thread[j], 100 * tot_thread[j] / walltime );
+                    min_thread[j], max_thread[j], tot_thread[j], percentage );
             }
         }
         // Loop through all of the entries, saving the detailed data and the trace logs
