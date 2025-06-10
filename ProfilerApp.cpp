@@ -1543,6 +1543,8 @@ void ProfilerApp::save( const std::string& filename, bool global ) const
                 if ( !isRecursive( results[i], trace, stackIDs, stackList ) )
                     tot_thread[k] += 1e-9 * trace.tot;
             }
+            for ( auto &tot : tot_thread )
+                tot /= N_procs;
             for ( int j = 0; j < N_threads; j++ ) {
                 if ( N_thread[j] == 0 )
                     continue;
