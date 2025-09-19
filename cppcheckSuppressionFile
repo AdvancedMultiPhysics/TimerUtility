@@ -13,4 +13,6 @@ preprocessorErrorDirective:*
 // Suppress realloc warnings
 memleakOnRealloc:*/ProfilerApp.cpp
 
-
+// Suppress MPI warnings
+*:*/mpicxx.h
+*:*/mpi/*

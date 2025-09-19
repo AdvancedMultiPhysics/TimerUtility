@@ -1,41 +1,34 @@
-# Set some CMake properties    
+# Set some CMake properties
 CMAKE_MINIMUM_REQUIRED( VERSION 3.20.0 )
 SET( DISABLE_LTO TRUE )
 
-
 MESSAGE( "===========================" )
-MESSAGE( "Configuring Timer Utility"   )
+MESSAGE( "Configuring Timer Utility" )
 MESSAGE( "===========================" )
-
-
 
 # Set the project name
-SET( PROJ Timer )              # Set the project name for CMake
-SET( Timer_LIB timerutility )  # Set the final library name
-SET( Timer_INC )               # Set an optional subfolder for includes (e.g. include/name/...)
+SET( PROJ Timer ) # Set the project name for CMake
+SET( Timer_LIB timerutility ) # Set the final library name
+SET( Timer_INC ) # Set an optional subfolder for includes ( e.g. include/name/... )
 
-
-# Initialize the project (should disable languages that the TPL builder will enable)
+# Initialize the project ( should disable languages that the TPL builder will enable )
 PROJECT( ${PROJ} LANGUAGES )
 
-
 # Prevent users from building in place
-IF ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}" )
+IF ( "${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}" )
     MESSAGE( FATAL_ERROR "Building code in place is a bad idea" )
 ENDIF()
 
-
 # Set source/install paths
 SET( ${PROJ}_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}" )
-SET( ${PROJ}_BUILD_DIR  "${CMAKE_CURRENT_BINARY_DIR}" )
-IF( ${PROJ}_INSTALL_DIR )
+SET( ${PROJ}_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}" )
+IF ( ${PROJ}_INSTALL_DIR )
     SET( ${PROJ}_INSTALL_DIR "${${PROJ}_INSTALL_DIR}" )
-ELSEIF( NOT ${PROJ}_INSTALL_DIR )
+ELSEIF ( NOT ${PROJ}_INSTALL_DIR )
     SET( ${PROJ}_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}" )
 ENDIF()
 INCLUDE_DIRECTORIES( "${${PROJ}_INSTALL_DIR}/include" )
 SET( CMAKE_MODULE_PATH ${${PROJ}_SOURCE_DIR} ${${PROJ}_SOURCE_DIR}/cmake )
-
 
 # Enable languages
 ENABLE_LANGUAGE( C )
@@ -45,25 +38,21 @@ IF ( CMAKE_Fortran_COMPILER )
     SET( CMAKE_Fortran_MODULE_DIRECTORY ${${PROJ}_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
 ENDIF()
 
-
 # Set the default C++ standard
 IF ( NOT CXX_STD )
-    MESSAGE( WARNING "CXX_STD not set, defaulting to c++17" )
+    MESSAGE( "CXX_STD not set, defaulting to c++17" )
     SET( CXX_STD 17 )
 ENDIF()
 IF ( "${CXX_STD}" STREQUAL "98" OR "${CXX_STD}" STRLESS "17" )
     MESSAGE( FATAL_ERROR "c++17 or higher is required" )
 ENDIF()
 
-
 # Include CMake files
 INCLUDE( cmake/macros.cmake )
 INCLUDE( cmake/libraries.cmake )
 
-
 # Check if we are only compiling docs
 CHECK_ENABLE_FLAG( ONLY_BUILD_DOCS 0 )
-
 
 # Set testing paramaters
 SET( DROP_METHOD "http" )
@@ -75,7 +64,6 @@ SET( CMAKE_DIRECTORY_LABELS "Timer" ) # Set a label for subprojects
 SET( CTEST_LABELS_FOR_SUBPROJECTS Timer )
 ENABLE_TESTING()
 INCLUDE( CTest )
-
 
 # Create the target for documentation
 ADD_CUSTOM_TARGET( doc )
@@ -93,7 +81,7 @@ IF ( USE_DOXYGEN )
     SET( DOXYFILE_SOURCE_DIR "${${PROJ}_SOURCE_DIR}" )
     SET( REL_PACKAGE_HTML "" )
     SET( DOXYGEN_MACROS "" )
-    MESSAGE("DOXYGEN_MACROS = ${DOXYGEN_MACROS}")
+    MESSAGE( "DOXYGEN_MACROS = ${DOXYGEN_MACROS}" )
     INCLUDE( "${${PROJ}_SOURCE_DIR}/cmake/UseDoxygen.cmake" )
     IF ( DOXYGEN_FOUND )
         ADD_DEPENDENCIES( doxygen latex_docs )
@@ -103,39 +91,48 @@ IF ( USE_DOXYGEN )
     ENDIF()
 ENDIF()
 
-
 # Create custom targets for distclean
 SET( EXCLUDE_TESTS_FROM_ALL 0 )
-ADD_DISTCLEAN( libtimerutility.* timerutility.lib utilities gui QWT qwt Debug ${PROJ}.build ${PROJ}.xcodeproj features gmon.out GUI-prefix plugins QWT-prefix )
-
+ADD_DISTCLEAN(
+    libtimerutility.*
+    timerutility.lib
+    utilities
+    gui
+    QWT
+    qwt
+    Debug
+    ${PROJ}.build
+    ${PROJ}.xcodeproj
+    features
+    gmon.out
+    GUI-prefix
+    plugins
+    QWT-prefix )
 
 # Get the version information
 INCLUDE( cmake/WriteRepoVersion.cmake )
 WRITE_REPO_VERSION( "${${PROJ}_INSTALL_DIR}/include/TimerUtilityVersion.h" )
 
-
 # Configure external packages
 IF ( NOT ONLY_BUILD_DOCS )
     CONFIGURE_SYSTEM()
-    CONFIGURE_MPI()     # MPI must be before other libraries
-    CONFIGURE_MATLAB()  # MATLAB must be second after MPI
+    CONFIGURE_MPI() # MPI must be before other libraries
+    CONFIGURE_MATLAB() # MATLAB must be second after MPI
     CONFIGURE_TIMER()
     CONFIGURE_LINE_COVERAGE()
     CONFIGURE_VALGRIND()
     # Currently, windows doesn't link shared libraries
-    IF( ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
+    IF ( ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" )
         SET( LIB_TYPE STATIC )
     ENDIF()
 ENDIF()
 
-
 # Check for mallinfo2
-INCLUDE(CheckSymbolExists)
+INCLUDE( CheckSymbolExists )
 CHECK_SYMBOL_EXISTS( mallinfo2 malloc.h HAVE_MALLINFO2 )
 IF ( HAVE_MALLINFO2 )
     ADD_DEFINITIONS( -DHAVE_MALLINFO2 )
 ENDIF()
-
 
 # Add the src directories
 IF ( NOT ONLY_BUILD_DOCS )
@@ -151,47 +148,30 @@ IF ( NOT ONLY_BUILD_DOCS )
     ENDIF()
 ENDIF()
 IF ( USE_LATEX )
-    ADD_SUBDIRECTORY(latex_docs)
+    ADD_SUBDIRECTORY( latex_docs )
 ENDIF()
-
 
 # Generate a Package Configuration File
 INCLUDE( CMakePackageConfigHelpers )
-SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
+SET( INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
 SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake/Timer CACHE PATH "Location of configuration files" )
-CONFIGURE_PACKAGE_CONFIG_FILE( cmake/Timer.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerConfig.cmake
-    INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/Timer"
-    PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
-WRITE_BASIC_PACKAGE_VERSION_FILE(
-    ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerVersion.cmake
-    VERSION ${${PROJ}_VERSION}
-    COMPATIBILITY SameMajorVersion )
-INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerConfig.cmake
-               ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerVersion.cmake
-         DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/Timer )
-
+CONFIGURE_PACKAGE_CONFIG_FILE( cmake/Timer.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerConfig.cmake INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/Timer"
+                              PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
+WRITE_BASIC_PACKAGE_VERSION_FILE( ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerVersion.cmake VERSION ${${PROJ}_VERSION} COMPATIBILITY SameMajorVersion )
+INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerConfig.cmake ${CMAKE_CURRENT_BINARY_DIR}/tmp/TimerVersion.cmake DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/Timer )
 
 # Generate a Dummy Configuration File
 INCLUDE( CMakePackageConfigHelpers )
-SET( INCLUDE_INSTALL_DIR  "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
+SET( INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Location of header files" )
 SET( SYSCONFIG_INSTALL_DIR ${${PROJ}_INSTALL_DIR}/lib/cmake/dummy CACHE PATH "Location of configuration files" )
-CONFIGURE_PACKAGE_CONFIG_FILE( cmake/DummyTimer.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake
-    INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/dummy"
-    PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
-WRITE_BASIC_PACKAGE_VERSION_FILE(
-    ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerVersion.cmake
-    VERSION ${${PROJ}_VERSION}
-    COMPATIBILITY SameMajorVersion )
-INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake
-               ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerVersion.cmake
-         DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/dummy )
-
+CONFIGURE_PACKAGE_CONFIG_FILE( cmake/DummyTimer.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake INSTALL_DESTINATION "${${PROJ}_INSTALL_DIR}/lib/cmake/dummy"
+                              PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR )
+WRITE_BASIC_PACKAGE_VERSION_FILE( ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerVersion.cmake VERSION ${${PROJ}_VERSION} COMPATIBILITY SameMajorVersion )
+INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerVersion.cmake DESTINATION ${${PROJ}_INSTALL_DIR}/lib/cmake/dummy )
 
 # Add the GUI
 IF ( NOT DEFINED ENABLE_GUI )
-    IF ( NOT ( "${QWT_INSTALL_DIR}" STREQUAL "" ) OR NOT ( "${QWT_URL}" STREQUAL "" ) )
+    IF ( NOT ( "${QWT_INSTALL_DIR}" STREQUAL "" ) OR NOT ( "${QWT_URL}" STREQUAL "" ))
         SET( ENABLE_GUI 1 )
     ELSE()
         SET( ENABLE_GUI 0 )
@@ -200,8 +180,8 @@ ENDIF()
 IF ( ENABLE_GUI )
     # Check for QT
     CONFIGURE_QT()
-    IF( NOT QT_FOUND )
-        MESSAGE("${Qt} not found, gui will be disabled")
+    IF ( NOT QT_FOUND )
+        MESSAGE( "${Qt} not found, gui will be disabled" )
     ELSE()
         # Configure QWT
         CONFIGURE_QWT()
@@ -212,12 +192,10 @@ IF ( ENABLE_GUI )
     ENDIF()
 ENDIF()
 
-
 # Add the cppcheck tests
 SET( CPPCHECK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}" )
 SET( CPPCHECK_USE_JSON TRUE )
 FIND_PACKAGE( Cppcheck )
-
 
 # Add the cppclean tests
 SET( CPPCLEAN_OPTIONS )
@@ -226,4 +204,3 @@ SET( CPPCLEAN_SUPPRESSIONS )
 SET( CPPCLEAN_FAIL_ON_WARNINGS 1 )
 SET( CPPCLEAN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}" )
 FIND_PACKAGE( Cppclean )
-
