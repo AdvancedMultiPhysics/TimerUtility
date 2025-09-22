@@ -1,7 +1,4 @@
-# Makefile
-# Format all CMake files and (optionally) add spaces just inside parentheses.
-# NOTE: The sed step is aggressive and may change things you don’t want.
-#       Consider limiting the regex or specific directories/files if needed.
+# Makefile (for formatting CMake files)
 
 .PHONY: format
 
@@ -21,19 +18,19 @@ cmake_format:
 	  exit 1; \
 	}
 %.format: % cmake_format
-	cmake-format -i $<
+	cmake-format -i --enable-markup --literal-comment-pattern='^#' $<
 	sed -E -i \
-	    -e 's/\(([^[:space:]])/(\ \1/g' \
-	    -e 's/([^[:space:]])\)/\1\ )/g' \
-	    -e 's/\( \)/\(\)/g' \
-	    -e 's/\$\( MAKE \)/\$\(MAKE\)/g' \
-	    -e 's/MACRO \(/MACRO\(/g' \
-	    -e 's/FUNCTION \(/FUNCTION\(/g' \
-	    -e 's/FOREACH \(/FOREACH\(/g' \
-	    -e 's/ELSE \(/ELSE\(/g' \
-	    -e 's/ENDIF \(/ENDIF\(/g' \
-	    -e 's/\^\( /\^\(/g' \
-	    -e 's/ \)\$$\"/\)\$$\"/g' \
+	    -e '/^[^#]/s/\(([^[:space:]])/(\ \1/g' \
+	    -e '/^[^#]/s/([^[:space:]])\)/\1\ )/g' \
+	    -e '/^[^#]/s/\( \)/\(\)/g' \
+	    -e '/^[^#]/s/\$\( MAKE \)/\$\(MAKE\)/g' \
+	    -e '/^[^#]/s/MACRO \(/MACRO\(/g' \
+	    -e '/^[^#]/s/FUNCTION \(/FUNCTION\(/g' \
+	    -e '/^[^#]/s/FOREACH \(/FOREACH\(/g' \
+	    -e '/^[^#]/s/ELSE \(/ELSE\(/g' \
+	    -e '/^[^#]/s/ENDIF \(/ENDIF\(/g' \
+	    -e '/^[^#]/s/\^\( /\^\(/g' \
+	    -e '/^[^#]/s/ \)\$$\"/\)\$$\"/g' \
 	    $<
 
 format: $(REFORMAT)

@@ -1,5 +1,8 @@
-# ctest script for building, running, and submitting the test results Usage: ctest -S script,build build = debug / optimized / valgrind / valgrind-matlab / continuous Note: this
-# test will use use the number of processors defined in the variable N_PROCS, the enviornmental variable N_PROCS, or the number of processors availible ( if not specified )
+# ctest script for building, running, and submitting the test results
+#   Usage: ctest -S script,build
+#      build = debug / optimized / valgrind / valgrind-matlab / continuous
+#   Note: this test will use use the number of processors defined in the variable N_PROCS,
+#      the enviornmental variable N_PROCS, or the number of processors availible (if not specified)
 
 # Set the Project variables
 SET( PROJ Profiler )
@@ -164,8 +167,7 @@ ELSE()
     SET( CTEST_TEST_TIMEOUT 120 )
 ENDIF()
 
-# Set valgrind options SET ( VALGRIND_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --track-fds=yes --num-callers=50 --show-reachable=yes --track-origins=yes --malloc-fill=0xff
-# --free-fill=0xfe --suppressions=${${PROJ}_SOURCE_DIR}/ValgrindSuppresionFile" )
+# Set valgrind options SET ( VALGRIND_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --track-fds=yes --num-callers=50 --show-reachable=yes --track-origins=yes --malloc-fill=0xff --free-fill=0xfe --suppressions=${${PROJ}_SOURCE_DIR}/ValgrindSuppresionFile" )
 SET( VALGRIND_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --track-fds=yes --num-callers=50 --show-reachable=yes --suppressions=${${PROJ}_SOURCE_DIR}/ValgrindSuppresionFile" )
 IF ( USE_VALGRIND )
     SET( MEMORYCHECK_COMMAND ${VALGRIND_COMMAND} )
