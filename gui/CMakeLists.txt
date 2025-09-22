@@ -35,7 +35,7 @@ ENDIF()
 IF ( "${CXX_STD}" STREQUAL "98" OR "${CXX_STD}" STRLESS "17" )
     MESSAGE( FATAL_ERROR "c++17 or higher is required" )
 ENDIF()
-IF ( "${CXX_STD}" MATCHES "^( 20|23|26 )$" )
+IF ( "${CXX_STD}" MATCHES "^(20|23|26)$" )
     SET( CXX_STD 17 )
 ENDIF()
 

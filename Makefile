@@ -5,21 +5,24 @@
 
 .PHONY: format
 
-format:
+# Find all cmake files we want to format
+CMAKE_FORMAT := $(shell find . -type f \( -name '*.cmake' -o -name 'CMakeLists.txt' \) )
+REFORMAT = $(CMAKE_FORMAT:=.format)
+
+ifndef VERBOSE
+.SILENT:
+endif
+
+# Format target
+cmake_format:
 	@# Guard: ensure cmake-format exists before doing any work
 	@command -v cmake-format >/dev/null 2>&1 || { \
 	  echo "Error: 'cmake-format' not found in PATH."; \
 	  exit 1; \
 	}
-	@echo "Running cmake-format on all CMake files"
-	@find . -type f \( -name '*.cmake' -o -name 'CMakeLists.txt' \) -exec cmake-format -i {} +
-	@echo "Adding spaces inside parentheses with sed"
-	@if [ "$$(uname)" = "Darwin" ]; then \
-	  find . -type f \( -name '*.cmake' -o -name 'CMakeLists.txt' \) -exec sed -E -i '' \
-	    -e 's/\(([^[:space:]])/(\ \1/g' \
-	    -e 's/([^[:space:]])\)/\1\ )/g' {} + ; \
-	else \
-	  find . -type f \( -name '*.cmake' -o -name 'CMakeLists.txt' \) -exec sed -E -i \
+%.format: % cmake_format
+	cmake-format -i $<
+	sed -E -i \
 	    -e 's/\(([^[:space:]])/(\ \1/g' \
 	    -e 's/([^[:space:]])\)/\1\ )/g' \
 	    -e 's/\( \)/\(\)/g' \
@@ -29,5 +32,11 @@ format:
 	    -e 's/FOREACH \(/FOREACH\(/g' \
 	    -e 's/ELSE \(/ELSE\(/g' \
 	    -e 's/ENDIF \(/ENDIF\(/g' \
-	    {} + ; \
-	fi
+	    -e 's/\^\( /\^\(/g' \
+	    -e 's/ \)\$$\"/\)\$$\"/g' \
+	    $<
+
+format: $(REFORMAT)
+	@echo "Formatting CMake files"; 
+
+
