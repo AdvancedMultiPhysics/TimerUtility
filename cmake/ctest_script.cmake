@@ -2,7 +2,7 @@
 #   Usage: ctest -S script,build
 #      build = debug / optimized / valgrind / valgrind-matlab / continuous
 #   Note: this test will use use the number of processors defined in the variable N_PROCS,
-#      the enviornmental variable N_PROCS, or the number of processors availible (if not specified)
+#      the enviornmental variable N_PROCS, or the number of processors available (if not specified)
 
 # Set the Project variables
 SET( PROJ Profiler )
@@ -238,7 +238,7 @@ ENDIF()
 IF ( ONLY_BUILD_DOCS )
     SET( CTEST_OPTIONS "${CTEST_OPTIONS};-DONLY_BUILD_DOCS:BOOL=TRUE" )
 ELSE()
-    SET( CTEST_OPTIONS "${CTEST_OPTIONS};-DUSE_EXT_DOXYGEN=0" )
+    SET( CTEST_OPTIONS "${CTEST_OPTIONS};-DUSE_DOXYGEN=0" )
 ENDIF()
 SET( CTEST_OPTIONS "${CTEST_OPTIONS};-DQWT_URL='${QWT_URL}';-DQWT_SRC_DIR='${QWT_SRC_DIR}'" )
 MESSAGE( "Configure options:" )
