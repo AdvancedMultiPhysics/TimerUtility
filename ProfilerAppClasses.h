@@ -25,13 +25,11 @@ public:
      *    at the given line, and is automatically deleted.
      *    The scoped timer is also recursive safe, in that it automatically
      *    appends " (x)" to indicate the number of recursive calls of the given timer.
-     * @param[in] id        ID for timer
      * @param[in] msg       Name of the timer
      * @param[in] file      Name of the file containing the code (__FILE__)
      * @param[in] line      Line number containing the start command (__LINE__)
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whos level is <= the level will be included.
-     * @param[in] app       Profiler application to use (default will use the global profiler)
      * @param[in] trace     Store trace-level data for the timer:
      *                      -1: Default, use the global trace flag
      *                       0: Disable trace data for this timer

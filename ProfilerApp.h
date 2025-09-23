@@ -283,10 +283,6 @@ public:
      *   automatically fill in the file name and the line number.
      *   Note: this is the advanced interface, we disable some error checking.
      * @param[in] id        Timer id (see getTimerId for more info)
-     * @param[in] message   Message to uniquely identify the block of code being profiled.
-     *                      It must be a unique message to all start called within the same file.
-     * @param[in] filename  Name of the file containing the code
-     * @param[in] line      Line number containing the start command
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whos level is <= the level will be included.
      * @param[in] trace     Store trace-level data for the timer:
@@ -378,7 +374,7 @@ public:
      *    timer.  This data will be combined from all timers/threads to get the memory usage
      *    of the application over time.  Combined with the trace level data, we can determine
      *    when memory is allocated and which timers are active.
-     * @param[in] memory    Do we want to store detailed profiling data
+     * @param[in] level    How much detail do we want to store
      */
     void setStoreMemory( MemoryLevel level = MemoryLevel::Fast );
 
@@ -432,7 +428,7 @@ public:
      * \details  This function will return a vector containing the
      *      current timing results for all threads.
      * @param[in] message   The timer message
-     * @param[in] filename  The filename
+     * @param[in] file      The filename
      */
     TimerResults getTimerResults( std::string_view message, std::string_view file ) const;
 

@@ -29,7 +29,7 @@ extern void global_profiler_save( const char* name, int global );
 #define PROFILE_SAVE_GLOBAL( NAME, GLOB, ... ) global_profiler_save( NAME, GLOB )
 
 
-/*! \addtogroup Macros
+/*! \addtogroup Macros_C
  *  @{
  */
 
