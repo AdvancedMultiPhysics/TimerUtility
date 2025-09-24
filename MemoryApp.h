@@ -47,7 +47,7 @@ public:
      * @brief  Print memory statistics
      * @details  This function will print some basic memory statistics for new/delete.
      *    More specifically it will print the total number of bytes allocated,
-     *    detroyed, in use, and number of calls.
+     *    destroyed, in use, and number of calls.
      * @param os            Output stream to print the results
      */
     static void print( std::ostream& os );
@@ -66,9 +66,9 @@ public:
     static size_t getTotalMemoryUsage() noexcept;
 
     /*!
-     * Function to get the memory availible.
-     * This function will return the total memory availible
-     * Note: depending on the implimentation, this number may be rounded to
+     * Function to get the memory available.
+     * This function will return the total memory available
+     * Note: depending on the implementation, this number may be rounded to
      * to a multiple of the page size.
      * If this function fails, it will return 0.
      */
