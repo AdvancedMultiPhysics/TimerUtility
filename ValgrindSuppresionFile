@@ -417,6 +417,48 @@
    fun:gethostbyname
    ...
 }
+{
+   PMPI_Init_malloc_indirect
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:malloc
+   ...
+   fun:PMPI_Init
+   ...
+}
+{
+   PMPI_Init_malloc_definite
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   ...
+   fun:PMPI_Init
+   ...
+}
+
+
+# hwloc
+{
+   hwloc_leak
+   Memcheck:Leak
+   ...
+   obj:*/libhwloc.so*
+}
+{
+   hwloc_topology_load_leak
+   Memcheck:Leak
+   ...
+   fun:hwloc_topology_load
+   ...
+}
+{
+   hwloc_PMPI_Init_leak
+   Memcheck:Leak
+   obj:*/libhwloc.so*
+   ...
+   fun:PMPI_Init
+   ...
+}
 
 
 # System errors
@@ -449,6 +491,54 @@
    fun:call_init
    fun:_dl_init
    ...
+}
+{
+   dl_open_worker_definite
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:dl_open_worker
+   ...
+}
+{
+   dl_open_worker_indirect
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   ...
+   fun:dl_open_worker
+   ...
+}
+{
+   dl_open_worker_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   ...
+   fun:dl_open_worker
+   ...
+}
+{
+   start_thread_definite
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:start_thread
+   fun:clone
+}
+{
+   start_thread_indirect
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   ...
+   fun:start_thread
+   fun:clone
+}
+{
+   start_thread_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   ...
+   fun:start_thread
+   fun:clone
 }
 
 
