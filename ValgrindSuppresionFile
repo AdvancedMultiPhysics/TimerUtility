@@ -437,6 +437,16 @@
 }
 
 
+# Supress nvidia errors
+{
+   libnvidia-opencl
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libnvidia-opencl.so.*
+   ...
+}
+
+
 # hwloc
 {
    hwloc_leak
