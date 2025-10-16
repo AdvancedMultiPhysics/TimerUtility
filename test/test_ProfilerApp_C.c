@@ -7,13 +7,7 @@
 #define NULL_USE( var ) global_profiler_nullUse( (void *) &var )
 
 
-// Define bool
-typedef int bool;
-#define true 1
-#define false 0
-
-
-int run_tests( bool enable_trace, const char *save_name )
+int run_tests( int enable_trace, const char *save_name )
 {
     const int N_it     = 100;
     const int N_timers = 1000;
@@ -25,7 +19,7 @@ int run_tests( bool enable_trace, const char *save_name )
 
     PROFILE_ENABLE( 0 );
     PROFILE_SYNCHRONIZE();
-    if ( enable_trace ) {
+    if ( enable_trace != 0 ) {
         PROFILE_ENABLE_TRACE();
         PROFILE_ENABLE_MEMORY();
     }
@@ -91,8 +85,8 @@ int main( int argc, char *argv[] )
 
     // Run the tests
     int N_errors = 0;
-    N_errors += run_tests( false, "test_ProfilerApp_C" );
-    N_errors += run_tests( true, "test_ProfilerApp_C-trace" );
+    N_errors += run_tests( 0, "test_ProfilerApp_C" );
+    N_errors += run_tests( 1, "test_ProfilerApp_C-trace" );
 
     // Finished
     if ( N_errors == 0 )
