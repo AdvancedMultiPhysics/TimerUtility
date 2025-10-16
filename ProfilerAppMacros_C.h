@@ -104,7 +104,7 @@ extern void global_profiler_save( const char* name, int global );
  *  \param FILE     Name of the file to save
  *  \param GLOBAL   Optional variable to save all ranks in a single file (default is false)
  */
-#define PROFILE_SAVE( ... ) PROFILE_SAVE_GLOBAL( __VA_ARGS__, false, 0 )
+#define PROFILE_SAVE( ... ) PROFILE_SAVE_GLOBAL( __VA_ARGS__, 0, 0 )
 
 
 /*! \def PROFILE_STORE_TRACE(X)

@@ -73,7 +73,7 @@ int run_tests( int enable_trace, const char *save_name )
 
     // Re-save the results and finish
     PROFILE_SAVE( save_name );
-    PROFILE_SAVE( save_name, true );
+    PROFILE_SAVE( save_name, 1 );
     return N_errors;
 }
 
