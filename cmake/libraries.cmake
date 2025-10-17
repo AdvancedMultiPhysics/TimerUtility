@@ -105,6 +105,9 @@ MACRO ( CONFIGURE_MPI )
     IF ( USE_MPI AND NOT MPIEXEC )
         MESSAGE( FATAL_ERROR "Unable to find MPIEXEC, please set it before continuing" )
     ENDIF()
+    IF ( USE_MPI )
+        ADD_DEFINITIONS( -DUSE_MPI )
+    ENDIF()
 ENDMACRO()
 
 
