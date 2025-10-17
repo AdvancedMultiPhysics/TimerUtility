@@ -8,7 +8,12 @@ IF ( (${CXX_STD} STREQUAL "11" ) OR ( ${CXX_STD} STREQUAL "14" ))
 ENDIF()
 IF ( CMAKE_Fortran_COMPILER )
     ADD_TIMER_TEST( test_ProfilerApp_Fortran )
-    SET_TARGET_PROPERTIES( test_ProfilerApp_Fortran PROPERTIES LINKER_LANGUAGE CXX )
+    SET_TARGET_PROPERTIES( test_ProfilerApp_Fortran PROPERTIES LINKER_LANGUAGE Fortran )
+    INCLUDE( CheckLinkerFlag )
+    CHECK_LINKER_FLAG( Fortran -lstdc++ test_link_std )
+    IF ( test_link_std )
+        TARGET_LINK_LIBRARIES( test_ProfilerApp_Fortran stdc++ )
+    ENDIF()
 ENDIF()
 
 # Regression test for ProfilerApp to ensure we can continue to load the data from older versions
