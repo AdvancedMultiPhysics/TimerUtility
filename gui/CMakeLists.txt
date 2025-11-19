@@ -27,18 +27,6 @@ ELSEIF ( NOT ${PROJ}_INSTALL_DIR )
 ENDIF()
 INCLUDE_DIRECTORIES( "${${PROJ}_INSTALL_DIR}/include" )
 
-# Set the default C++ standard
-IF ( NOT CXX_STD )
-    MESSAGE( WARNING "CXX_STD not set, defaulting to c++14" )
-    SET( CXX_STD 17 )
-ENDIF()
-IF ( "${CXX_STD}" STREQUAL "98" OR "${CXX_STD}" STRLESS "17" )
-    MESSAGE( FATAL_ERROR "c++17 or higher is required" )
-ENDIF()
-IF ( "${CXX_STD}" MATCHES "^(20|23|26)$" )
-    SET( CXX_STD 17 )
-ENDIF()
-
 # Include CMake files
 INCLUDE( ../cmake/macros.cmake )
 INCLUDE( ../cmake/libraries.cmake )

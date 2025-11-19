@@ -38,15 +38,6 @@ IF ( CMAKE_Fortran_COMPILER )
     SET( CMAKE_Fortran_MODULE_DIRECTORY ${${PROJ}_INSTALL_DIR}/include CACHE PATH "Fortran module install folder" )
 ENDIF()
 
-# Set the default C++ standard
-IF ( NOT CXX_STD )
-    MESSAGE( "CXX_STD not set, defaulting to c++17" )
-    SET( CXX_STD 17 )
-ENDIF()
-IF ( "${CXX_STD}" STREQUAL "98" OR "${CXX_STD}" STRLESS "17" )
-    MESSAGE( FATAL_ERROR "c++17 or higher is required" )
-ENDIF()
-
 # Include CMake files
 INCLUDE( cmake/macros.cmake )
 INCLUDE( cmake/libraries.cmake )
@@ -180,7 +171,12 @@ INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake ${CMAKE_C
 # Add the GUI
 IF ( NOT DEFINED ENABLE_GUI )
     IF ( NOT ( "${QWT_INSTALL_DIR}" STREQUAL "" ) OR NOT ( "${QWT_URL}" STREQUAL "" ))
-        SET( ENABLE_GUI 1 )
+        IF ( "${CMAKE_CXX_STANDARD}" STREQUAL "17" )
+            SET( ENABLE_GUI 1 )
+        ELSE()
+            MESSAGE( WARNING "GUI requires C++17 only" )
+            SET( ENABLE_GUI 0 )
+        ENDIF()
     ELSE()
         SET( ENABLE_GUI 0 )
     ENDIF()
