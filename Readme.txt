@@ -16,9 +16,10 @@ cmake                                                   \
         -D CFLAGS="-fPIC"                               \
     -D CMAKE_CXX_COMPILER:PATH=mpic++                   \
         -D CXXFLAGS="-fPIC"                             \
+        -D CXX_STD=20                                   \
     -D CMAKE_Fortran_COMPILER:PATH=gfortran             \
     -D USE_MPI=1                                        \
-    -D QT_VERSION=4                                     \
+    -D QT_VERSION=5                                     \
         -D QWT_URL=/packages/archive/qwt-6.3.0.tar.bz2  \
     ../../src
 
