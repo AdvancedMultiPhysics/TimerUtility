@@ -7,13 +7,13 @@ FUNCTION( CONFIGURE_LINE_COVERAGE )
     IF ( ENABLE_GCOV )
         SET( COVERAGE_FLAGS -DUSE_GCOV )
         SET( CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage )
-        CHECK_CXX_SOURCE_COMPILES( "int main() { return 0;}" profile-arcs )
+        CHECK_CXX_SOURCE_COMPILES( "int main( ) { return 0;}" profile-arcs )
         IF ( profile-arcs )
             SET( COVERAGE_FLAGS "${COVERAGE_FLAGS} -fprofile-arcs -ftest-coverage" )
             SET( COVERAGE_LIBS ${COVERAGE_LIBS} -fprofile-arcs )
         ENDIF()
         SET( CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_FLAGS} -lgcov" )
-        CHECK_CXX_SOURCE_COMPILES( "int main() { return 0;}" lgcov )
+        CHECK_CXX_SOURCE_COMPILES( "int main( ) { return 0;}" lgcov )
         IF ( lgcov )
             SET( COVERAGE_LIBS -lgcov ${COVERAGE_LIBS} )
         ENDIF()
@@ -175,7 +175,7 @@ MACRO( CONFIGURE_SYSTEM )
         # Linux specific system libraries
         SET( SYSTEM_LIBS -lpthread -ldl )
         IF ( CMAKE_Fortran_COMPILER_WORKS )
-            IF ( CMAKE_COMPILER_IS_GNUG77 OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU" ))
+            IF ( CMAKE_COMPILER_IS_GNUG77 OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU" ) )
                 SET( SYSTEM_LIBS ${SYSTEM_LIBS} -lgfortran )
             ENDIF()
         ENDIF()
@@ -381,8 +381,10 @@ MACRO( CONFIGURE_QT )
     FIND_PACKAGE( ${Qt} COMPONENTS ${QT_COMPONENTS} REQUIRED )
     SET( QT_FOUND ${Qt}_FOUND )
     IF ( NOT ${Qt}_FOUND )
+        MESSAGE( "${Qt} not found, disabling" )
         RETURN()
     ENDIF()
+    MESSAGE( "${Qt} found" )
     IF ( ${QT_VERSION} EQUAL "5" )
         GET_TARGET_PROPERTY( QT_QMAKE_EXECUTABLE ${Qt}::qmake IMPORTED_LOCATION )
     ENDIF()
@@ -416,6 +418,22 @@ MACRO( CONFIGURE_QWT )
         LOG_BUILD 1
         LOG_TEST 1
         LOG_INSTALL 1 )
+    SET( tpl_cmds build pre-configure configure done download download-impl mkdir 
+        patch install build-test test check-test update post-install )
+    SET( RM_LIST )
+    FOREACH( tmp ${tpl_cmds} )
+        SET( RM_LIST ${RM_LIST} QWT-${tmp} QWT-${tmp}-err.log QWT-${tmp}-out.log )
+    ENDFOREACH()
+    ADD_CUSTOM_TARGET( 
+        QWT-clean
+        ${CMAKE_COMMAND}         -E remove_directory ../QWT-build
+        COMMAND ${CMAKE_COMMAND} -E make_directory   ../QWT-build
+        COMMAND ${CMAKE_COMMAND} -E remove ${RM_LIST}
+        COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_INSTALL_PREFIX}/logs/QWT"
+        COMMAND ${CMAKE_COMMAND} -E make_directory   "${CMAKE_INSTALL_PREFIX}/logs/QWT"
+        COMMAND ${CMAKE_COMMAND} -E remove_directory QWT-prefix
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/QWT-prefix/src/QWT-stamp" 
+    )
 ENDMACRO()
 
 # Macro to configure GUI

@@ -179,7 +179,7 @@ ENDFUNCTION()
 FUNCTION( GET_HG_INFO )
 
     EXECUTE_PROCESS( COMMAND hg head WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE HG_INFO ERROR_VARIABLE HG_ERR )
-    IF ( NOT ( "${HG_INFO}" MATCHES "changeset" ))
+    IF ( NOT ( "${HG_INFO}" MATCHES "changeset" ) )
         RETURN()
     ENDIF()
 
@@ -202,7 +202,7 @@ ENDFUNCTION()
 # Get the repo version for git
 FUNCTION( GET_GIT_INFO )
     EXECUTE_PROCESS( COMMAND git log -n 1 WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE GIT_INFO ERROR_VARIABLE GIT_ERR )
-    IF ( NOT ( "${GIT_INFO}" MATCHES "commit " ))
+    IF ( NOT ( "${GIT_INFO}" MATCHES "commit " ) )
         RETURN()
     ENDIF()
 

@@ -27,6 +27,7 @@ IF ( ${PROJ}_INSTALL_DIR )
 ELSEIF ( NOT ${PROJ}_INSTALL_DIR )
     SET( ${PROJ}_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}" )
 ENDIF()
+SET( CMAKE_INSTALL_PREFIX ${${PROJ}_INSTALL_DIR} )
 INCLUDE_DIRECTORIES( "${${PROJ}_INSTALL_DIR}/include" )
 SET( CMAKE_MODULE_PATH ${${PROJ}_SOURCE_DIR} ${${PROJ}_SOURCE_DIR}/cmake )
 
@@ -104,7 +105,10 @@ ADD_DISTCLEAN(
     gmon.out
     GUI-prefix
     plugins
-    QWT-prefix )
+    QWT-prefix
+    doxygen.config
+    test_mpi.cpp
+    logs )
 
 # Get the version information
 INCLUDE( cmake/WriteRepoVersion.cmake )
@@ -170,13 +174,8 @@ INSTALL( FILES ${CMAKE_CURRENT_BINARY_DIR}/tmp/dummy/TimerConfig.cmake ${CMAKE_C
 
 # Add the GUI
 IF ( NOT DEFINED ENABLE_GUI )
-    IF ( NOT ( "${QWT_INSTALL_DIR}" STREQUAL "" ) OR NOT ( "${QWT_URL}" STREQUAL "" ))
-        IF ( "${CMAKE_CXX_STANDARD}" STREQUAL "17" )
-            SET( ENABLE_GUI 1 )
-        ELSE()
-            MESSAGE( WARNING "GUI requires C++17 only" )
-            SET( ENABLE_GUI 0 )
-        ENDIF()
+    IF ( NOT ( "${QWT_INSTALL_DIR}" STREQUAL "" ) OR NOT ("${QWT_URL}" STREQUAL "" ) )
+        SET( ENABLE_GUI 1 )
     ELSE()
         SET( ENABLE_GUI 0 )
     ENDIF()

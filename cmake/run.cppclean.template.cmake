@@ -77,7 +77,7 @@ FOREACH( line ${OUTPUT} )
         # Suppress message
     ELSEIF ( "${line}" MATCHES "" )
         # Empty line
-    ELSEIF ( ("${line}" MATCHES "use a forward declaration instead" ) OR ( "${line}" MATCHES "forward declaration not expected" ))
+    ELSEIF ( ("${line}" MATCHES "use a forward declaration instead" ) OR ( "${line}" MATCHES "forward declaration not expected" ) )
         SET( FORWARD_DECLARE ${FORWARD_DECLARE} "${line}" )
     ELSEIF ( "${line}" MATCHES "does not need to be #included" )
         # Remove includes of .hpp files within .h files

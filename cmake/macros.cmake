@@ -60,9 +60,9 @@ MACRO( CHECK_ENABLE_FLAG FLAG DEFAULT )
         SET( ${FLAG} ${DEFAULT} )
     ELSEIF ( ${FLAG} STREQUAL "" )
         SET( ${FLAG} ${DEFAULT} )
-    ELSEIF ( (${${FLAG}} STREQUAL "FALSE" ) OR ( ${${FLAG}} STREQUAL "false" ) OR ( ${${FLAG}} STREQUAL "0" ) OR ( ${${FLAG}} STREQUAL "OFF" ))
+    ELSEIF ( (${${FLAG}} STREQUAL "FALSE" ) OR ( ${${FLAG}} STREQUAL "false" ) OR ( ${${FLAG}} STREQUAL "0" ) OR ( ${${FLAG}} STREQUAL "OFF" ) )
         SET( ${FLAG} 0 )
-    ELSEIF ( (${${FLAG}} STREQUAL "TRUE" ) OR ( ${${FLAG}} STREQUAL "true" ) OR ( ${${FLAG}} STREQUAL "1" ) OR ( ${${FLAG}} STREQUAL "ON" ))
+    ELSEIF ( (${${FLAG}} STREQUAL "TRUE" ) OR ( ${${FLAG}} STREQUAL "true" ) OR ( ${${FLAG}} STREQUAL "1" ) OR ( ${${FLAG}} STREQUAL "ON" ) )
         SET( ${FLAG} 1 )
     ELSE()
         MESSAGE( "Bad value for ${FLAG} ( ${${FLAG}} ); use true or false" )
@@ -469,7 +469,7 @@ ENDMACRO()
 
 # Set the proper warnings
 MACRO( SET_WARNINGS )
-    IF ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR ( ${CMAKE_C_COMPILER_ID} MATCHES "GNU" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU" ))
+    IF ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR ( ${CMAKE_C_COMPILER_ID} MATCHES "GNU" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU" ) )
         # Add gcc specific compiler options
         # Note: adding -Wlogical-op causes a wierd linking error on Titan using the nvcc wrapper:
         #    /usr/bin/ld: cannot find gical-op: No such file or directory
@@ -484,37 +484,35 @@ MACRO( SET_WARNINGS )
         # Add Microsoft specifc compiler options
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267 /Zc:preprocessor" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D _SCL_SECURE_NO_WARNINGS /D _CRT_SECURE_NO_WARNINGS /D _ITERATOR_DEBUG_LEVEL=0 /wd4267 /Zc:preprocessor" )
-    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "Intel" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "Intel" ))
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "Intel" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "Intel" ) )
         # Add Intel specifc compiler options
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall" )
         # Note: avx512 causes changes in answers and some tests to fail, disable avx
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-avx" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-avx" )
-    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "CRAY" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "CRAY" ) OR ( ${CMAKE_C_COMPILER_ID} MATCHES "Cray" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES
-                                                                                                                                                "Cray" ))
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "(CRAY|Cray)" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "(CRAY|Cray)" ) )
         # Add Cray specifc compiler options
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" )
-    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "PGI" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "PGI" ))
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "PGI" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "PGI" ) )
         # Add PGI specifc compiler options
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lpthread" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread -Minform=inform -Mlist --display_error_number" )
         # Suppress unreachable code warning, it causes non-useful warnings with some tests/templates
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --diag_suppress 111,128,185" )
-    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "CLANG" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "CLANG" ) OR ( ${CMAKE_C_COMPILER_ID} MATCHES "Clang" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES
-                                                                                                                                                   "Clang" ))
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "(CLANG|Clang)" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "(CLANG|Clang)" ) )
         # Add CLANG specifc compiler options
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wno-missing-braces -Wmissing-field-initializers -ftemplate-depth=1024" )
         IF ( USE_HIP )
             SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-gnu-anonymous-struct -Wno-nested-anon-types" )
         ENDIF()
-    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "XL" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "XL" ))
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "XL" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "XL" ) )
         # Add XL specifc compiler options
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -ftemplate-depth=512" )
-    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "NVHPC" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "NVHPC" ))
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "NVHPC" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "NVHPC" ) )
         # Try adding gcc specific compiler options as a first shot
         SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wformat-security" )
         SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wformat-security -Woverloaded-virtual -Wsign-compare -pedantic" )
@@ -523,20 +521,19 @@ MACRO( SET_WARNINGS )
     ENDIF()
     # SET the Fortran compiler
     IF ( CMAKE_Fortran_COMPILER_WORKS )
-        IF ( CMAKE_COMPILER_IS_GNUG77 OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU" ))
-            IF ( NOT ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR ( ${CMAKE_C_COMPILER_ID} MATCHES "GNU" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU" )) )
+        IF ( CMAKE_COMPILER_IS_GNUG77 OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "GNU" ) )
+            IF ( NOT ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR ( ${CMAKE_C_COMPILER_ID} MATCHES "GNU" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU" ) ) )
                 LIST( REMOVE_ITEM CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES gcc )
             ENDIF()
-        ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "Intel" ))
+        ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "Intel" ) )
 
         ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "PGI" )
 
         ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "NVHPC" )
 
-        ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "CRAY" ) OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "Cray" ))
+        ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "(CRAY|Cray)" )
 
-        ELSEIF ( (${CMAKE_Fortran_COMPILER_ID} MATCHES "CLANG" ) OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "Clang" ) OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "FLANG" )
-                OR ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "Flang" ))
+        ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "(CLANG|Clang|FLANG|Flang)" )
 
         ELSEIF ( ${CMAKE_Fortran_COMPILER_ID} MATCHES "XL" )
 
@@ -565,13 +562,13 @@ MACRO( SET_COMPILER_FLAGS )
         SET( CMAKE_CXX_FLAGS_DEBUG "-D_DEBUG /DEBUG /Od /EHsc /MDd /Z7" )
         SET( CMAKE_C_FLAGS_RELEASE "/O2 /EHsc /MD" )
         SET( CMAKE_CXX_FLAGS_RELEASE "/O2 /EHsc /MD" )
-    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "Intel" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "Intel" ))
+    ELSEIF ( (${CMAKE_C_COMPILER_ID} MATCHES "Intel" ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "Intel" ) )
         SET( CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -fp-model precise" )
     ELSE()
 
     ENDIF()
     # Set debug definitions
-    IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND NOT ( "${CMAKE_CXX_FLAGS_DEBUG}" MATCHES "-D_DEBUG" ))
+    IF ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND NOT ( "${CMAKE_CXX_FLAGS_DEBUG}" MATCHES "-D_DEBUG" ) )
         SET( CMAKE_C_FLAGS_DEBUG " ${CMAKE_C_FLAGS_DEBUG}   -DDEBUG -D_DEBUG" )
         SET( CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -D_DEBUG" )
         SET( CMAKE_CUDA_FLAGS_DEBUG " ${CMAKE_CUDA_FLAGS_DEBUG} -DDEBUG -D_DEBUG" )
@@ -579,7 +576,7 @@ MACRO( SET_COMPILER_FLAGS )
     ENDIF()
     # Enable GLIBCXX_DEBUG flags
     CHECK_ENABLE_FLAG( ENABLE_GXX_DEBUG 0 )
-    IF ( ENABLE_GXX_DEBUG AND NOT ( "${CMAKE_CXX_FLAGS_DEBUG}" MATCHES "-D_GLIBCXX_DEBUG" ))
+    IF ( ENABLE_GXX_DEBUG AND NOT ( "${CMAKE_CXX_FLAGS_DEBUG}" MATCHES "-D_GLIBCXX_DEBUG" ) )
         SET( CMAKE_CXX_FLAGS_DEBUG " ${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" )
     ENDIF()
     # Save the debug/release specific flags to the cache
@@ -771,7 +768,7 @@ FUNCTION( KEEP_BUILD_LIBRARIES VAR )
     SET( build ${build_type} )
     SET( LIBS )
     FOREACH( tmp ${${VAR}} )
-        IF ( (${tmp} STREQUAL debug ) OR ( ${tmp} STREQUAL optimized ))
+        IF ( (${tmp} STREQUAL debug ) OR ( ${tmp} STREQUAL optimized ) )
             SET( build ${tmp} )
         ELSEIF ( ${build} STREQUAL ${build_type} )
             SET( LIBS ${LIBS} ${tmp} )
@@ -1081,10 +1078,10 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
     IF ( ${TOT_PROCS} EQUAL 0 )
         # Skip test ( provisional )
         RETURN()
-    ELSEIF ( USE_CUDA AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ))
+    ELSEIF ( USE_CUDA AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ) )
         MESSAGE( "Disabling test \"${TESTNAME}\" ( exceeds maximum number of GPUs available ${NUMBER_OF_GPUS} )" )
         RETURN()
-    ELSEIF ( USE_HIP AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ))
+    ELSEIF ( USE_HIP AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ) )
         MESSAGE( "Disabling test \"${TESTNAME}\" ( exceeds maximum number of GPUs available ${NUMBER_OF_GPUS} )" )
         RETURN()
     ELSEIF ( ${TOT_PROCS} GREATER ${TEST_MAX_PROCS} )
