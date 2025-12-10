@@ -71,9 +71,14 @@ ENDMACRO()
 
 # Check for gold linker
 IF ( UNIX AND NOT APPLE AND NOT DISABLE_GOLD AND NOT DEFINED CMAKE_LINKER_TYPE )
-    EXECUTE_PROCESS( COMMAND ${CMAKE_CXX_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION )
-    IF ( "${LD_VERSION}" MATCHES "GNU gold" )
-        SET( CMAKE_LINKER_TYPE GOLD )
+    INCLUDE( CheckLinkerFlag )
+    SET( CMAKE_LINKER_TYPE GOLD )
+    CHECK_LINKER_FLAG( CXX "-fuse-ld=gold" test_gold )
+    IF ( test_gold )
+        MESSAGE( "-- Using gold linker" )
+    ELSE()
+        MESSAGE( "-- Using default linker" )
+        SET( CMAKE_LINKER_TYPE DEFAULT )
     ENDIF()
 ENDIF()
 
