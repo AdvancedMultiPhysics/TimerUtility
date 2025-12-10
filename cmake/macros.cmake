@@ -12,7 +12,7 @@ IF ( NOT TEST_FAIL_REGULAR_EXPRESSION )
     # Note: we cannot check for "handles are still allocated" due to PETSc.
     #    See static variable Petsc_Reduction_keyval on line 234 of comb.c
     # SET( TEST_FAIL_REGULAR_EXPRESSION "( FAILED )|( leaked context IDs detected )|( handles are still allocated )" )
-    SET( TEST_FAIL_REGULAR_EXPRESSION "( FAILED )" )
+    SET( TEST_FAIL_REGULAR_EXPRESSION "FAILED" )
 ENDIF()
 
 # Check that the PROJ and ${PROJ}_INSTALL_DIR variables are set
@@ -30,7 +30,6 @@ ENDIF()
 # Enable json
 SET( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
-
 # Set default compiler id
 IF ( NOT DEFAULT_COMPILER_ID )
     IF ( CMAKE_CXX_COMPILER_ID )
@@ -43,7 +42,6 @@ IF ( NOT DEFAULT_COMPILER_ID )
         AMP_ERROR( "Default compiler ID not set" )
     ENDIF()
 ENDIF()
-
 
 # Check for link time optimization ( LTO )
 IF ( "${CMAKE_BUILD_TYPE}" STREQUAL "Release" AND NOT DISABLE_LTO AND NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION )
@@ -183,7 +181,9 @@ ENDIF()
 MACRO( CONVERT_M4_FORTRAN IN LOCAL_PATH OUT_PATH )
     STRING( REGEX REPLACE ${LOCAL_PATH} "" OUT ${IN} )
     STRING( REGEX REPLACE "/" "" OUT ${OUT} )
-    STRING( REGEX REPLACE "( .fm4 )|( .m4 )" ".F" OUT "${CMAKE_CURRENT_BINARY_DIR}/${OUT_PATH}/${OUT}" )
+    # cmake-format: off
+    STRING( REGEX REPLACE "(.fm4)|(.m4)" ".F" OUT "${CMAKE_CURRENT_BINARY_DIR}/${OUT_PATH}/${OUT}" )
+    # cmake-format: on
     IF ( NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${OUT_PATH}" )
         FILE( MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${OUT_PATH}" )
     ENDIF()
@@ -783,7 +783,7 @@ MACRO( TARGET_LINK_EXTERNAL_LIBRARIES TARGET_NAME )
         ENDFOREACH()
         FOREACH( tmp ${CMAKE_IMPLICIT_LINK_DIRECTORIES} )
             TARGET_LINK_DIRECTORIES( ${TARGET_NAME} PUBLIC ${tmp} )
-          ENDFOREACH()
+        ENDFOREACH()
     ENDIF()
 ENDMACRO()
 
@@ -1108,13 +1108,13 @@ FUNCTION( CALL_ADD_TEST EXEFILE )
         # Skip test ( provisional )
         RETURN()
     ELSEIF ( USE_CUDA AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ) )
-        MESSAGE( "Disabling test \"${TESTNAME}\" ( exceeds maximum number of GPUs available ${NUMBER_OF_GPUS} )" )
+        MESSAGE( "Disabling test \"${TESTNAME}\" exceeds maximum number of GPUs available ${NUMBER_OF_GPUS}" )
         RETURN()
     ELSEIF ( USE_HIP AND TEST_GPU AND ( ${TEST_PROCS} GREATER ${NUMBER_OF_GPUS} ) )
-        MESSAGE( "Disabling test \"${TESTNAME}\" ( exceeds maximum number of GPUs available ${NUMBER_OF_GPUS} )" )
+        MESSAGE( "Disabling test \"${TESTNAME}\" exceeds maximum number of GPUs available ${NUMBER_OF_GPUS}" )
         RETURN()
     ELSEIF ( ${TOT_PROCS} GREATER ${TEST_MAX_PROCS} )
-        MESSAGE( "Disabling test \"${TESTNAME}\" ( exceeds maximum number of processors ${TEST_MAX_PROCS} )" )
+        MESSAGE( "Disabling test \"${TESTNAME}\" exceeds maximum number of processors ${TEST_MAX_PROCS}" )
         RETURN()
     ELSEIF ( (${TEST_PROCS} STREQUAL "1" ) AND NOT USE_MPI_FOR_SERIAL_TESTS )
         IF ( TEST_TESTBUILDER )
