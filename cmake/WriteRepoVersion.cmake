@@ -25,7 +25,7 @@ FUNCTION( WRITE_REPO_VERSION )
     ENDIF()
 
     # Get version info
-    GET_VERSION_INFO()
+    GET_VERSION_INFO( ${PROJ} ${src_dir} )
     SET( ${PROJ}_MAJOR_VERSION ${${PROJ}_MAJOR_VERSION} PARENT_SCOPE )
     SET( ${PROJ}_MINOR_VERSION ${${PROJ}_MINOR_VERSION} PARENT_SCOPE )
     SET( ${PROJ}_BUILD_VERSION ${${PROJ}_BUILD_VERSION} PARENT_SCOPE )
@@ -37,7 +37,7 @@ FUNCTION( WRITE_REPO_VERSION )
     # Save the version info
     SAVE_VERSION_INFO()
 
-    # Load the version info ( should already exist in install folder
+    # Load the version info (should already exist in install folder
     INCLUDE( "${${PROJ}_INSTALL_DIR}/${PROJ}_Version.cmake" )
     MESSAGE( "${PROJ} Version = ${${PROJ}_MAJOR_VERSION}.${${PROJ}_MINOR_VERSION}.${${PROJ}_BUILD_VERSION}" )
 
@@ -82,7 +82,7 @@ FUNCTION( WRITE_REPO_VERSION )
     # Close the file
     FILE( APPEND "${tmp_file}" "}\n\n#endif\n" )
 
-    # Copy the file only if it is different ( to avoid rebuilding project )
+    # Copy the file only if it is different (to avoid rebuilding project)
     EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different "${tmp_file}" "${filename}" )
 
 ENDFUNCTION()
@@ -94,18 +94,18 @@ FUNCTION( CREATE_RELEASE )
     SET( RELEASE_FILENAME ${PROJ_NAME}.tar )
     SET( TMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/tmp" )
     FILE( WRITE "${TMP_DIR}/release.cmake" "# Create the release tar\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E copy_directory \"${CMAKE_CURRENT_SOURCE_DIR}\" ${PROJ_NAME} )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove_directory ${PROJ_NAME}/.hg )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.hgtags )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.hgignore )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove_directory ${PROJ_NAME}/.git )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.gitlab-ci.yml )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.clang-format )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.clang-format-ignore )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.clang-tidy )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E copy version.cmake ${PROJ_NAME}/${PROJ}_Version.cmake )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E tar -cfz ${PROJ_NAME}.tar.gz ${PROJ_NAME} )\n" )
-    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process( COMMAND ${CMAKE_COMMAND} -E copy ${PROJ_NAME}.tar.gz \"${${PROJ}_INSTALL_DIR}/${${PROJ_NAME}}\" )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory \"${CMAKE_CURRENT_SOURCE_DIR}\" ${PROJ_NAME})\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PROJ_NAME}/.hg )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.hgtags )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.hgignore )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${PROJ_NAME}/.git )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.gitlab-ci.yml )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.clang-format )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.clang-format-ignore )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJ_NAME}/.clang-tidy )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E copy version.cmake ${PROJ_NAME}/${PROJ}_Version.cmake )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E tar -cfz ${PROJ_NAME}.tar.gz ${PROJ_NAME} )\n" )
+    FILE( APPEND "${TMP_DIR}/release.cmake" "execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${PROJ_NAME}.tar.gz \"${${PROJ}_INSTALL_DIR}/${${PROJ_NAME}}\" )\n" )
     ADD_CUSTOM_COMMAND( TARGET release PRE_BUILD COMMAND ${CMAKE_COMMAND} -P "${TMP_DIR}/release.cmake" WORKING_DIRECTORY "${TMP_DIR}" )
 ENDFUNCTION()
 
@@ -133,13 +133,13 @@ FUNCTION( SAVE_VERSION_INFO )
     FILE( APPEND "${tmp_file}" "SET( ${PROJ}_LONG_HASH_VERSION  \"${${PROJ}_LONG_HASH}\" )\n" )
     FILE( APPEND "${tmp_file}" "SET( ${PROJ}_BRANCH  \"${${PROJ}_BRANCH}\" )\n" )
 
-    # Copy the file only if it is different ( to avoid rebuilding project )
+    # Copy the file only if it is different (to avoid rebuilding project)
     EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different "${tmp_file}" "${filename}" )
 
 ENDFUNCTION()
 
 # Get version info
-FUNCTION( GET_VERSION_INFO )
+FUNCTION( GET_VERSION_INFO PROJ SOURCE_DIR )
 
     # Set the major/minor versions if they are not set
     IF ( NOT ${PROJ}_MAJOR_VERSION )
@@ -148,22 +148,21 @@ FUNCTION( GET_VERSION_INFO )
     IF ( NOT ${PROJ}_MINOR_VERSION )
         SET( ${PROJ}_MINOR_VERSION 0 )
     ENDIF()
+    SET( ${PROJ}_REVISION 0 )
 
-    # Check if a version file exists in the src tree
-    IF ( EXISTS "${src_dir}/${PROJ}_Version.cmake" )
-        EXECUTE_PROCESS( COMMAND ${CMAKE_COMMAND} -E copy_if_different "${src_dir}/${PROJ}_Version.cmake" "${filename}" )
+    # Get default version info from source version file (if it exists)
+    IF ( EXISTS "${SOURCE_DIR}/${PROJ}_Version.cmake" )
+        INCLUDE( "${SOURCE_DIR}/${PROJ}_Version.cmake" )
     ENDIF()
 
     # Get version info from mercurial
-    GET_HG_INFO()
+    GET_HG_INFO( ${PROJ} ${SOURCE_DIR} )
 
     # Get version info from git
-    GET_GIT_INFO()
+    GET_GIT_INFO( ${PROJ} ${SOURCE_DIR} )
 
     # Get the build version
-    IF ( NOT ${PROJ}_BUILD_VERSION )
-        SET( ${PROJ}_BUILD_VERSION ${${PROJ}_REVISION} )
-    ENDIF()
+    SET( ${PROJ}_BUILD_VERSION ${${PROJ}_REVISION} )
 
     # Save the version info
     SET( ${PROJ}_MAJOR_VERSION ${${PROJ}_MAJOR_VERSION} PARENT_SCOPE )
@@ -176,22 +175,21 @@ FUNCTION( GET_VERSION_INFO )
 ENDFUNCTION()
 
 # Get the repo version for mecurial
-FUNCTION( GET_HG_INFO )
+FUNCTION( GET_HG_INFO PROJ SOURCE_DIR )
 
-    EXECUTE_PROCESS( COMMAND hg head WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE HG_INFO ERROR_VARIABLE HG_ERR )
+    EXECUTE_PROCESS( COMMAND hg head WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE HG_INFO ERROR_VARIABLE HG_ERR )
     IF ( NOT ( "${HG_INFO}" MATCHES "changeset" ) )
         RETURN()
     ENDIF()
 
-    EXECUTE_PROCESS( COMMAND hg id -i WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE VERSION_OUT )
-    EXECUTE_PROCESS( COMMAND hg log --limit 1 --template "{rev};{node}" WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE VERSION_REV_OUT )
-    EXECUTE_PROCESS( COMMAND hg identify -b WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE branch )
+    EXECUTE_PROCESS( COMMAND hg id -i WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE VERSION_OUT )
+    EXECUTE_PROCESS( COMMAND hg log --limit 1 --template "{rev};{node}" WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE VERSION_REV_OUT )
+    EXECUTE_PROCESS( COMMAND hg identify -b WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE branch )
 
     STRING( REGEX REPLACE "(\r?\n)+$" "" short_hash "${VERSION_OUT}" )
     LIST( GET VERSION_REV_OUT 0 rev )
     LIST( GET VERSION_REV_OUT 1 long_hash )
 
-    MESSAGE( "SET( ${PROJ}_REVISION    ${${rev}}         PARENT_SCOPE )" )
     SET( ${PROJ}_REVISION ${rev} PARENT_SCOPE )
     SET( ${PROJ}_SHORT_HASH ${short_hash} PARENT_SCOPE )
     SET( ${PROJ}_LONG_HASH ${long_hash} PARENT_SCOPE )
@@ -200,16 +198,16 @@ FUNCTION( GET_HG_INFO )
 ENDFUNCTION()
 
 # Get the repo version for git
-FUNCTION( GET_GIT_INFO )
-    EXECUTE_PROCESS( COMMAND git log -n 1 WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE GIT_INFO ERROR_VARIABLE GIT_ERR )
+FUNCTION( GET_GIT_INFO PROJ SOURCE_DIR )
+    EXECUTE_PROCESS( COMMAND git log -n 1 WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE GIT_INFO ERROR_VARIABLE GIT_ERR )
     IF ( NOT ( "${GIT_INFO}" MATCHES "commit " ) )
         RETURN()
     ENDIF()
 
-    EXECUTE_PROCESS( COMMAND git rev-list --count HEAD WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE rev )
-    EXECUTE_PROCESS( COMMAND git rev-parse --short HEAD WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE short_hash )
-    EXECUTE_PROCESS( COMMAND git rev-parse HEAD WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE long_hash )
-    EXECUTE_PROCESS( COMMAND git rev-parse --abbrev-ref HEAD WORKING_DIRECTORY "${src_dir}" OUTPUT_VARIABLE branch )
+    EXECUTE_PROCESS( COMMAND git rev-list --count HEAD WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE rev )
+    EXECUTE_PROCESS( COMMAND git rev-parse --short HEAD WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE short_hash )
+    EXECUTE_PROCESS( COMMAND git rev-parse HEAD WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE long_hash )
+    EXECUTE_PROCESS( COMMAND git rev-parse --abbrev-ref HEAD WORKING_DIRECTORY "${SOURCE_DIR}" OUTPUT_VARIABLE branch )
 
     STRING( REGEX REPLACE "(\r?\n)+$" "" rev "${rev}" )
     STRING( REGEX REPLACE "(\r?\n)+$" "" short_hash "${short_hash}" )
