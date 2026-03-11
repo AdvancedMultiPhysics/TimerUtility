@@ -7,9 +7,6 @@ mismatchAllocDealloc:*/test/test_MemoryApp.cpp
 // Suppress returnDanglingLifetime (too many false positives with std::tie)
 returnDanglingLifetime:*
 
-// Suppress preprocessorErrorDirective (issue with MATLAB)
-preprocessorErrorDirective:*
-
 // Suppress realloc warnings
 memleakOnRealloc:*/ProfilerApp.cpp
 

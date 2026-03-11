@@ -1,4 +1,0 @@
-addpath('..')
-hello_world();
-
-

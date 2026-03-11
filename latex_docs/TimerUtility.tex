@@ -8,32 +8,6 @@
 \usepackage{listings} %include code in your document
 \usepackage[section]{placeins}
 
-\usepackage{listings}
-\lstloadlanguages{Matlab}
-\lstnewenvironment{PseudoCode}[2][]{ \vspace{1ex}\noindent
-  \lstset{ 
-    language=Matlab,
-    basicstyle=\small\ttfamily,
-    numbers=left,
-     numberstyle=\tiny\color{gray},
-    backgroundcolor=\color{white},
-    firstnumber=auto,
-    stepnumber=1,
-    backgroundcolor=\color{white},
-    tabsize=4,
-    showspaces=false,
-    showstringspaces=false,
-    numbers=left,
-    xleftmargin=.1\textwidth,
-    keywords={break,case,catch,continue,else,elseif,end,for,function,
-        global,if,otherwise,persistent,return,switch,try,while},
-    keywordstyle=\color{blue},
-    commentstyle=\color{red},
-    stringstyle=\color{dkgreen}
-  } 
-}{ }
-
-
 \setlength{\mathindent}{24pt}
 
 \setlength{\textwidth}{6.5in}
@@ -170,8 +144,6 @@ create a CMake script.  An example is given below:
       -D CMAKE_CXX_COMPILER:PATH=mpic++                 \
          -D CXXFLAGS="-fPIC"                            \
       -D CMAKE_BUILD_TYPE=Debug                         \
-      -D USE_MATLAB=0                                   \
-         -D MATLAB_DIRECTORY:PATH=/usr/local/MATLAB/R2014a \
       "path to src"
 \end{Verbatim}
 The first argument is the generator that CMake will create and available generators
@@ -179,10 +151,8 @@ can be found using "cmake --help".  TIMER\_INSTALL\_DIR is an optional argument
 that controls the install path of the libraries.  The default path is the build directory.
 The next arguments are the C and C++ compilers
 to use and any optional compile flags that are required.  CMAKE\_BUILD\_TYPE 
-indicates the desired build type (Debug, Release).  If MATLAB is installed,
-this flag can be set and the directory specified.  This is necessary to install the 
-graphical user interface that is described in section \ref{sec:gui} or the 
-MATLAB interface.  The final argument is the path to the source tree.
+indicates the desired build type (Debug, Release).  
+The final argument is the path to the source tree.
 Example configure scripts can be found in the build folder.
 
 Once the configure script has been generated, the user should cd to build directory
@@ -373,21 +343,8 @@ time, etc. can be obtained by using the graphical user interface (section \ref{s
 
 The graphical user interface provides a way to utilize the additional information
 that the timer utility provides for a more complete analysis.  This interface 
-is currently written in MATLAB.  To install a gui, first make sure that MATLAB
-is set up to compile C++ files using the mex interface.  To do this, use the command
-"mex -setup" within MATLAB.  Note that this is only required once.  Then configure 
-the application with "-D USE\_MATLAB=1" and the MATLAB directory specified to install 
-the gui directory (will be located in the install/gui folder).  
-
-Once the gui has been installed, open MATLAB (requires the MATLAB display) and 
-change to the gui directory and type "load\_timer".  This will open a MATLAB gui.  
-Load a timer set using the "Load" button, navigating to the appropriate timer 
-file and open it.  The first time that this is done, there may be a few messages 
-that indicate that MATLAB is compiling some files (this is normal).  
-Once the file has been loaded the timer list will be populated.  If the timer file
-is part of a set (e.g. a parallel program with 1 file/rank), the data from all files 
-will automatically be loaded.  
-
+is currently written in QT and uses qwt.  To install a gui, first make sure that QT5
+is installed.  The set the flags QT_VERSION=5 and QWT_URL for CMake.
 
 
 %%---------------------------------------------------------------------------%%

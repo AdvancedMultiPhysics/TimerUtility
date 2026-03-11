@@ -200,93 +200,6 @@ MACRO( CONFIGURE_SYSTEM )
     MESSAGE( "LDLIBS = ${LDLIBS}" )
 ENDMACRO()
 
-# Macro to configure matlab
-MACRO( CONFIGURE_MATLAB )
-    IF ( NOT DEFINED USE_MATLAB AND DEFINED MATLAB_DIRECTORY )
-        SET( USE_MATLAB 1 )
-    ENDIF()
-    NULL_USE( MATLAB_DIRECTORY )
-    CHECK_ENABLE_FLAG( USE_MATLAB 0 )
-    IF ( NOT DEFINED USE_STATIC OR USE_STATIC )
-        SET( LIB_TYPE STATIC )
-    ENDIF()
-    IF ( USE_MATLAB )
-        SET( LIB_TYPE SHARED ) # If we are using MATLAB, we must build dynamic
-        # libraries for ProfilerApp to work properly
-        IF ( MATLAB_DIRECTORY )
-            VERIFY_PATH( ${MATLAB_DIRECTORY} )
-        ELSE()
-            MESSAGE( FATAL_ERROR "Default search for MATLAB is not supported, please specify MATLAB_DIRECTORY" )
-        ENDIF()
-        SET( Matlab_ROOT_DIR ${MATLAB_DIRECTORY} )
-        FIND_PACKAGE( Matlab REQUIRED MAIN_PROGRAM MX_LIBRARY ENG_LIBRARY MEX_COMPILER )
-        SET( MATLABPATH ${${PROJ}_INSTALL_DIR}/mex )
-        IF ( CMAKE_SIZEOF_VOID_P MATCHES 8 )
-            SET( SYSTEM_NAME "${CMAKE_SYSTEM_NAME}_64" )
-        ELSE()
-            SET( SYSTEM_NAME "${CMAKE_SYSTEM_NAME}_32" )
-        ENDIF()
-        IF ( ${SYSTEM_NAME} STREQUAL "Linux_32" )
-
-        ELSEIF ( ${SYSTEM_NAME} STREQUAL "Linux_64" )
-            SET( MATLAB_EXTERN "${Matlab_ROOT_DIR}/bin/glnxa64" )
-            SET( MATLAB_OS "${Matlab_ROOT_DIR}/sys/os/glnxa64" )
-        ELSEIF ( ${SYSTEM_NAME} STREQUAL "Darwin_32" )
-
-        ELSEIF ( ${SYSTEM_NAME} STREQUAL "Darwin_64" )
-
-        ELSEIF ( ${SYSTEM_NAME} STREQUAL "Windows_32" )
-
-        ELSEIF ( ${SYSTEM_NAME} STREQUAL "Windows_64" )
-            SET( MATLAB_EXTERN "${Matlab_ROOT_DIR}/extern/lib/win64/microsoft" "${Matlab_ROOT_DIR}/bin/win64" )
-        ELSE()
-            MESSAGE( FATAL_ERROR "Unkown OS ${SYSTEM_NAME}" )
-        ENDIF()
-        # Check if we need to include MATLAB's libstdc++
-        FIND_LIBRARY( MATLAB_BLAS_LIBRARY NAMES mwblas PATHS ${MATLAB_EXTERN} NO_DEFAULT_PATH )
-        FIND_LIBRARY( MATLAB_BLAS_LIBRARY NAMES libmwblas.dll PATHS ${MATLAB_EXTERN} NO_DEFAULT_PATH )
-        FIND_LIBRARY( MATLAB_LAPACK_LIBRARY NAMES mwlapack PATHS ${MATLAB_EXTERN} NO_DEFAULT_PATH )
-        FIND_LIBRARY( MATLAB_LAPACK_LIBRARY NAMES libmwlapack.dll PATHS ${MATLAB_EXTERN} NO_DEFAULT_PATH )
-        SET( CMAKE_REQUIRED_FLAGS ${CMAKE_CXX_FLAGS} )
-        SET( CMAKE_REQUIRED_LIBRARIES ${MATLAB_LAPACK_LIBRARY} ${MATLAB_BLAS_LIBRARY} )
-        CHECK_CXX_SOURCE_COMPILES(
-            "#include \"${Matlab_ROOT_DIR}/extern/include/tmwtypes.h\"
-             #include \"${Matlab_ROOT_DIR}/extern/include/lapack.h\"
-             int main() {
-                dgesv( nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
-                return 0;
-             }"
-            MATLAB_LAPACK_LINK )
-        IF ( MATLAB_LAPACK_LINK )
-            # Use system libc++
-            FIND_LIBRARY( MEX_LIBCXX NAMES stdc++ )
-            FIND_LIBRARY( MEX_LIBCXX NAMES libstdc++.so.6 )
-            SET( MEX_LIBCXX ${MEX_LIBCXX} )
-        ELSE()
-            # Try to link MATLAB's libc++
-            FIND_LIBRARY( MEX_LIBCXX NAMES stdc++ PATHS ${MATLAB_OS} NO_DEFAULT_PATH )
-            FIND_LIBRARY( MEX_LIBCXX NAMES libstdc++.so.6 PATHS ${MATLAB_OS} NO_DEFAULT_PATH )
-            SET( CMAKE_REQUIRED_LIBRARIES ${MATLAB_LAPACK_LIBRARY} ${MATLAB_BLAS_LIBRARY} ${MEX_LIBCXX} )
-            CHECK_CXX_SOURCE_COMPILES(
-                "#include \"${Matlab_ROOT_DIR}/extern/include/tmwtypes.h\"
-                 #include \"${Matlab_ROOT_DIR}/extern/include/lapack.h\"
-                 int main() {
-                    dgesv( nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
-                    return 0;
-                 }"
-                MATLAB_LAPACK_LINK2 )
-            IF ( NOT MATLAB_LAPACK_LINK2 )
-                MESSAGE( FATAL_ERROR "Unable to link with MATLAB's LAPACK" )
-            ENDIF()
-            SET( MATLAB_LAPACK ${MATLAB_LAPACK_LIBRARY} ${MATLAB_BLAS_LIBRARY} ${MEX_LIBCXX} )
-        ENDIF()
-        MESSAGE( "Using MATLAB" )
-        MESSAGE( "   Matlab_ROOT_DIR = ${Matlab_ROOT_DIR}" )
-        MESSAGE( "   Matlab_LIBRARIES = ${Matlab_LIBRARIES}" )
-        MESSAGE( "   Matlab_INCLUDE_DIRS = ${Matlab_INCLUDE_DIRS}" )
-    ENDIF()
-ENDMACRO()
-
 # Macro to add user c++ std
 MACRO( SET_CXX_STD )
     # Set the C++ standard
@@ -348,13 +261,6 @@ MACRO( CONFIGURE_TIMER )
     ELSE()
         FILE( WRITE "${${PROJ}_INSTALL_DIR}/include/ProfilerDefinitions.h" "#define TIMER_ENABLE_NEW_OVERLOAD\n" )
     ENDIF()
-    # Add flags for MATLAB
-    IF ( USE_MATLAB )
-        SET( MEX_FLAGS ${MEX_FLAGS} -DUSE_TIMER )
-        SET( MEX_INCLUDE ${MEX_INCLUDE} -I${TIMER_INSTALL_DIR}/include )
-        SET( MEX_LIBS -ltimerutility ${MEX_LIBS} )
-        SET( MEX_LDFLAGS ${MEX_LDFLAGS} )
-    ENDIF()
     # Disable CMake warning for unused flags
     NULL_USE( QWT_SRC_DIR )
     NULL_USE( QWT_URL )
@@ -363,13 +269,14 @@ ENDMACRO()
 # Macro to find QT
 MACRO( CONFIGURE_QT )
     IF ( NOT DEFINED QT_VERSION )
-        SET( QT_VERSION "4" )
+        SET( QT_VERSION "5" )
     ENDIF()
     IF ( ${QT_VERSION} EQUAL "4" )
         # Using Qt4
         SET( QT "QT4" )
         SET( Qt "Qt4" )
         SET( QT_COMPONENTS QtCore QtGui QtOpenGL QtSvg QtSql )
+        MESSAGE( WARNING "QT4 support is deprecated" )
     ELSEIF ( ${QT_VERSION} EQUAL "5" )
         # Using Qt5
         SET( QT "QT5" )
