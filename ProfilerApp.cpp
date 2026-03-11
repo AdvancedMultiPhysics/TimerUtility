@@ -163,8 +163,7 @@ static inline char* comm_recv1( int source, int tag )
 }
 static inline void comm_send2( const std::vector<uint64_t>& data, int dest, int tag )
 {
-    int err =
-        MPI_Send( data.data(), (int) data.size(), MPI_UINT64_T, dest, tag, MPI_COMM_WORLD );
+    int err = MPI_Send( data.data(), (int) data.size(), MPI_UINT64_T, dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
 }
 static inline std::vector<uint64_t> comm_recv2( int source, int tag )
@@ -179,7 +178,7 @@ static inline std::vector<uint64_t> comm_recv2( int source, int tag )
     ASSERT( err == MPI_SUCCESS );
     return data;
 }
-#else 
+#else
 static inline int comm_size() { return 1; }
 static inline int comm_rank() { return 0; }
 static inline void comm_barrier() {}
@@ -565,7 +564,6 @@ static constexpr bool check_char_conversion()
  ***********************************************************************/
 static_assert( sizeof( id_struct ) == 8, "Unexpected size for id_struct" );
 static_assert( static_cast<uint64_t>( id_struct() ) == 0 );
-static_assert( check_char_conversion(), "Internal error" );
 static_assert( check_char_conversion(), "Internal error" );
 static_assert( str_to_hash( hash_to_str( 0x32eb809d ).data() ) == 0x32eb809d );
 static_assert( str_to_hash( hash_to_str( 0x35a5b6b25e9eb68f ).data() ) == 0x35a5b6b25e9eb68f );
@@ -2629,12 +2627,12 @@ void global_profiler_set_store_memory( int flag )
 }
 void global_profiler_start( const char* name, const char* file, int line, int level )
 {
-    auto id = ProfilerApp::getTimerId( name, file, 0 );
+    auto id = ProfilerApp::getTimerId2( name, file, 0 );
     global_profiler.start( id, name, file, line, level );
 }
 void global_profiler_stop( const char* name, const char* file, int level )
 {
-    auto id = ProfilerApp::getTimerId( name, file, 0 );
+    auto id = ProfilerApp::getTimerId2( name, file, 0 );
     global_profiler.stop( id, level );
 }
 void global_profiler_save( const char* name, int global )

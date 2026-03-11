@@ -405,8 +405,20 @@ public:
      * @param[in] filename  The filename
      * @param[in] line      The line number
      */
-    constexpr static inline uint64_t getTimerId(
+    consteval static inline uint64_t getTimerId(
         const char* message, const char* filename, int line );
+
+    /*!
+     * \brief  Function to get the timer id
+     * \details  This function returns the timer id given the message and filename.
+     *     Internally all timers are stored using this id for faster searching.
+     *     Many routines can take the timer id directly to improve performance by
+     *     avoiding the hashing function.
+     * @param[in] message   The timer message
+     * @param[in] filename  The filename
+     * @param[in] line      The line number
+     */
+    static inline uint64_t getTimerId2( const char* message, const char* filename, int line );
 
     /*!
      * \brief  Function to return the current timer results

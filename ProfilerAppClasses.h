@@ -15,7 +15,7 @@
  *       ...
  *    }
  */
-template<std::size_t id, bool fixedMessage = true>
+template<bool fixedMessage = true>
 class ProfilerAppTimer final
 {
 public:
@@ -35,7 +35,8 @@ public:
      *                       0: Disable trace data for this timer
      *                       1: Enable trace data for this timer
      */
-    explicit ProfilerAppTimer( const char* msg, const char* file, int line, int level, int trace )
+    explicit ProfilerAppTimer(
+        uint64_t id, const char* msg, const char* file, int line, int level, int trace )
         : d_level( level ), d_traceFlag( trace ), d_trace( nullptr )
     {
         if ( level >= 0 && level <= global_profiler.getLevel() ) {
@@ -50,10 +51,10 @@ public:
         }
     }
     explicit ProfilerAppTimer(
-        const std::string& msg, const char* file, int line, int level, int trace )
+        uint64_t id, const std::string& msg, const char* file, int line, int level, int trace )
+        requires( !fixedMessage )
         : d_level( level ), d_traceFlag( trace ), d_trace( nullptr )
     {
-        static_assert( !fixedMessage, "string interface intended for dynamic names only" );
         if ( level >= 0 && level <= global_profiler.getLevel() ) {
             auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
             auto timer = global_profiler.getBlock( id2, msg.data(), file, line );

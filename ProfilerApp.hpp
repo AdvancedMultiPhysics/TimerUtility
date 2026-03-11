@@ -175,8 +175,15 @@ constexpr inline uint64_t ProfilerApp::hashString( std::string_view str )
     }
     return hash;
 }
-constexpr inline uint64_t ProfilerApp::getTimerId(
+consteval inline uint64_t ProfilerApp::getTimerId(
     const char* message, const char* filename, int line )
+{
+    uint64_t v1 = static_cast<uint64_t>( hashString( stripPath( filename ) ) ) << 32;
+    uint64_t v2 = hashString( message );
+    uint64_t v3 = 0x9E3779B97F4A7C15 * line;
+    return v1 ^ v2 ^ v3;
+}
+inline uint64_t ProfilerApp::getTimerId2( const char* message, const char* filename, int line )
 {
     uint64_t v1 = static_cast<uint64_t>( hashString( stripPath( filename ) ) ) << 32;
     uint64_t v2 = hashString( message );

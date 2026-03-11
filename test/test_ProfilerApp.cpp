@@ -328,7 +328,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         names[i]  = std::string( tmp );
         names2[i] = std::string( tmp ) + "_";
         names3[i] = std::string( tmp ) + "_s";
-        ids[i]    = ProfilerApp::getTimerId( names[i].c_str(), __FILE__, 0 );
+        ids[i]    = ProfilerApp::getTimerId2( names[i].c_str(), __FILE__, 0 );
     }
 
     // Test a timer with many special characters
@@ -423,7 +423,7 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     std::string long_file     = "Long filename - " + random_string( 128 );
     std::string long_path     = "Long pathname - " + random_string( 128 );
     std::string long_filename = long_path + "/" + long_file;
-    auto long_id              = ProfilerApp::getTimerId( long_msg.data(), long_filename.data(), 0 );
+    auto long_id = ProfilerApp::getTimerId2( long_msg.data(), long_filename.data(), 0 );
     global_profiler.start( long_id, long_msg.data(), long_filename.data(), 0 );
     global_profiler.stop( long_id );
 
