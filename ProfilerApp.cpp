@@ -143,100 +143,60 @@ static inline double comm_max_reduce( const double val )
         MPI_Allreduce( (double*) &val, &result, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD );
     return result;
 }
-template<class TYPE>
-static constexpr MPI_Datatype getType()
-{
-    if constexpr ( std::is_same_v<TYPE, std::byte> ) {
-        return MPI_BYTE;
-    } else if constexpr ( std::is_same_v<TYPE, char> ) {
-        return MPI_CHAR;
-    } else if constexpr ( std::is_same_v<TYPE, uint8_t> ) {
-        return MPI_UINT8_T;
-    } else if constexpr ( std::is_same_v<TYPE, int8_t> ) {
-        return MPI_INT8_T;
-    } else if constexpr ( std::is_same_v<TYPE, uint16_t> ) {
-        return MPI_UINT16_T;
-    } else if constexpr ( std::is_same_v<TYPE, int16_t> ) {
-        return MPI_INT16_T;
-    } else if constexpr ( std::is_same_v<TYPE, uint32_t> ) {
-        return MPI_UINT32_T;
-    } else if constexpr ( std::is_same_v<TYPE, int32_t> ) {
-        return MPI_INT32_T;
-    } else if constexpr ( std::is_same_v<TYPE, uint64_t> ) {
-        return MPI_UINT64_T;
-    } else if constexpr ( std::is_same_v<TYPE, int64_t> ) {
-        return MPI_INT64_T;
-    } else if constexpr ( std::is_same_v<TYPE, float> ) {
-        return MPI_FLOAT;
-    } else if constexpr ( std::is_same_v<TYPE, double> ) {
-        return MPI_DOUBLE;
-    } else {
-        static_assert( !std::is_same_v<TYPE, TYPE> );
-        return MPI_BYTE;
-    }
-}
-template<class TYPE>
-static inline void comm_send1( const TYPE* buf, size_t size, int dest, int tag )
+static inline void comm_send1( const char* buf, size_t size, int dest, int tag )
 {
     ASSERT( size < 0x80000000 );
-    int err = MPI_Send( buf, (int) size, getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
+    int err = MPI_Send( buf, (int) size, MPI_CHAR, dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
 }
-template<class TYPE>
-static inline TYPE* comm_recv1( int source, int tag )
+static inline char* comm_recv1( int source, int tag )
 {
     MPI_Status status;
     int err = MPI_Probe( source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
     int count;
-    MPI_Get_count( &status, getType<TYPE>(), &count );
-    auto* buf = new TYPE[count];
-    err       = MPI_Recv( buf, count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
+    MPI_Get_count( &status, MPI_CHAR, &count );
+    auto* buf = new char[count];
+    err       = MPI_Recv( buf, count, MPI_CHAR, source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
     return buf;
 }
-template<class TYPE>
-static inline void comm_send2( const std::vector<TYPE>& data, int dest, int tag )
+static inline void comm_send2( const std::vector<uint64_t>& data, int dest, int tag )
 {
     int err =
-        MPI_Send( data.data(), (int) data.size(), getType<TYPE>(), dest, tag, MPI_COMM_WORLD );
+        MPI_Send( data.data(), (int) data.size(), MPI_UINT64_T, dest, tag, MPI_COMM_WORLD );
     ASSERT( err == MPI_SUCCESS );
 }
-template<class TYPE>
-static inline std::vector<TYPE> comm_recv2( int source, int tag )
+static inline std::vector<uint64_t> comm_recv2( int source, int tag )
 {
     MPI_Status status;
     int err = MPI_Probe( source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
     int count;
-    MPI_Get_count( &status, getType<TYPE>(), &count );
-    std::vector<TYPE> data( count );
-    err = MPI_Recv( data.data(), count, getType<TYPE>(), source, tag, MPI_COMM_WORLD, &status );
+    MPI_Get_count( &status, MPI_UINT64_T, &count );
+    std::vector<uint64_t> data( count );
+    err = MPI_Recv( data.data(), count, MPI_UINT64_T, source, tag, MPI_COMM_WORLD, &status );
     ASSERT( err == MPI_SUCCESS );
     return data;
 }
-#else // Helper functions to pack a value to a char array and increment N_bytes
+#else 
 static inline int comm_size() { return 1; }
 static inline int comm_rank() { return 0; }
 static inline void comm_barrier() {}
 static inline double comm_max_reduce( const double val ) { return val; }
-template<class TYPE>
-static inline void comm_send1( const TYPE*, size_t, int, int )
+static inline void comm_send1( const char*, size_t, int, int )
 {
     throw std::logic_error( "Calling MPI routine in no-mpi build" );
 }
-template<class TYPE>
-static inline TYPE* comm_recv1( int, int )
+static inline char* comm_recv1( int, int )
 {
     throw std::logic_error( "Calling MPI routine in no-mpi build" );
 }
-template<class TYPE>
-static inline void comm_send2( const std::vector<TYPE>&, int, int )
+static inline void comm_send2( const std::vector<uint64_t>&, int, int )
 {
     throw std::logic_error( "Calling MPI routine in no-mpi build" );
 }
-template<class TYPE>
-static inline std::vector<TYPE> comm_recv2( int, int )
+static inline std::vector<uint64_t> comm_recv2( int, int )
 {
     throw std::logic_error( "Calling MPI routine in no-mpi build" );
 }
@@ -2256,7 +2216,7 @@ void ProfilerApp::gatherTimers( std::vector<TimerResults>& timers )
     int N_procs = comm_size();
     if ( rank == 0 ) {
         for ( int r = 1; r < N_procs; r++ ) {
-            auto* buffer    = comm_recv1<char>( r, 0 );
+            auto* buffer    = comm_recv1( r, 0 );
             size_t pos      = 0;
             size_t N_timers = 0;
             memcpy( &N_timers, &buffer[pos], sizeof( N_timers ) );
@@ -2284,7 +2244,7 @@ void ProfilerApp::gatherTimers( std::vector<TimerResults>& timers )
             pos += timer.size();
         }
         ASSERT( pos == N_bytes );
-        comm_send1<char>( buffer, N_bytes, 0, 0 );
+        comm_send1( buffer, N_bytes, 0, 0 );
         delete[] buffer;
         timers.clear();
     }
@@ -2300,13 +2260,13 @@ void ProfilerApp::gatherMemory( std::vector<MemoryResults>& memory )
         memory.resize( N_procs );
         for ( int r = 1; r < N_procs; r++ ) {
             memory[r].rank  = r;
-            memory[r].time  = comm_recv2<uint64_t>( r, 1 );
-            memory[r].bytes = comm_recv2<uint64_t>( r, 2 );
+            memory[r].time  = comm_recv2( r, 1 );
+            memory[r].bytes = comm_recv2( r, 2 );
         }
     } else {
         ASSERT( memory[0].time.size() == memory[0].bytes.size() );
-        comm_send2<uint64_t>( memory[0].time, 0, 1 );
-        comm_send2<uint64_t>( memory[0].bytes, 0, 2 );
+        comm_send2( memory[0].time, 0, 1 );
+        comm_send2( memory[0].bytes, 0, 2 );
         memory.clear();
     }
     comm_barrier();
