@@ -9,8 +9,13 @@
 
 // Define some helper functions
 #define PROFILE_ID( NAME ) ProfilerApp::getTimerId( NAME, __FILE__, __LINE__ )
+#if TIMER_CXX_STD < 20
+#define CALL_STATIC_TIMER_VAR( VAR, ID, FIXED, NAME, LEVEL, TRACE ) \
+    ProfilerAppTimer<ID,FIXED> VAR( NAME, __FILE__, __LINE__, LEVEL, TRACE )
+#else
 #define CALL_STATIC_TIMER_VAR( VAR, ID, FIXED, NAME, LEVEL, TRACE ) \
     ProfilerAppTimer<FIXED> VAR( ID, NAME, __FILE__, __LINE__, LEVEL, TRACE )
+#endif
 #define CALL_STATIC_TIMER( ID_NAME, FIXED, NAME, LINE, LEVEL, TRACE ) \
     CALL_STATIC_TIMER_VAR( profile_##LINE, PROFILE_ID( ID_NAME ), FIXED, NAME, LEVEL, TRACE )
 #define PROFILE_2( NAME, LINE ) CALL_STATIC_TIMER( NAME, true, NAME, LINE, 0, -1 )
