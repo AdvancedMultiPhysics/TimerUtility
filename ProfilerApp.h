@@ -7,9 +7,6 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <limits>
-#include <map>
-#include <mutex>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -343,7 +340,6 @@ public:
      * @param[in] level    How much detail do we want to store
      */
     static void setStoreMemory( MemoryLevel level = MemoryLevel::Fast );
-
 
     //! Get the current memory level
     static MemoryLevel getStoreMemory();

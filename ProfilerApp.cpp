@@ -1,15 +1,13 @@
 #include "ProfilerApp.h"
 #include "MemoryApp.h"
 
-#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <ctime>
 #include <iostream>
 #include <map>
-#include <set>
-#include <sstream>
+#include <mutex>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -1548,11 +1546,13 @@ void ProfilerApp::save( const std::string& filename, bool global )
                         "---------------------------------------------------------------\n";
         fprintf( timerFile, "%s", header );
         // Loop through the list of timers, storing the most expensive first
+        std::vector<uint64_t> stack2;
         for ( int ii = static_cast<int>( results.size() ) - 1; ii >= 0; ii-- ) {
+            stack2.clear();
             size_t i = id_order[ii];
-            std::set<uint64_t> stack2;
             for ( auto& trace : results[i].trace )
-                stack2.insert( trace.stack2 );
+                stack2.push_back( trace.stack2 );
+            unique( stack2 );
             std::vector<int> N_thread( N_threads, 0 );
             std::vector<double> min_thread( N_threads, 1e99 );
             std::vector<double> max_thread( N_threads, 0.0 );

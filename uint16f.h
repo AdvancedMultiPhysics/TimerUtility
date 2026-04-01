@@ -2,6 +2,9 @@
 #define included_uint16f
 
 
+#include <limits>
+
+
 /** \class uint16f
  *
  * Class to store an unsigned integer as a half precision floating type.
