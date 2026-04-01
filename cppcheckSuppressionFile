@@ -1,15 +1,8 @@
-// Suppress unmatched suppression
-unmatchedSuppression:*
-
-// Suppress mismatchAllocDealloc (This is an intentional test)
+// Suppress some warnings
 mismatchAllocDealloc:*/test/test_MemoryApp.cpp
-
-// Suppress returnDanglingLifetime (too many false positives with std::tie)
-returnDanglingLifetime:*
-
-// Suppress realloc warnings
-memleakOnRealloc:*/ProfilerApp.cpp
+throwInEntryPoint:*
 
 // Suppress MPI warnings
 *:*/mpicxx.h
 *:*/mpi/*
+

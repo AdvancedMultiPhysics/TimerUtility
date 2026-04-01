@@ -18,32 +18,7 @@
 #include <vector>
 
 #include "ProfilerDefinitions.h"
-
-
-/** \class uint16f
- *
- * Class to store an unsigned integer as a half precision floating type.
- */
-class uint16f
-{
-public:
-    // Constructors
-    constexpr uint16f() : data( 0 ) {}
-    explicit inline constexpr uint16f( uint64_t x ) : data( getData( x ) ) {}
-    // Comparison operators
-    inline constexpr bool operator==( const uint16f& rhs ) const { return data == rhs.data; }
-    inline constexpr bool operator!=( const uint16f& rhs ) const { return data != rhs.data; }
-    inline constexpr bool operator>=( const uint16f& rhs ) const { return data >= rhs.data; }
-    inline constexpr bool operator<=( const uint16f& rhs ) const { return data <= rhs.data; }
-    inline constexpr bool operator>( const uint16f& rhs ) const { return data > rhs.data; }
-    inline constexpr bool operator<( const uint16f& rhs ) const { return data < rhs.data; }
-    // Overload typecast
-    inline constexpr operator uint64_t() const;
-
-private:
-    uint16_t data;
-    static inline constexpr uint16_t getData( uint64_t x );
-};
+#include "uint16f.h"
 
 
 /** \class id_struct
@@ -244,15 +219,6 @@ struct TimerMemoryResults {
 class ProfilerApp final
 {
 public:
-    //! This is a singleton class
-    ProfilerApp* getInstantance();
-
-    //! Constructor
-    ProfilerApp();
-
-    //! Destructor
-    ~ProfilerApp();
-
     /*!
      * \brief  Function to start profiling a block of code (advanced interface)
      * \details  This function starts profiling a block of code until a corresponding stop
@@ -267,11 +233,11 @@ public:
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whose level is <= the level will be included.
      */
-    inline void start( uint64_t id, const char* message = "", const char* filename = "",
+    static inline void start( uint64_t id, const char* message = "", const char* filename = "",
         int line = 0, int level = 0 )
     {
         if ( level <= d_level && level >= 0 ) {
-            auto timer = getBlock( id, message, filename, line );
+            auto timer = getBlock( id, message, filename, line, false, false );
             start( timer );
         }
     }
@@ -290,7 +256,7 @@ public:
      *                       0: Disable trace data for this timer
      *                       1: Enable trace data for this timer
      */
-    inline void stop( uint64_t id, int level = 0, int trace = -1 )
+    static inline void stop( uint64_t id, int level = 0, int trace = -1 )
     {
         if ( level <= d_level && level >= 0 ) {
             auto end_time = std::chrono::steady_clock::now();
@@ -304,7 +270,7 @@ public:
      * \details  This function will get the current memory usage and add it to the profile
      *    assuming memory trace is enabled.
      */
-    void memory();
+    static void memory();
 
     /*!
      * \brief  Function to save the profiling info
@@ -315,7 +281,7 @@ public:
      * @param[in] filename  File name for saving the results
      * @param[in] global    Save a global file (true) or individual files (false)
      */
-    void save( const std::string& filename, bool global = true ) const;
+    static void save( const std::string& filename, bool global = true );
 
     /*!
      * \brief  Function to load the profiling info
@@ -335,7 +301,7 @@ public:
      *   the trace level data is being stored and the user wants the times synchronized.
      *   Note: This is a blocking call for all processors and must be called after MPI_INIT.
      */
-    void synchronize();
+    static void synchronize();
 
     /*!
      * \brief  Function to enable the timers
@@ -344,10 +310,10 @@ public:
      * @param[in] level     Level of detail to include this timer (default is 0)
      *                      Only timers whose level is <= the level will be included.
      */
-    void enable( int level = 0 );
+    static void enable( int level = 0 );
 
     //! Function to disable the timers (all current timers will be deleted)
-    void disable();
+    static void disable();
 
     /*!
      * \brief  Function to change if we are storing detailed trace information
@@ -358,7 +324,7 @@ public:
      *  that get called repeatedly and may negitivly impact the performance.
      * @param[in] profile   Do we want to store detailed profiling data
      */
-    void setStoreTrace( bool profile );
+    static void setStoreTrace( bool profile );
 
     //! Enum defining the level of memory detail
     enum class MemoryLevel : int8_t { None = 0, Pause = 1, Fast = 2, Full = 3 };
@@ -376,14 +342,14 @@ public:
      *    when memory is allocated and which timers are active.
      * @param[in] level    How much detail do we want to store
      */
-    void setStoreMemory( MemoryLevel level = MemoryLevel::Fast );
+    static void setStoreMemory( MemoryLevel level = MemoryLevel::Fast );
 
 
     //! Get the current memory level
-    MemoryLevel getStoreMemory();
+    static MemoryLevel getStoreMemory();
 
     //! Return the current timer level
-    inline int getLevel() const { return d_level; }
+    static inline int getLevel() { return d_level; }
 
     /*!
      * \brief  Function to change the behavior of timer errors
@@ -393,7 +359,7 @@ public:
      *   The user should only disable theses checks if they understand the behavior.
      * @param[in] flag      Do we want to ignore timer errors
      */
-    void ignoreTimerErrors( bool flag ) { d_disable_timer_error = flag; }
+    static void ignoreTimerErrors( bool flag ) { d_disable_timer_error = flag; }
 
     /*!
      * \brief  Function to get the timer id
@@ -425,37 +391,20 @@ public:
      * \details  This function will return a vector containing the
      *      current timing results for all threads.
      */
-    std::vector<TimerResults> getTimerResults() const;
-
-    /*!
-     * \brief  Function to return the current timer results
-     * \details  This function will return a vector containing the
-     *      current timing results for all threads.
-     * @param[in] id        ID of the timer we want
-     */
-    TimerResults getTimerResults( uint64_t id ) const;
-
-    /*!
-     * \brief  Function to return the current timer results
-     * \details  This function will return a vector containing the
-     *      current timing results for all threads.
-     * @param[in] message   The timer message
-     * @param[in] file      The filename
-     */
-    TimerResults getTimerResults( std::string_view message, std::string_view file ) const;
+    static std::vector<TimerResults> getTimerResults();
 
     /*!
      * \brief  Function to return the memory usage as a function of time
      * \details  This function will return a vector containing the
      *   memory usage as a function of time
      */
-    MemoryResults getMemoryResults() const;
+    static MemoryResults getMemoryResults();
 
     /*!
      * \brief  Get the memory used by the profiler
      * \details  Return the total memory usage of the profiler app
      */
-    size_t getMemoryUsed() const { return static_cast<size_t>( d_bytes ); }
+    static size_t getMemoryUsed() { return static_cast<size_t>( d_bytes ); }
 
     //! Build active stack map
     static std::tuple<std::vector<uint64_t>, std::vector<std::vector<uint64_t>>> buildStackMap(
@@ -463,8 +412,8 @@ public:
 
 
 public: // Helper functions
-    constexpr static inline std::string_view stripPath( std::string_view filename );
-    constexpr static inline uint64_t hashString( std::string_view str );
+    constexpr static inline const char* stripPath( const char* filename );
+    constexpr static inline uint64_t hashString( const char* str );
 
 public: // Constants to determine parameters that affect performance/memory
     // The size of the hash table to store the timers/ (must be a power of 2)
@@ -542,76 +491,62 @@ public: // Member classes
         store_trace& operator=( const store_trace& rhs ) = delete;
     };
 
-    // Structure to store the global timer information for a single block of code
-    struct store_timer_data_info {
-        int line;                             // The line number for the timer
-        uint64_t id;                          // A unique id for each timer
-        char message[64];                     // The message to identify the block of code
-        char filename[64];                    // The file containing the block of code to be timed
-        char path[64];                        // The path to the file (if availible)
-        volatile store_timer_data_info* next; // Pointer to the next entry in the list
-        store_timer_data_info();
-        store_timer_data_info(
-            std::string_view msg, std::string_view filepath, uint64_t id, int start );
-        ~store_timer_data_info();
-        store_timer_data_info( const store_timer_data_info& rhs )            = delete;
-        store_timer_data_info& operator=( const store_timer_data_info& rhs ) = delete;
-        bool compare(
-            const store_timer_data_info& rhs ) const; // True if message and filename match
-    };
-
     // Structure to store the timing information for a single block of code
     struct store_timer {
-        uint64_t id;                       // A unique id for each timer
-        store_trace* trace_head;           // Pointer to the first trace
-        store_timer* next;                 // Pointer to the next entry in the list
-        store_timer_data_info* timer_data; // Pointer to the timer data
+        uint64_t id;             // A unique id for each timer
+        bool alloc_msg;          // Did we allocate the data for message
+        bool alloc_file;         // Did we allocate the data for filename
+        int line;                // The line number for the timer
+        const char* message;     // The message to identify the block of code
+        const char* filename;    // The file name (may include path)
+        store_trace* trace_head; // Pointer to the first trace
+        store_timer* next;       // Pointer to the next entry in the list
         store_timer();
+        store_timer( uint64_t id, const char* message, const char* filename, int line,
+            bool static_msg, bool static_file );
         ~store_timer();
-        store_timer( const store_timer& rhs )            = delete;
+        store_timer( store_timer&& )                     = delete;
+        store_timer( const store_timer& )                = delete;
         store_timer& operator=( const store_timer& rhs ) = delete;
+        store_timer& operator=( store_timer&& rhs )      = delete;
     };
 
     // Structure to store thread specific data
     struct ThreadData {
-        uint32_t id;               // A unique id for each thread
-        uint32_t depth;            // Stack depth
-        uint64_t stack;            // Current stack hash
-        uint64_t hash;             // std::hash of std::thread::id
-        volatile ThreadData* next; // Pointer to the next entry in the list
-        store_timer* timers[HASH_SIZE];
-        StoreMemory memory;
+        uint32_t id;                    // A unique id for each thread
+        uint32_t depth;                 // Stack depth
+        uint64_t stack;                 // Current stack hash
+        uint64_t hash;                  // std::hash of std::thread::id
+        ThreadData* next;               // Pointer to the next entry in the list
+        store_timer* timers[HASH_SIZE]; // Hash table containing timer data
+        StoreMemory memory;             // Memory usage data
         ThreadData();
         ~ThreadData();
-        ThreadData( const ThreadData& ) = delete;
+        ThreadData( ThreadData&& )                 = delete;
+        ThreadData( const ThreadData& )            = delete;
+        ThreadData& operator=( ThreadData&& )      = delete;
+        ThreadData& operator=( const ThreadData& ) = delete;
         void reset() volatile;
     };
 
 public: // Advanced interfaces, not intended for users
-    store_trace* start( store_timer* timer );
-    void stop( store_timer* timer, time_point end_time, int enableTrace );
-    void stop( store_trace* trace, time_point end_time, int enableTrace );
-    inline store_timer* getBlock( uint64_t id );
-    inline store_timer* getBlock(
-        uint64_t id, const char* message, const char* filename, const int line );
+    static store_trace* start( store_timer* timer );
+    static void stop( store_timer* timer, time_point end_time, int enableTrace );
+    static void stop( store_trace* trace, time_point end_time, int enableTrace );
+    static inline store_timer* getBlock( uint64_t id );
+    static inline store_timer* getBlock( uint64_t id, const char* message, const char* filename,
+        int line, bool static_msg, bool static_file );
 
-private: // Member data
-    using ThreadDataPtr = volatile ThreadData*;
-    using TimerDataPtr  = volatile store_timer_data_info*;
-    ThreadDataPtr volatile d_threadData[HASH_SIZE]; // Store thread specific info
-    TimerDataPtr d_timer_table[HASH_SIZE];          // Store the global timer info
-    mutable std::mutex d_lock;                      // Handle to a mutex lock
-    bool d_store_trace_data;                        // Store trace information (default value)?
-    MemoryLevel d_store_memory_data;                // Store memory information?
-    bool d_disable_timer_error;                     // Disable the timer errors for start/stop?
-    int8_t d_level;                                 // Timer level (default is 0, -1 is disabled)
-    time_point d_construct_time;                    // Constructor time
-    uint64_t d_shift;                               // Offset to synchronize the trace data
-    mutable volatile std::atomic_int64_t d_bytes;   // The current memory used by the profiler
+private:                                         // Member data
+    static bool d_store_trace_data;              // Store trace information (default value)?
+    static MemoryLevel d_store_memory_data;      // Store memory information?
+    static bool d_disable_timer_error;           // Disable the timer errors for start/stop?
+    static int8_t d_level;                       // Timer level (default is 0, -1 is disabled)
+    static uint64_t d_shift;                     // Offset to synchronize the trace data
+    static volatile std::atomic_int64_t d_bytes; // The current memory used by the profiler
 
 private: // Private member functions
-    ProfilerApp( const ProfilerApp& )            = delete;
-    ProfilerApp& operator=( const ProfilerApp& ) = delete;
+    ProfilerApp() = delete;
 
     // Function to get a global thread id
     static inline ThreadData* getThreadData()
@@ -621,37 +556,10 @@ private: // Private member functions
     }
     static ThreadData* createThreadData();
 
-    // Function to return a pointer to the global timer info (or create it if necessary)
-    // Note: this function may block for thread safety
-    store_timer_data_info* getTimerData(
-        uint64_t id, std::string_view message, std::string_view filename, int line );
-
     // Function to get the timer results
-    inline void getTimerResultsID(
-        uint64_t id, int rank, const time_point& end_time, TimerResults& results ) const;
-
-    // Function to get the current memory usage
-    static inline size_t getMemoryUsage();
-
-    // Functions to load files
-    static int loadFiles( const std::string& filename, int index, TimerMemoryResults& data );
-    static void loadTimer( const std::string& filename, std::vector<TimerResults>& timers,
-        int& N_procs, double& walltime, std::string& date, bool& load_trace, bool& load_memory );
-    static void loadTrace( const std::string& filename, std::vector<TimerResults>& timers );
-    static void loadMemory( const std::string& filename, std::vector<MemoryResults>& memory );
-
-    // Functions to send all timers/memory to rank 0
-    static void gatherTimers( std::vector<TimerResults>& timers );
-    static void addTimers( std::vector<TimerResults>& timers, std::vector<TimerResults>&& add );
-    static void gatherMemory( std::vector<MemoryResults>& memory );
-
-    // Error processing
-    void error( const std::string& message, const ThreadData* thread, const store_timer* timer );
+    static inline void getTimerResultsID(
+        uint64_t id, int rank, const time_point& end_time, TimerResults& results );
 };
-
-
-// The global profiler
-extern ProfilerApp global_profiler;
 
 
 #include "ProfilerApp.hpp"

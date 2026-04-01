@@ -39,18 +39,17 @@ public:
      *                       1: Enable trace data for this timer
      */
 #if TIMER_CXX_STD < 20
-    explicit ProfilerAppTimer(
-        const char* msg, const char* file, int line, int level, int trace )
+    explicit ProfilerAppTimer( const char* msg, const char* file, int line, int level, int trace )
         : d_traceFlag( trace ), d_trace( nullptr )
     {
-        if ( level >= 0 && level <= global_profiler.getLevel() ) {
+        if ( level >= 0 && level <= ProfilerApp::getLevel() ) {
             if constexpr ( fixedMessage ) {
-                auto timer = global_profiler.getBlock( id, msg, file, line );
-                d_trace    = global_profiler.start( timer );
+                auto timer = ProfilerApp::getBlock( id, msg, file, line, true, true );
+                d_trace    = ProfilerApp::start( timer );
             } else {
                 auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
-                auto timer = global_profiler.getBlock( id2, msg, file, line );
-                d_trace    = global_profiler.start( timer );
+                auto timer = ProfilerApp::getBlock( id2, msg, file, line, false, true );
+                d_trace    = ProfilerApp::start( timer );
             }
         }
     }
@@ -59,10 +58,10 @@ public:
         : d_traceFlag( trace ), d_trace( nullptr )
     {
         static_assert( !fixedMessage );
-        if ( level >= 0 && level <= global_profiler.getLevel() ) {
-            auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
-            auto timer = global_profiler.getBlock( id2, msg.data(), file, line );
-            d_trace    = global_profiler.start( timer );
+        if ( level >= 0 && level <= ProfilerApp::getLevel() ) {
+            auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg.data() ) );
+            auto timer = ProfilerApp::getBlock( id2, msg.data(), file, line, false, true );
+            d_trace    = ProfilerApp::start( timer );
         }
     }
 #else
@@ -70,14 +69,14 @@ public:
         uint64_t id, const char* msg, const char* file, int line, int level, int trace )
         : d_traceFlag( trace ), d_trace( nullptr )
     {
-        if ( level >= 0 && level <= global_profiler.getLevel() ) {
+        if ( level >= 0 && level <= ProfilerApp::getLevel() ) {
             if constexpr ( fixedMessage ) {
-                auto timer = global_profiler.getBlock( id, msg, file, line );
-                d_trace    = global_profiler.start( timer );
+                auto timer = ProfilerApp::getBlock( id, msg, file, line, true, true );
+                d_trace    = ProfilerApp::start( timer );
             } else {
                 auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
-                auto timer = global_profiler.getBlock( id2, msg, file, line );
-                d_trace    = global_profiler.start( timer );
+                auto timer = ProfilerApp::getBlock( id2, msg, file, line, false, true );
+                d_trace    = ProfilerApp::start( timer );
             }
         }
     }
@@ -86,10 +85,10 @@ public:
         requires( !fixedMessage )
         : d_traceFlag( trace ), d_trace( nullptr )
     {
-        if ( level >= 0 && level <= global_profiler.getLevel() ) {
-            auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
-            auto timer = global_profiler.getBlock( id2, msg.data(), file, line );
-            d_trace    = global_profiler.start( timer );
+        if ( level >= 0 && level <= ProfilerApp::getLevel() ) {
+            auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg.data() ) );
+            auto timer = ProfilerApp::getBlock( id2, msg.data(), file, line, false, true );
+            d_trace    = ProfilerApp::start( timer );
         }
     }
 #endif
@@ -97,8 +96,8 @@ public:
     //! Destructor
     ~ProfilerAppTimer()
     {
-        if ( d_trace && global_profiler.getLevel() >= 0 )
-            global_profiler.stop( d_trace, std::chrono::steady_clock::now(), d_traceFlag );
+        if ( d_trace && ProfilerApp::getLevel() >= 0 )
+            ProfilerApp::stop( d_trace, std::chrono::steady_clock::now(), d_traceFlag );
     }
 
     ProfilerAppTimer( const ProfilerAppTimer& )            = delete;

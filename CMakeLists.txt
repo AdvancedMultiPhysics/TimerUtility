@@ -194,6 +194,7 @@ ENDIF()
 # Add the cppcheck tests
 SET( CPPCHECK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}" )
 SET( CPPCHECK_USE_JSON TRUE )
+SET( CPPCHECK_PROCS 4 )
 FIND_PACKAGE( Cppcheck )
 
 # Add the cppclean tests

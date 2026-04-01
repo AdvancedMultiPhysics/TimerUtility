@@ -11,7 +11,7 @@
 #define PROFILE_ID( NAME ) ProfilerApp::getTimerId( NAME, __FILE__, __LINE__ )
 #if TIMER_CXX_STD < 20
 #define CALL_STATIC_TIMER_VAR( VAR, ID, FIXED, NAME, LEVEL, TRACE ) \
-    ProfilerAppTimer<ID,FIXED> VAR( NAME, __FILE__, __LINE__, LEVEL, TRACE )
+    ProfilerAppTimer<ID, FIXED> VAR( NAME, __FILE__, __LINE__, LEVEL, TRACE )
 #else
 #define CALL_STATIC_TIMER_VAR( VAR, ID, FIXED, NAME, LEVEL, TRACE ) \
     ProfilerAppTimer<FIXED> VAR( ID, NAME, __FILE__, __LINE__, LEVEL, TRACE )
@@ -26,7 +26,7 @@
 #define PROFILE2_3( NAME, LEVEL, LINE ) CALL_STATIC_TIMER( "", false, NAME, LINE, LEVEL, -1 )
 #define PROFILE2_4( NAME, LEVEL, TRACE, LINE ) \
     CALL_STATIC_TIMER( "", false, NAME, LINE, LEVEL, TRACE )
-#define PROFILE_SAVE_GLOBAL( NAME, GLOB, ... ) global_profiler.save( NAME, GLOB )
+#define PROFILE_SAVE_GLOBAL( NAME, GLOB, ... ) ProfilerApp::save( NAME, GLOB )
 
 
 /*! \addtogroup Macros
@@ -64,7 +64,7 @@
  *      See  \ref ProfilerApp "ProfilerApp" and
  *     \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_MEMORY() global_profiler.memory()
+#define PROFILE_MEMORY() ProfilerApp::memory()
 
 
 /*! \def PROFILE_SYNCHRONIZE()
@@ -79,7 +79,7 @@
  *        to multiple calls.
  *      Note: this is blocking call.
  */
-#define PROFILE_SYNCHRONIZE() global_profiler.synchronize()
+#define PROFILE_SYNCHRONIZE() ProfilerApp::synchronize()
 
 
 /*! \def PROFILE_SAVE(FILE,GLOBAL)
@@ -99,7 +99,7 @@
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  *  \param X  Flag to indicate if we want to enable/disable the trace timers
  */
-#define PROFILE_STORE_TRACE( X ) global_profiler.setStoreTrace( X )
+#define PROFILE_STORE_TRACE( X ) ProfilerApp::setStoreTrace( X )
 
 
 /*! \def PROFILE_ENABLE(LEVEL)
@@ -108,7 +108,7 @@
  *      An optional argument specifying the level to enable may be included.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE global_profiler.enable
+#define PROFILE_ENABLE ProfilerApp::enable
 
 
 /*! \def PROFILE_DISABLE()
@@ -116,7 +116,7 @@
  *  \details This will disable the timers.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_DISABLE() global_profiler.disable()
+#define PROFILE_DISABLE() ProfilerApp::disable()
 
 
 /*! \def PROFILE_ENABLE_TRACE()
@@ -127,7 +127,7 @@
  *      performance if enabled.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE_TRACE() global_profiler.setStoreTrace( true )
+#define PROFILE_ENABLE_TRACE() ProfilerApp::setStoreTrace( true )
 
 
 /*! \def PROFILE_DISABLE_TRACE()
@@ -138,7 +138,7 @@
  *      performance if enabled.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_DISABLE_TRACE() global_profiler.setStoreTrace( false )
+#define PROFILE_DISABLE_TRACE() ProfilerApp::setStoreTrace( false )
 
 
 /*! \def PROFILE_ENABLE_MEMORY()
@@ -147,7 +147,7 @@
  *      the application.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_ENABLE_MEMORY( ... ) global_profiler.setStoreMemory( __VA_ARGS__ )
+#define PROFILE_ENABLE_MEMORY( ... ) ProfilerApp::setStoreMemory( __VA_ARGS__ )
 
 
 /*! \def PROFILE_DISABLE_MEMORY()
@@ -157,7 +157,7 @@
  *      the application.
  *      See  \ref ProfilerApp "ProfilerApp" for more info.
  */
-#define PROFILE_DISABLE_MEMORY() global_profiler.setStoreMemory( ProfilerApp::MemoryLevel::None )
+#define PROFILE_DISABLE_MEMORY() ProfilerApp::setStoreMemory( ProfilerApp::MemoryLevel::None )
 
 
 /*! @} */

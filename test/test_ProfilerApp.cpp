@@ -58,16 +58,7 @@ inline void MPI_Finalize() {}
     } while ( false )
 
 
-inline void printOverhead( const std::string &timer, int N_calls )
-{
-    auto results = global_profiler.getTimerResults( timer, __FILE__ );
-    if ( results.trace.size() == 1 ) {
-        uint64_t time = results.trace[0].tot;
-        printf( "   %s: %i ns\n", timer.c_str(), int( time / N_calls ) );
-    } else {
-        printf( "   %s: N/A\n", timer.c_str() );
-    }
-}
+#define diff_ns( t2, t1 ) std::chrono::duration_cast<std::chrono::nanoseconds>( t2 - t1 ).count()
 
 
 std::string random_string( int N )
@@ -301,7 +292,6 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
         PROFILE_ENABLE_MEMORY();
     PROFILE( "MAIN" );
 
-    const int N_it     = 500;
     const int N_timers = 500;
     int N_errors       = 0;
     const int rank     = getRank();
@@ -338,84 +328,75 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     }
 
     // Check the performance
+    barrier();
+    int N_it = 1000;
+    auto t1  = std::chrono::steady_clock::now();
     for ( int i = 0; i < N_it; i++ ) {
-        // Test how long it takes to start/stop the timers
-        barrier();
-        {
-            PROFILE( "single" );
-            for ( int j = 0; j < N_timers; j++ )
-                PROFILE( "static_name" );
-        }
-        {
-            PROFILE( "static" );
-            for ( int j = 0; j < N_timers; j++ ) {
-                global_profiler.start( ids[j], names[j].data(), __FILE__, __LINE__, 0 );
-                global_profiler.stop( ids[j] );
-            }
-        }
-        {
-            PROFILE( "dynamic" );
-            for ( int j = 0; j < N_timers; j++ )
-                PROFILE2( names2[j] );
-        }
-        {
-            PROFILE( "level 0" );
-            for ( int j = 0; j < N_timers; j++ ) {
-                global_profiler.start( ids[j], names[j].data(), __FILE__, -1, 0 );
-                global_profiler.stop( ids[j], 0 );
-            }
-        }
-        {
-            PROFILE( "level 1" );
-            for ( int j = 0; j < N_timers; j++ ) {
-                global_profiler.start( ids[j], names[j].data(), __FILE__, -1, 1 );
-                global_profiler.stop( ids[j], 1 );
-            }
-        }
-        {
-            PROFILE( "level 1 (single)" );
-            for ( int j = 0; j < N_timers; j++ )
-                PROFILE( "static_name", 1 );
-        }
-        {
-            PROFILE( "level 1 (static)" );
-            for ( int j = 0; j < N_timers; j++ ) {
-                global_profiler.start( ids[j], names[j].data(), __FILE__, __LINE__, 1 );
-                global_profiler.stop( ids[j], 1 );
-            }
-        }
-        {
-            PROFILE( "level 1 (dynamic)" );
-            for ( int j = 0; j < N_timers; j++ )
-                PROFILE2( names2[j], 1 );
-        }
-        // Test the memory around allocations
-        {
-            PROFILE( "allocate1" );
-            [[maybe_unused]] double *tmp = nullptr;
-            {
-                PROFILE( "allocate2" );
-                tmp = new double[5000000];
-            }
-            delete[] tmp;
-            {
-                PROFILE( "allocate3" );
-                tmp = new double[100000];
-            }
-            delete[] tmp;
+        PROFILE( "single" );
+        for ( int j = 0; j < N_timers; j++ )
+            PROFILE( "static_name" );
+    }
+    auto t2 = std::chrono::steady_clock::now();
+    for ( int i = 0; i < N_it; i++ ) {
+        PROFILE( "static" );
+        for ( int j = 0; j < N_timers; j++ ) {
+            ProfilerApp::start( ids[j], names[j].data(), __FILE__, __LINE__, 0 );
+            ProfilerApp::stop( ids[j] );
         }
     }
+    auto t3 = std::chrono::steady_clock::now();
+    for ( int i = 0; i < N_it; i++ ) {
+        PROFILE( "dynamic" );
+        for ( int j = 0; j < N_timers; j++ )
+            PROFILE2( names2[j] );
+    }
+    auto t4 = std::chrono::steady_clock::now();
+    for ( int i = 0; i < N_it; i++ ) {
+        PROFILE( "level 1 (single)" );
+        for ( int j = 0; j < N_timers; j++ )
+            PROFILE( "static_name", 1 );
+    }
+    auto t5 = std::chrono::steady_clock::now();
+    for ( int i = 0; i < N_it; i++ ) {
+        PROFILE( "level 1 (static)" );
+        for ( int j = 0; j < N_timers; j++ ) {
+            ProfilerApp::start( ids[j], names[j].data(), __FILE__, __LINE__, 1 );
+            ProfilerApp::stop( ids[j], 1 );
+        }
+    }
+    auto t6 = std::chrono::steady_clock::now();
+    for ( int i = 0; i < N_it; i++ ) {
+        PROFILE( "level 1 (dynamic)" );
+        for ( int j = 0; j < N_timers; j++ )
+            PROFILE2( names2[j], 1 );
+    }
+    auto t7 = std::chrono::steady_clock::now();
     if ( getRank() == 0 ) {
+        int64_t N_calls = N_it * N_timers;
         printf( "\nProfiler overhead (%i,%i):\n", enable_trace ? 1 : 0, enable_memory ? 1 : 0 );
-        printOverhead( "single", N_it * N_timers );
-        printOverhead( "static", N_it * N_timers );
-        printOverhead( "dynamic", N_it * N_timers );
-        printOverhead( "level 0", N_it * N_timers );
-        printOverhead( "level 1", N_it * N_timers );
-        printOverhead( "level 1 (single)", N_it * N_timers );
-        printOverhead( "level 1 (static)", N_it * N_timers );
-        printOverhead( "level 1 (dynamic)", N_it * N_timers );
+        printf( "   single: %i ns\n", int( diff_ns( t2, t1 ) / N_calls ) );
+        printf( "   static: %i ns\n", int( diff_ns( t3, t2 ) / N_calls ) );
+        printf( "   dynamic: %i ns\n", int( diff_ns( t4, t3 ) / N_calls ) );
+        printf( "   level 1 (single): %i ns\n", int( diff_ns( t5, t4 ) / N_calls ) );
+        printf( "   level 1 (static): %i ns\n", int( diff_ns( t6, t5 ) / N_calls ) );
+        printf( "   level 1 (dynamic): %i ns\n", int( diff_ns( t7, t6 ) / N_calls ) );
         printf( "\n" );
+    }
+
+    // Test the memory around allocations
+    for ( int i = 0; i < 100; i++ ) {
+        PROFILE( "allocate1" );
+        [[maybe_unused]] double *tmp = nullptr;
+        {
+            PROFILE( "allocate2" );
+            tmp = new double[5000000];
+        }
+        delete[] tmp;
+        {
+            PROFILE( "allocate3" );
+            tmp = new double[100000];
+        }
+        delete[] tmp;
     }
 
     // Create a timer with long names to ensure we truncate correctly
@@ -424,12 +405,12 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     std::string long_path     = "Long pathname - " + random_string( 128 );
     std::string long_filename = long_path + "/" + long_file;
     auto long_id = ProfilerApp::getTimerId2( long_msg.data(), long_filename.data(), 0 );
-    global_profiler.start( long_id, long_msg.data(), long_filename.data(), 0 );
-    global_profiler.stop( long_id );
+    ProfilerApp::start( long_id, long_msg.data(), long_filename.data(), 0 );
+    ProfilerApp::stop( long_id );
 
     // Pause memory profiling before the save
-    if ( global_profiler.getStoreMemory() != ProfilerApp::MemoryLevel::None )
-        global_profiler.setStoreMemory( ProfilerApp::MemoryLevel::Pause );
+    if ( ProfilerApp::getStoreMemory() != ProfilerApp::MemoryLevel::None )
+        ProfilerApp::setStoreMemory( ProfilerApp::MemoryLevel::Pause );
 
     // Profile the save
     {
@@ -441,9 +422,9 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
     PROFILE_SAVE( save_name );
 
     // Get the timers (sorting based on the timer ids)
-    auto memory1 = global_profiler.getMemoryResults();
+    auto memory1 = ProfilerApp::getMemoryResults();
     PROFILE_MEMORY();
-    auto data1 = global_profiler.getTimerResults();
+    auto data1 = ProfilerApp::getTimerResults();
     PROFILE_MEMORY();
     if ( !check( memory1 ) ) {
         std::cout << "Memory results do not make sense\n";
@@ -453,13 +434,13 @@ int run_tests( bool enable_trace, bool enable_memory, std::string save_name )
 
     // Load the data from the file (sorting based on the timer ids)
     auto id = ProfilerApp::getTimerId( "LOAD", __FILE__, 0 );
-    global_profiler.start( id, "LOAD", __FILE__, __LINE__ );
+    ProfilerApp::start( id, "LOAD", __FILE__, __LINE__ );
     auto load_results = ProfilerApp::load( save_name, rank );
     auto &data2       = load_results.timers;
     MemoryResults memory2;
     if ( !load_results.memory.empty() )
         memory2 = load_results.memory[0];
-    global_profiler.stop( id );
+    ProfilerApp::stop( id );
     sort( data2 );
 
     // Find and check sleep
