@@ -1,5 +1,6 @@
 #include "ProfilerApp.h"
 #include "MemoryApp.h"
+#include "ProfilerDefinitions.h"
 
 #include <cassert>
 #include <cmath>
@@ -17,6 +18,15 @@
 PROFILE_DISABLE_WARNINGS
 #include <mpi.h>
 PROFILE_ENABLE_WARNINGS
+#endif
+
+
+#ifdef TIMER_USE_CUDA
+#if __has_include( <nvtx3/nvtx3.hpp>)
+#include <nvtx3/nvtx3.hpp>
+#elif __has_include( <cub/detail/nvtx3.hpp>)
+#include <cub/detail/nvtx3.hpp>
+#endif
 #endif
 
 
@@ -1024,6 +1034,11 @@ ProfilerApp::store_trace* ProfilerApp::start( store_timer* timer )
         trace->stack2     = thread.stack;
         d_bytes.fetch_add( sizeof( store_trace ) );
     }
+// Start the NVIDIA profiler if used
+#if defined( TIMER_USE_CUDA ) && !defined( NVTX_DISABLE )
+    nvtx3::event_attributes attr{ timer->message };
+    nvtxDomainRangePushEx( nvtx3::domain::get<nvtx3::domain::global>(), attr.get() );
+#endif
     // Start the timer
     if ( trace->start != nullStart ) {
         error( "Trace is active", &thread, timer );
@@ -1080,6 +1095,10 @@ void ProfilerApp::stop( store_timer* timer, time_point end_time, int enableTrace
     // Get the memory usage
     if ( static_cast<int8_t>( d_store_memory_data ) >= 2 )
         thread.memory.add( stop, d_store_memory_data, d_bytes );
+// Stop the NVIDIA profiler
+#if defined( TIMER_USE_CUDA ) && !defined( NVTX_DISABLE )
+    nvtxDomainRangePop( nvtx3::domain::get<nvtx3::domain::global>() );
+#endif
 }
 void ProfilerApp::stop( store_trace* trace, time_point end_time, int enableTrace )
 {

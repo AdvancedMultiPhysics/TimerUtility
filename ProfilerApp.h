@@ -367,7 +367,7 @@ public:
      * @param[in] filename  The filename
      * @param[in] line      The line number
      */
-    TIMER_CONSTEVAL static inline uint64_t getTimerId(
+    consteval static inline uint64_t getTimerId(
         const char* message, const char* filename, int line );
 
     /*!

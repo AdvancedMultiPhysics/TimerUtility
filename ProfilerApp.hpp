@@ -83,7 +83,7 @@ constexpr inline uint64_t ProfilerApp::hashString( const char* s )
     }
     return hash;
 }
-TIMER_CONSTEVAL inline uint64_t ProfilerApp::getTimerId(
+consteval inline uint64_t ProfilerApp::getTimerId(
     const char* message, const char* filename, int line )
 {
     uint64_t v1 = static_cast<uint64_t>( hashString( stripPath( filename ) ) ) << 32;
