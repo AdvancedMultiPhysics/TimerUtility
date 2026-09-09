@@ -1,8 +1,8 @@
 #ifndef included_ProfilerAppClasses
 #define included_ProfilerAppClasses
 
-
 #include "ProfilerApp.h"
+#include "ProfilerDefinitions.h"
 
 
 /** \class ProfilerAppTimer
@@ -15,11 +15,7 @@
  *       ...
  *    }
  */
-#if TIMER_CXX_STD < 20
-template<std::size_t id, bool fixedMessage = true>
-#else
 template<bool fixedMessage = true>
-#endif
 class ProfilerAppTimer final
 {
 public:
@@ -38,33 +34,6 @@ public:
      *                       0: Disable trace data for this timer
      *                       1: Enable trace data for this timer
      */
-#if TIMER_CXX_STD < 20
-    explicit ProfilerAppTimer( const char* msg, const char* file, int line, int level, int trace )
-        : d_traceFlag( trace ), d_trace( nullptr )
-    {
-        if ( level >= 0 && level <= ProfilerApp::getLevel() ) {
-            if constexpr ( fixedMessage ) {
-                auto timer = ProfilerApp::getBlock( id, msg, file, line, true, true );
-                d_trace    = ProfilerApp::start( timer );
-            } else {
-                auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg ) );
-                auto timer = ProfilerApp::getBlock( id2, msg, file, line, false, true );
-                d_trace    = ProfilerApp::start( timer );
-            }
-        }
-    }
-    explicit ProfilerAppTimer(
-        const std::string& msg, const char* file, int line, int level, int trace )
-        : d_traceFlag( trace ), d_trace( nullptr )
-    {
-        static_assert( !fixedMessage );
-        if ( level >= 0 && level <= ProfilerApp::getLevel() ) {
-            auto id2   = id ^ static_cast<uint64_t>( ProfilerApp::hashString( msg.data() ) );
-            auto timer = ProfilerApp::getBlock( id2, msg.data(), file, line, false, true );
-            d_trace    = ProfilerApp::start( timer );
-        }
-    }
-#else
     explicit ProfilerAppTimer(
         uint64_t id, const char* msg, const char* file, int line, int level, int trace )
         : d_traceFlag( trace ), d_trace( nullptr )
@@ -91,7 +60,6 @@ public:
             d_trace    = ProfilerApp::start( timer );
         }
     }
-#endif
 
     //! Destructor
     ~ProfilerAppTimer()
